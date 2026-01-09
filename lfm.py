@@ -72,11 +72,23 @@ if df_static is not None:
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Leghe e Saldi")
         
-        # Iniezione CSS per aumentare la dimensione del font in tutte le tabelle
+        # CSS POTENZIATO per il font delle tabelle
         st.markdown("""
             <style>
-            table { font-size: 20px !important; }
-            th { font-size: 22px !important; background-color: #262730 !important; color: white !important; }
+            /* Ingrandisce il testo in tutte le celle delle tabelle */
+            div[data-testid="stTable"] td {
+                font-size: 24px !important;
+            }
+            /* Ingrandisce il testo delle intestazioni */
+            div[data-testid="stTable"] th {
+                font-size: 26px !important;
+                background-color: #262730 !important;
+                color: white !important;
+            }
+            /* Aumenta la dimensione generale della tabella */
+            div[data-testid="stTable"] {
+                width: 100% !important;
+            }
             </style>
             """, unsafe_allow_html=True)
 
@@ -88,15 +100,12 @@ if df_static is not None:
                     st.header(f"🏆 {nome_lega}")
                     df_l = df_base[df_base['Lega'] == nome_lega]
                     
-                    # Calcolo Rimborsi
                     res_rimborsi = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
-                    # Crediti Manuali
                     df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
                     
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                     
-                    # Pulizia colonne e decimali
                     tabella.columns = ['Squadra', 'Residuo', 'Rimborsi', 'TOTALE']
                     for col in ['Residuo', 'Rimborsi', 'TOTALE']:
                         tabella[col] = tabella[col].astype(int)
