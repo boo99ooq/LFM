@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="LFM Admin Pro", layout="wide", page_icon="⚖️")
+st.set_page_config(page_title="LFM Dashboard", layout="wide", page_icon="⚖️")
 
 # --- 1. CARICAMENTO DATI ---
 @st.cache_data
@@ -53,7 +53,7 @@ def fix_fiorentina(df_leghe):
 
 st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
 
-# --- 4. COSTRUZIONE DATABASE ---
+# --- 4. LOGICA DASHBOARD ---
 df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
@@ -63,33 +63,47 @@ if df_static is not None:
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
     if menu == "🏠 Dashboard":
-        st.title("🏠 Riepilogo Leghe")
+        st.title("🏠 Riepilogo Crediti e Rimborsi")
         
+        # Filtro leghe (A, B, C, D)
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         
-        for nome_lega in leghe_valide:
-            st.markdown(f"### 🏆 {nome_lega}")
-            df_l = df_base[df_base['Lega'] == nome_lega]
-            res_rimborsi = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
-            df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
-            tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
-            tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
-            tabella = tabella.sort_values(by='Squadra_LFM')
+        # LAYOUT IN FILA PER 4
+        cols_leghe = st.columns(len(leghe_valide))
+        
+        for i, nome_lega in enumerate(leghe_valide):
+            with cols_leghe[i]:
+                st.markdown(f"### 🏆 {nome_lega}")
+                df_l = df_base[df_base['Lega'] == nome_lega]
+                
+                # Calcolo rimborsi e aggregazione nomi giocatori
+                df_rimb_active = df_l[df_l['Rimborsato'] == True]
+                res_rimborsi = df_rimb_active.groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
+                
+                # Creiamo la stringa dei nomi rimborsati per ogni squadra
+                res_nomi = df_rimb_active.groupby('Squadra_LFM')['Nome'].apply(lambda x: ", ".join(x)).reset_index()
+                res_nomi.columns = ['Squadra_LFM', 'Dettaglio']
+                
+                df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
+                
+                # Unione dati
+                tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
+                tabella = pd.merge(tabella, res_nomi, on='Squadra_LFM', how='left').fillna("")
+                tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
+                tabella = tabella.sort_values(by='Squadra_LFM')
 
-            # Tabella Standard pulita (senza decimali)
-            tab_view = tabella.copy()
-            tab_view.columns = ['Squadra', 'Residuo', 'Rimborsi', 'TOTALE']
-            for col in ['Residuo', 'Rimborsi', 'TOTALE']:
-                tab_view[col] = tab_view[col].astype(int)
-            st.dataframe(tab_view, use_container_width=True, hide_index=True)
-
-            # --- FOCUS SUI TOTALI (Numeri Grandi) ---
-            st.write("🔍 **Dettaglio Totali Disponibili:**")
-            m_cols = st.columns(5) # Crea 5 colonne per le metriche
-            squadre_lista = tabella.to_dict('records')
-            for idx, sq in enumerate(squadre_lista):
-                m_cols[idx % 5].metric(label=sq['Squadra_LFM'], value=int(sq['Totale']))
-            st.divider()
+                # Visualizzazione per ogni squadra nella colonna della lega
+                for _, sq in tabella.iterrows():
+                    with st.container(border=True):
+                        st.markdown(f"**{sq['Squadra_LFM']}**")
+                        # Metrica con font grande per il totale
+                        st.metric(label="Totale Disponibile", value=int(sq['Totale']))
+                        
+                        # Mostriamo i nomi solo se ci sono rimborsi
+                        if sq['Dettaglio']:
+                            st.caption(f"📝 {sq['Dettaglio']}")
+                        else:
+                            st.caption("Nessun rimborso")
 
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
@@ -109,7 +123,7 @@ if df_static is not None:
             for _, row in res_editor.iterrows():
                 if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                 else: st.session_state.refunded_ids.discard(row['Id'])
-            st.success("Aggiornato!")
+            st.success("Fatto!")
             st.rerun()
 
         st.divider()
@@ -131,7 +145,7 @@ if df_static is not None:
             temp_df.update(edited_view.set_index('Squadra'))
             st.session_state.df_leghe_full = temp_df.reset_index()
             st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
-            st.success("Salvataggio completato!")
+            st.success("Dati aggiornati!")
             st.rerun()
         st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
         df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
