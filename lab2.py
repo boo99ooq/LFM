@@ -73,7 +73,7 @@ if df_base is not None:
     st.sidebar.title("⚖️ LFM Admin")
     
     # SEMAFORO DEL MERCATO (Sidebar)
-    mercato_aperto = True # Cambia in False per chiudere il mercato
+    mercato_aperto = True 
     if mercato_aperto:
         st.sidebar.success("🟢 MERCATO APERTO")
     else:
@@ -89,11 +89,10 @@ if df_base is not None:
         st.info("📢 **Bacheca News & Ultimi Movimenti**")
         st.markdown("""
         * 📅 **Prossima Asta:** Da definire
-        * ⚠️ **Nota:** Il file `esclusi.csv` è stato aggiornato correttamente.
+        * 📊 **Update:** Aggiunto contatore giocatori attivi per ogni rosa.
         """)
         
-        st.subheader("🔄 Ultimi Movimenti Registrati")
-        # Logica movimenti automatici
+        st.subheader("🔄 Ultimi Movimenti")
         news_star = df_base[df_base['Rimborsato_Star']].copy()
         news_star['Tipo'] = "✈️ SVINCOLO *"
         news_tagli = df_base[df_base['Rimborsato_Taglio']].copy()
@@ -114,20 +113,42 @@ if df_base is not None:
             with cols[i % 2]:
                 st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
+                
+                # Calcolo dati per squadra
                 res_star = df_l[df_l['Rimborsato_Star']].groupby('Squadra_LFM').agg({'Rimborso_Star':'sum','Nome': lambda x: ", ".join(x)}).reset_index()
                 res_tagli = df_l[df_l['Rimborsato_Taglio']].groupby('Squadra_LFM').agg({'Rimborso_Taglio':'sum','Nome': lambda x: ", ".join(x)}).reset_index()
+                
+                # CONTEGGIO GIOCATORI ATTIVI
+                # Un giocatore è attivo se NON è rimborsato star E NON è tagliato
+                attivi = df_l[~(df_l['Rimborsato_Star']) & ~(df_l['Rimborsato_Taglio'])].groupby('Squadra_LFM').size().reset_index(name='Num_Giocatori')
+                
                 tabella = pd.merge(df_l[['Squadra_LFM', 'Crediti']].drop_duplicates(), res_star, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_tagli.rename(columns={'Nome':'N_T'}), on='Squadra_LFM', how='left').fillna(0)
+                tabella = pd.merge(tabella, attivi, on='Squadra_LFM', how='left').fillna(0)
+                
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso_Star'] + tabella['Rimborso_Taglio']
+                
                 for _, sq in tabella.sort_values(by='Squadra_LFM').iterrows():
                     d_html = ""
-                    if sq['Nome']: d_html += f"<div style='font-size:13px;color:#d32f2f;'><b>✈️ Svinc:</b> {sq['Nome']} (+{int(sq['Rimborso_Star'])})</div>"
-                    if sq['N_T']: d_html += f"<div style='font-size:13px;color:#7b1fa2;'><b>✂️ Tagli:</b> {sq['N_T']} (+{int(sq['Rimborso_Taglio'])})</div>"
-                    st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(nome_lega, '#f5f5f5')}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; color: #333;">
-                        <div style="display: flex; justify-content: space-between;"><b>{sq['Squadra_LFM']}</b><b style="color:#1e88e5;">{int(sq['Totale'])} cr</b></div>
-                        <hr style="margin:8px 0;"><div style="background-color: rgba(255,255,255,0.4); padding: 8px; border-radius: 6px; border: 1px dashed #999;">{d_html if d_html else "<i>Nessuna operazione attiva</i>"}</div></div>""", unsafe_allow_html=True)
+                    if sq['Nome']: d_html += f"<div style='font-size:12px;color:#d32f2f;'><b>✈️ Svinc:</b> {sq['Nome']} (+{int(sq['Rimborso_Star'])})</div>"
+                    if sq['N_T']: d_html += f"<div style='font-size:12px;color:#7b1fa2;'><b>✂️ Tagli:</b> {sq['N_T']} (+{int(sq['Rimborso_Taglio'])})</div>"
+                    
+                    # Colore contatore (rosso se meno di 25)
+                    colore_count = "#2e7d32" if sq['Num_Giocatori'] >= 25 else "#c62828"
+                    
+                    st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(nome_lega, '#f5f5f5')}; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #ddd; color: #333;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <b style="font-size:16px;">{sq['Squadra_LFM']}</b>
+                            <span style="background:{colore_count}; color:white; padding:2px 8px; border-radius:10px; font-size:12px;">🏃 {int(sq['Num_Giocatori'])}/25</span>
+                        </div>
+                        <div style="font-size:18px; font-weight:bold; color:#1e88e5; margin-top:5px;">{int(sq['Totale'])} <small>cr</small></div>
+                        <hr style="margin:8px 0;">
+                        <div style="background-color: rgba(255,255,255,0.5); padding: 5px; border-radius: 6px;">
+                            {d_html if d_html else "<i style='color:#777; font-size:12px;'>Nessun rimborso attivo</i>"}
+                        </div>
+                    </div>""", unsafe_allow_html=True)
 
-    # --- 🏃 SVINCOLATI * ---
+    # --- LE ALTRE PAGINE RIMANGONO INVARIATE ---
     elif menu == "🏃 Svincolati *":
         st.title("✈️ Rimborsi da *")
         c1, c2 = st.columns([4, 1])
@@ -145,7 +166,6 @@ if df_base is not None:
         st.subheader("📋 Riepilogo Svincolati (*)")
         st.dataframe(df_base[df_base['Rimborsato_Star']].drop_duplicates('Id').sort_values(by='Nome')[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso_Star']], use_container_width=True, hide_index=True)
 
-    # --- ✂️ TAGLI VOLONTARI ---
     elif menu == "✂️ Tagli Volontari":
         st.title("✂️ Tagli Volontari")
         c1, c2 = st.columns([4, 1])
@@ -163,7 +183,6 @@ if df_base is not None:
         st.subheader("📋 Riepilogo Tagli")
         st.dataframe(df_base[df_base['Rimborsato_Taglio']].sort_values(by=['Squadra_LFM', 'Nome'])[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], use_container_width=True, hide_index=True)
 
-    # --- 📊 RANKING FVM ---
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM per Lega")
         c1, c2 = st.columns(2)
@@ -175,4 +194,61 @@ if df_base is not None:
 
         def format_owner(row):
             name = row['Squadra_LFM']
-            if row['Rimborsato_Star']: return f
+            if row['Rimborsato_Star']: return f"✈️ {name}" 
+            if row['Rimborsato_Taglio']: return f"✂️ {name}" 
+            return name
+
+        df_rank['Squadra_Display'] = df_rank.apply(format_owner, axis=1)
+        pivot_rank = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Squadra_Display', aggfunc=lambda x: " | ".join(x)).reset_index()
+        for lega in ORDINE_LEGHE:
+            if lega in pivot_rank.columns: pivot_rank[lega] = pivot_rank[lega].fillna("🟢 LIBERO")
+            else: pivot_rank[lega] = "🟢 LIBERO"
+        pivot_rank = pivot_rank.sort_values(by='FVM', ascending=False)
+        colonne_finali = ['FVM', 'Nome', 'R'] + [l for l in leghe_filt if l in pivot_rank.columns]
+        st.dataframe(pivot_rank[colonne_finali], use_container_width=True, hide_index=True)
+
+    elif menu == "🟢 Giocatori Liberi":
+        st.title("🟢 Calciatori Liberi Ovunque")
+        try:
+            df_esclusi = pd.read_csv('esclusi.csv', sep='\t', header=None)
+            blacklisted_ids = set(pd.to_numeric(df_esclusi.iloc[:, 0], errors='coerce').dropna().unique())
+        except: blacklisted_ids = set()
+
+        ids_posseduti = set(df_base['Id'].unique())
+        df_liberi = df_all_quot[(~df_all_quot['Id'].isin(ids_posseduti)) & (~df_all_quot['Id'].isin(blacklisted_ids))].copy()
+        c1, c2 = st.columns(2)
+        r_sel = c1.multiselect("Filtra per Ruolo:", sorted(df_liberi['R'].dropna().unique()), default=sorted(df_liberi['R'].dropna().unique()))
+        cerca_lib = c2.text_input("Cerca per nome:")
+        if r_sel: df_liberi = df_liberi[df_liberi['R'].isin(r_sel)]
+        if cerca_lib: df_liberi = df_liberi[df_liberi['Nome'].str.contains(cerca_lib, case=False, na=False)]
+        st.write(f"Giocatori disponibili: {len(df_liberi)}")
+        st.dataframe(df_liberi.sort_values(by='FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
+
+    elif menu == "📋 Visualizza Rose":
+        st.title("📋 Consultazione Rose")
+        lega_sel = st.selectbox("Lega:", sorted(df_base['Lega'].unique()))
+        squadra_sel = st.selectbox("Squadra:", sorted(df_base[df_base['Lega'] == lega_sel]['Squadra_LFM'].unique()))
+        df_r = df_base[df_base['Squadra_LFM'] == squadra_sel].copy()
+        ruolo_order = {'P':0, 'D':1, 'C':2, 'A':3}
+        df_r['Ruolo_Num'] = df_r['R'].map(ruolo_order).fillna(4)
+        df_r['Stato'] = df_r.apply(lambda r: "✈️ SVINC. *" if r['Rimborsato_Star'] else ("✂️ TAGLIO" if r['Rimborsato_Taglio'] else "🏃 ROSA"), axis=1)
+        st.dataframe(df_r.sort_values(by=['Rimborsato_Star', 'Rimborsato_Taglio', 'Ruolo_Num', 'Nome'])[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
+
+    elif menu == "⚙️ Gestione Squadre":
+        st.title("⚙️ Configurazione")
+        c1, c2 = st.columns([4, 1])
+        opzioni_lega = ["Tutte"] + sorted(list(st.session_state.df_leghe_full['Lega'].unique()))
+        lega_filtro = c1.selectbox("Filtra per lega:", opzioni_lega)
+        if c2.button("Reset 🔄"): st.rerun()
+        df_to_edit = st.session_state.df_leghe_full if lega_filtro == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_filtro]
+        edited = st.data_editor(df_to_edit, use_container_width=True, hide_index=True)
+        if st.button("Salva Modifiche"):
+            temp_df = st.session_state.df_leghe_full.copy().set_index('Squadra')
+            temp_df.update(edited.set_index('Squadra'))
+            st.session_state.df_leghe_full = fix_league_names(temp_df.reset_index()); st.success("Dati aggiornati!"); st.rerun()
+        st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.download_button("database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        c2.download_button("database_tagli.csv", pd.DataFrame([{'Id': k.split('_')[0], 'Squadra': k.split('_')[1], 'Rimborsato': True} for k in st.session_state.tagli_map]).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
+        c3.download_button("leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
+else: st.error("Carica i file CSV!")
