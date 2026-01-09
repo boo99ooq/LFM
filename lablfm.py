@@ -99,7 +99,7 @@ if df_static is not None:
 
     # --- 🏃 SVINCOLATI * ---
     elif menu == "🏃 Svincolati *":
-        st.title("✈️ Rimborsi da * (Usciti dalla Serie A)")
+        st.title("✈️ Rimborsi da *")
         c1, c2 = st.columns([4, 1])
         cerca = c1.text_input("Cerca giocatore:", key="cerca_star")
         if c2.button("Reset 🔄", key="res_star"): st.rerun()
@@ -116,7 +116,7 @@ if df_static is not None:
 
     # --- ✂️ TAGLI VOLONTARI ---
     elif menu == "✂️ Tagli Volontari":
-        st.title("✂️ Tagli Volontari (Scelte Presidenziali)")
+        st.title("✂️ Tagli Volontari")
         c1, c2 = st.columns([4, 1])
         cerca_t = c1.text_input("Cerca per squadra:", key="cerca_tagli")
         if c2.button("Reset 🔄", key="res_tagli"): st.rerun()
@@ -131,27 +131,72 @@ if df_static is not None:
         st.divider()
         st.dataframe(df_base[df_base['Rimborsato_Taglio']].sort_values(by=['Squadra_LFM', 'Nome'])[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], use_container_width=True, hide_index=True)
 
-    # --- 📊 RANKING FVM AGGIORNATO ---
+    # --- 📊 RANKING FVM (AGGIORNATO: LIBERO OVUNQUE) ---
     elif menu == "📊 Ranking FVM":
-        st.title("📊 Ranking FVM per Lega")
-        c1, c2 = st.columns(2)
+        st.title("📊 Ranking FVM Globale")
+        
+        # 1. Carichiamo la lista completa degli Id univoci dal file quotazioni
+        df_all_ids = df_static[['Id', 'Nome', 'R', 'FVM']].drop_duplicates('Id')
+        
+        c1, c2, c3 = st.columns(3)
         ruolo_filt = c1.multiselect("Filtra Ruolo:", ["P", "D", "C", "A"], default=["P", "D", "C", "A"])
         leghe_filt = c2.multiselect("Visualizza Colonne Leghe:", ORDINE_LEGHE, default=ORDINE_LEGHE)
-        df_rank = df_base.copy()
-        if ruolo_filt: df_rank = df_rank[df_rank['R'].isin(ruolo_filt)]
-
+        solo_liberi = c3.checkbox("Mostra solo giocatori LIBERI OVUNQUE", value=False)
+        
+        # 2. Prepariamo i dati dei possessori con le icone
         def format_owner(row):
             name = row['Squadra_LFM']
             if row['Rimborsato_Star']: return f"✈️ {name}" 
             if row['Rimborsato_Taglio']: return f"✂️ {name}" 
             return name
 
-        df_rank['Squadra_Display'] = df_rank.apply(format_owner, axis=1)
-        pivot_rank = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Squadra_Display', aggfunc=lambda x: " | ".join(x)).reset_index()
-        pivot_rank = pivot_rank.sort_values(by='FVM', ascending=False)
-        colonne_finali = ['FVM', 'Nome', 'R'] + [l for l in leghe_filt if l in pivot_rank.columns]
-        st.dataframe(pivot_rank[colonne_finali], column_config={"FVM": st.column_config.NumberColumn("FVM", format="%d"), "R": "Ruolo", **{l: st.column_config.TextColumn(f"🏆 {l}") for l in ORDINE_LEGHE}}, use_container_width=True, hide_index=True)
-        st.info("Legenda: ✈️ = Svincolato d'ufficio (*) | ✂️ = Taglio Volontario (50%)")
+        df_owners = df_base.copy()
+        df_owners['Display'] = df_owners.apply(format_owner, axis=1)
+        
+        # 3. Creiamo la matrice pivot basata sulle squadre esistenti
+        pivot_rank = df_owners.pivot_table(
+            index=['Id'], 
+            columns='Lega', 
+            values='Display', 
+            aggfunc=lambda x: " | ".join(x)
+        )
+        
+        # 4. Uniamo la matrice con la lista totale dei giocatori (per includere chi ha 0 possessori)
+        final_rank = pd.merge(df_all_ids, pivot_rank, on='Id', how='left')
+        
+        # 5. FILTRO RUOLO
+        if ruolo_filt:
+            final_rank = final_rank[final_rank['R'].isin(ruolo_filt)]
+        
+        # 6. RIEMPIAMO TUTTI I "NONE" CON 🟢 LIBERO
+        for lega in ORDINE_LEGHE:
+            if lega in final_rank.columns:
+                final_rank[lega] = final_rank[lega].fillna("🟢 LIBERO")
+            else:
+                # Se una lega non ha proprio possessori nel file, creiamo la colonna vuota come libera
+                final_rank[lega] = "🟢 LIBERO"
+
+        # 7. FILTRO SOLO LIBERI
+        if solo_liberi:
+            mask = True
+            for lega in leghe_filt:
+                mask &= (final_rank[lega] == "🟢 LIBERO")
+            final_rank = final_rank[mask]
+
+        final_rank = final_rank.sort_values(by='FVM', ascending=False)
+        colonne_visualizzate = ['FVM', 'Nome', 'R'] + [l for l in leghe_filt if l in final_rank.columns]
+        
+        st.dataframe(
+            final_rank[colonne_visualizzate],
+            column_config={
+                "FVM": st.column_config.NumberColumn("FVM", format="%d"),
+                "R": "Ruolo",
+                **{l: st.column_config.TextColumn(f"🏆 {l}") for l in ORDINE_LEGHE}
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        st.info("Legenda: 🟢 LIBERO = Disponibile | ✈️ = Svincolato (*) | ✂️ = Tagliato (50%)")
 
     # --- 📋 VISUALIZZA ROSE ---
     elif menu == "📋 Visualizza Rose":
