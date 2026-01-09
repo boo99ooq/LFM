@@ -21,12 +21,11 @@ for filename, label in file_necessari.items():
         st.sidebar.success(f"✅ {label} trovato")
     else:
         st.sidebar.error(f"❌ {label} MANCANTE")
-        st.sidebar.info(f"Cercato: {filename}")
 
 # --- 1. CARICAMENTO DATI ---
 @st.cache_data
 def load_static_data():
-    # Cerchiamo i nomi corretti ignorando maiuscole/minuscole se necessario
+    # Usiamo latin1 che è più tollerante per i file Excel/CSV italiani
     try:
         df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding='latin1')
         df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo_Asta']
@@ -40,15 +39,14 @@ def load_static_data():
         df_owned['FVM'] = pd.to_numeric(df_owned['FVM'], errors='coerce').fillna(0)
         df_owned['Squadra_LFM'] = df_owned['Squadra_LFM'].str.strip()
         
-        # Calcolo Rimborsi
         df_owned['Rimborso_Star'] = df_owned['FVM'] + (df_owned['Qt.I'] / 2)
         df_owned['Rimborso_Taglio'] = (df_owned['FVM'] + df_owned['Qt.I']) / 2
         
         return df_owned, df_quot
     except Exception as e:
+        st.error(f"Errore caricamento base: {e}")
         return None, None
 
-# --- 2. LOGICA STADI E COLORI ---
 def calculate_stadium_bonus(capienza):
     casa = capienza / 20
     trasferta = math.floor((casa / 2) * 2) / 2
@@ -74,28 +72,21 @@ if 'tagli_map' not in st.session_state:
         st.session_state.tagli_map = set(db_t['Key'].tolist())
     except: st.session_state.tagli_map = set()
 
-def load_leghe_safe():
+if 'df_leghe_full' not in st.session_state:
     try:
         df_temp = pd.read_csv('leghe.csv', encoding='latin1')
         df_temp['Squadra'] = df_temp['Squadra'].str.strip()
         df_temp['Lega'] = df_temp['Lega'].str.strip()
         df_temp['Crediti'] = pd.to_numeric(df_temp['Crediti'], errors='coerce').fillna(0)
-        return df_temp
+        st.session_state.df_leghe_full = df_temp
     except:
-        return pd.DataFrame(columns=['Squadra', 'Lega', 'Crediti'])
-
-if 'df_leghe_full' not in st.session_state:
-    st.session_state.df_leghe_full = load_leghe_safe()
-
-def fix_league_names(df):
-    df['Lega'] = df['Lega'].replace(['Lega A', 'nan', 'Da Assegnare'], 'Serie A')
-    return df
+        st.session_state.df_leghe_full = pd.DataFrame(columns=['Squadra', 'Lega', 'Crediti'])
 
 # --- 4. COSTRUZIONE DATI ---
 df_base, df_all_quot = load_static_data()
 
 try:
-    df_stadi = pd.read_csv('stadi.csv')
+    df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
     df_stadi['Squadra'] = df_stadi['Squadra'].str.strip()
 except:
     df_stadi = pd.DataFrame(columns=['Squadra', 'Lega', 'Stadio'])
@@ -113,7 +104,7 @@ if df_base is not None:
     ])
 
     if menu == "🏠 Dashboard":
-        st.title("🏠 Riepilogo Crediti e News")
+        st.title("🏠 Riepilogo Crediti")
         leghe_effettive = [l for l in ORDINE_LEGHE if l in df_base['Lega'].values]
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_effettive):
@@ -138,10 +129,16 @@ if df_base is not None:
                     </div>""", unsafe_allow_html=True)
 
     elif menu == "📅 Calendario Premier":
-        st.title("📅 Calendario & Bonus Automatici")
-        if 'Calendario_PREMIER-LEAGUE.csv' in files_nella_cartella:
-            df_cal = pd.read_csv('Calendario_PREMIER-LEAGUE.csv', header=None, encoding='utf-8')
-            giornate = sorted(list(set([str(v) for v in df_cal[0].dropna() if "Giornata" in str(v)] + [str(v) for v in df_cal[6].dropna() if "Giornata" in str(v)])))
+        st.title("📅 Calendario & Bonus Stadio")
+        try:
+            # CAMBIO CODIFICA A LATIN1 PER RISOLVERE UNICODEDECODEERROR
+            df_cal = pd.read_csv('Calendario_PREMIER-LEAGUE.csv', header=None, encoding='latin1')
+            
+            # Trova giornate in colonna 0 e 6
+            g1 = [str(x) for x in df_cal[0].dropna() if "Giornata" in str(x)]
+            g2 = [str(x) for x in df_cal[6].dropna() if "Giornata" in str(x)]
+            giornate = sorted(list(set(g1 + g2)))
+            
             sel_g = st.selectbox("Seleziona Giornata:", giornate)
             res = []
             for r in range(len(df_cal)):
@@ -149,18 +146,26 @@ if df_base is not None:
                     if str(df_cal.iloc[r, c]) == sel_g:
                         for i in range(1, 6):
                             if r+i < len(df_cal):
-                                h, a = str(df_cal.iloc[r+i, c]).strip(), str(df_cal.iloc[r+i, c+3]).strip()
+                                h = str(df_cal.iloc[r+i, c]).strip()
+                                a = str(df_cal.iloc[r+i, c+3]).strip()
+                                # Pulizia punteggi (gestisce virgolette e virgole)
+                                s_h = str(df_cal.iloc[r+i, c+1]).replace('"', '').replace(',', '.').strip()
+                                s_a = str(df_cal.iloc[r+i, c+2]).replace('"', '').replace(',', '.').strip()
+                                
                                 try:
-                                    s_h = str(df_cal.iloc[r+i, c+1]).replace(',', '.')
-                                    if float(s_h) == 0:
-                                        cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
-                                        cap_a = df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
+                                    if float(s_h) == 0 and float(s_a) == 0:
+                                        cap_h = df_stadi[df_stadi['Squadra'] == h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
+                                        cap_a = df_stadi[df_stadi['Squadra'] == a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
                                         b_h, _ = calculate_stadium_bonus(cap_h)
                                         _, b_a = calculate_stadium_bonus(cap_a)
-                                        res.append({"Match": f"{h} vs {a}", "Bonus Casa": f"+{b_h}", "Bonus Fuori": f"+{b_a}"})
-                                except: pass
-            st.table(pd.DataFrame(res))
+                                        res.append({"In Casa": h, "Fuori Casa": a, "Bonus Casa": f"+{b_h}", "Bonus Fuori": f"+{b_a}"})
+                                except: continue
+            if res: st.table(pd.DataFrame(res))
+            else: st.info("Partite già giocate o non trovate.")
+        except Exception as e:
+            st.error(f"Errore lettura calendario: {e}")
 
+    # --- RESTANTI PAGINE (COPIALE DAL CODICE PRECEDENTE) ---
     elif menu == "🏃 Svincolati *":
         st.title("✈️ Rimborsi da * (100%)")
         cerca = st.text_input("Cerca giocatore:")
@@ -189,13 +194,11 @@ if df_base is not None:
         st.title("⚙️ Configurazione")
         edited = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, hide_index=True)
         if st.button("Salva"):
-            st.session_state.df_leghe_full = fix_league_names(edited); st.success("Dati aggiornati!"); st.rerun()
+            st.session_state.df_leghe_full = edited; st.success("Dati aggiornati!"); st.rerun()
         st.divider()
-        c1, c2, c3 = st.columns(3)
+        c1, col2, c3 = st.columns(3)
         c1.download_button("database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids)}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
-        c2.download_button("database_tagli.csv", pd.DataFrame([{'Id': k.split('_')[0], 'Squadra': k.split('_')[1]} for k in st.session_state.tagli_map]).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
+        col2.download_button("database_tagli.csv", pd.DataFrame([{'Id': k.split('_')[0], 'Squadra': k.split('_')[1]} for k in st.session_state.tagli_map]).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
         c3.download_button("leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
 
-else:
-    st.error("⚠️ ERRORE CRITICO: I file base non sono stati caricati.")
-    st.info("Controlla nella barra laterale a sinistra quali file mancano e caricali su GitHub.")
+else: st.error("Carica i file CSV base!")
