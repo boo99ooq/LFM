@@ -39,32 +39,32 @@ if 'df_leghe_full' not in st.session_state:
         df_temp['Crediti'] = pd.to_numeric(df_temp['Crediti'], errors='coerce').fillna(0)
         st.session_state.df_leghe_full = df_temp
     except:
-        df_base_init = load_static_data()
-        if df_base_init is not None:
-            squadre = sorted(df_base_init['Squadra_LFM'].unique())
+        df_static_init = load_static_data()
+        if df_static_init is not None:
+            squadre = sorted(df_static_init['Squadra_LFM'].unique())
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
-# --- 3. LOGICA DI UNIFICAZIONE E COLORI ---
-def fix_fiorentina(df_leghe):
+# --- 3. LOGICA DI UNIFICAZIONE E COLORI FORZATI ---
+def fix_league_names(df_leghe):
     df = df_leghe.copy()
-    df.loc[df['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
-    df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "LEGA A"
+    # Forza la Fiorentina in Serie A
+    df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "Serie A"
     return df
 
-st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
+st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
 
-# Mappatura Colori Pastello per Lega
-COLORI_LEGA = {
-    "LEGA A": "#fce4ec", # Rosa pastello
-    "LEGA B": "#e3f2fd", # Azzurro pastello
-    "LEGA C": "#e8f5e9", # Verde pastello
-    "LEGA D": "#fffde7", # Giallo pastello
-    "DEFAULT": "#f5f5f5" # Grigio chiaro
+# MAPPATURA COLORI MANUALE (Forzata come richiesto)
+MAPPATURA_COLORI = {
+    "Serie A": "#fce4ec",        # Rosa pastello
+    "Bundesliga": "#e8f5e9",     # Verde pastello
+    "Premier League": "#e3f2fd", # Azzurro pastello
+    "Liga BBVA": "#fffde7"       # Giallo pastello
 }
 
 # --- 4. COSTRUZIONE DASHBOARD ---
 df_static = load_static_data()
 if df_static is not None:
+    # Merge dinamico con le leghe aggiornate
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
@@ -74,34 +74,39 @@ if df_static is not None:
     if menu == "🏠 Dashboard":
         st.title("🏠 Situazione Crediti e Rimborsi")
         
-        leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
+        # Prendiamo le leghe nell'ordine preferito
+        leghe_display = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
+        # Aggiungiamo eventuali altre leghe trovate nel file che non sono tra le 4 principali
+        altre_leghe = [l for l in df_base['Lega'].unique() if pd.notna(l) and l not in leghe_display]
+        tutte_le_leghe = leghe_display + sorted(altre_leghe)
         
+        # Filtriamo solo quelle che hanno effettivamente delle squadre
+        tutte_le_leghe = [l for l in tutte_le_leghe if l in df_base['Lega'].values]
+
         # LAYOUT 2x2
         cols_container = st.columns(2)
         
-        for i, nome_lega in enumerate(leghe_valide):
+        for i, nome_lega in enumerate(tutte_le_leghe):
             with cols_container[i % 2]:
                 st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
                 
-                # Dati rimborsi
+                # Calcolo dati
                 df_rimb_active = df_l[df_l['Rimborsato'] == True]
                 res_rimborsi = df_rimb_active.groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
                 res_nomi = df_rimb_active.groupby('Squadra_LFM')['Nome'].apply(lambda x: ", ".join(x)).reset_index()
                 res_nomi.columns = ['Squadra_LFM', 'Dettaglio']
                 
                 df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
-                
                 tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_nomi, on='Squadra_LFM', how='left').fillna("")
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
 
-                # Colore della lega corrente
-                bg_color = COLORI_LEGA.get(nome_lega.upper(), COLORI_LEGA["DEFAULT"])
+                # Colore forzato o grigio di default
+                bg_color = MAPPATURA_COLORI.get(nome_lega, "#f5f5f5")
 
                 for _, sq in tabella.iterrows():
-                    # Card HTML personalizzata con colore pastello
                     st.markdown(
                         f"""
                         <div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ccc; color: #333;">
@@ -159,7 +164,7 @@ if df_static is not None:
             temp_df = st.session_state.df_leghe_full.copy().set_index('Squadra')
             temp_df.update(edited_view.set_index('Squadra'))
             st.session_state.df_leghe_full = temp_df.reset_index()
-            st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
+            st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
             st.success("Salvataggio completato!")
             st.rerun()
         st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
