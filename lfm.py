@@ -56,27 +56,24 @@ def fix_league_names(df_leghe):
 st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
 
 MAPPATURA_COLORI = {
-    "Serie A": "#fce4ec",
-    "Bundesliga": "#e8f5e9",
-    "Premier League": "#e3f2fd",
-    "Liga BBVA": "#fffde7"
+    "Serie A": "#fce4ec", "Bundesliga": "#e8f5e9", "Premier League": "#e3f2fd", "Liga BBVA": "#fffde7"
 }
 
-# --- 4. COSTRUZIONE DASHBOARD ---
+# --- 4. COSTRUZIONE INTERFACCIA ---
 df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
     st.sidebar.title("LFM Admin")
-    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
 
+    # --- DASHBOARD (Card Colorate) ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Crediti e Rimborsi")
         ordine_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
         leghe_effettive = [l for l in ordine_leghe if l in df_base['Lega'].values]
         cols_container = st.columns(2)
-        
         for i, nome_lega in enumerate(leghe_effettive):
             with cols_container[i % 2]:
                 st.markdown(f"## 🏆 {nome_lega}")
@@ -91,95 +88,90 @@ if df_static is not None:
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
                 bg_color = MAPPATURA_COLORI.get(nome_lega, "#f5f5f5")
-
                 for _, sq in tabella.iterrows():
-                    st.markdown(
-                        f"""
-                        <div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ccc; color: #333;">
-                            <h3 style="margin: 0; color: #000; font-size: 24px;">{sq['Squadra_LFM']} — {int(sq['Totale'])} cr</h3>
-                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #999;">
-                            <div style="display: flex; justify-content: space-between; font-size: 18px;">
-                                <span><b>Residuo:</b> {int(sq['Crediti'])}</span>
-                                <span><b>Rimborsi:</b> {int(sq['Rimborso'])}</span>
-                            </div>
-                            <div style="margin-top: 10px; font-size: 15px; font-style: italic; color: #555;">
-                                {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    st.markdown(f"""<div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ccc; color: #333;">
+                        <h3 style="margin: 0; color: #000; font-size: 24px;">{sq['Squadra_LFM']} — {int(sq['Totale'])} cr</h3>
+                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #999;">
+                        <div style="display: flex; justify-content: space-between; font-size: 18px;">
+                            <span><b>Residuo:</b> {int(sq['Crediti'])}</span><span><b>Rimborsi:</b> {int(sq['Rimborso'])}</span>
+                        </div><div style="margin-top: 10px; font-size: 15px; font-style: italic; color: #555;">
+                        {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}</div></div>""", unsafe_allow_html=True)
                 st.divider()
 
+    # --- SPUNTA GIOCATORI ---
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
-        
-        # 1. Sezione Ricerca e Spunta
-        st.subheader("Svincola nuovi giocatori")
-        cerca = st.text_input("Cerca nome giocatore (invio per cercare):")
+        cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
-        
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
-        else:
-            st.info("Digita un nome sopra per trovare un giocatore e spuntare il rimborso.")
-            df_filtered = pd.DataFrame() # Vuoto se non cerca nulla
-
-        if not df_filtered.empty:
-            df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
-            res_editor = st.data_editor(
-                res_editor := df_edit_view, 
-                column_config={"Rimborsato": st.column_config.CheckboxColumn("Svincola"), "Id": None, "Squadra_LFM": "Squadra"}, 
-                use_container_width=True,
-                hide_index=True
-            )
-            if st.button("💾 Salva modifiche rimborsi"):
-                for _, row in res_editor.iterrows():
-                    if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
-                    else: st.session_state.refunded_ids.discard(row['Id'])
-                st.success("Rimborsi aggiornati!")
-                st.rerun()
-
+            if not df_filtered.empty:
+                df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
+                res_editor = st.data_editor(df_edit_view, column_config={"Rimborsato": st.column_config.CheckboxColumn("Svincola"), "Id": None}, use_container_width=True, hide_index=True)
+                if st.button("💾 Salva modifiche"):
+                    for _, row in res_editor.iterrows():
+                        if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
+                        else: st.session_state.refunded_ids.discard(row['Id'])
+                    st.success("Dati salvati!"); st.rerun()
         st.divider()
-
-        # 2. Sezione Riepilogo Giocatori Già Spuntati
-        st.subheader("📋 Riepilogo Giocatori Rimborsati")
-        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').copy()
-        
+        st.subheader("📋 Riepilogo Svincolati")
+        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').sort_values(by=['Squadra_LFM', 'Nome'])
         if not df_svincolati.empty:
-            # Pulizia per la visualizzazione
-            df_svincolati = df_svincolati.sort_values(by=['Squadra_LFM', 'Nome'])
-            for col in ['Qt.I', 'FVM', 'Rimborso']:
-                df_svincolati[col] = df_svincolati[col].apply(lambda x: int(x) if x == int(x) else x)
-            
-            # Mostra la tabella completa
-            st.dataframe(
-                df_svincolati[['Squadra_LFM', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], 
-                column_config={"Squadra_LFM": "Squadra LFM"},
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Statistica rapida
-            st.write(f"**Totale giocatori svincolati:** {len(df_svincolati)}")
-        else:
-            st.warning("Al momento non ci sono giocatori rimborsati.")
+            st.dataframe(df_svincolati[['Squadra_LFM', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
 
+    # --- NUOVA PAGINA: VISUALIZZA ROSE ---
+    elif menu == "📋 Visualizza Rose":
+        st.title("📋 Consultazione Rose")
+        
+        col1, col2 = st.columns(2)
+        leghe_disp = ["Tutte"] + sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l)])
+        lega_sel = col1.selectbox("Seleziona Lega:", leghe_disp)
+        
+        if lega_sel != "Tutte":
+            squadre_disp = sorted(df_base[df_base['Lega'] == lega_sel]['Squadra_LFM'].unique())
+        else:
+            squadre_disp = sorted(df_base['Squadra_LFM'].unique())
+            
+        squadra_sel = col2.selectbox("Seleziona Squadra:", squadre_disp)
+        
+        # Filtro dati per la squadra scelta
+        df_rosa_sel = df_base[df_base['Squadra_LFM'] == squadra_sel].copy()
+        
+        # Creiamo una colonna visiva per lo stato
+        df_rosa_sel['Stato'] = df_rosa_sel['Rimborsato'].apply(lambda x: "✅ RIMBORSATO" if x else "🏃 In Rosa")
+        
+        # Ordinamento: prima quelli in rosa, poi i rimborsati (o viceversa)
+        df_rosa_sel = df_rosa_sel.sort_values(by=['Rimborsato', 'R', 'Nome'])
+        
+        # Visualizzazione tabella pulita
+        st.subheader(f"Rosa: {squadra_sel}")
+        
+        def color_rimborsati(row):
+            return ['background-color: #ffcccc' if row.Rimborsato else '' for _ in row]
+
+        st.dataframe(
+            df_rosa_sel[['Stato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']],
+            column_config={
+                "Stato": st.column_config.TextColumn("Stato"),
+                "Rimborso": st.column_config.NumberColumn("Valore Rimborso")
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Conteggio rapido
+        in_rosa = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == False])
+        svincolati = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == True])
+        st.write(f"📊 Giocatori attivi: **{in_rosa}** | Giocatori rimborsati: **{svincolati}**")
+
+    # --- GESTIONE SQUADRE ---
     elif menu == "⚙️ Gestione Squadre":
-        st.title("⚙️ Gestione Leghe e Crediti")
-        opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
-        lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
-        df_to_edit = st.session_state.df_leghe_full if lega_selezionata == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
-        edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", hide_index=True)
-        if st.button("Applica Modifiche"):
-            temp_df = st.session_state.df_leghe_full.copy().set_index('Squadra')
-            temp_df.update(edited_view.set_index('Squadra'))
-            st.session_state.df_leghe_full = temp_df.reset_index()
-            st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
-            st.success("Salvataggio completato!")
-            st.rerun()
+        st.title("⚙️ Configurazione")
+        df_to_edit = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, num_rows="fixed", hide_index=True)
+        if st.button("Salva"):
+            st.session_state.df_leghe_full = fix_league_names(df_to_edit); st.success("Salvato!"); st.rerun()
         st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
         df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
         st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
 
-else: st.error("Errore nel caricamento dei dati.")
+else: st.error("Errore caricamento dati.")
