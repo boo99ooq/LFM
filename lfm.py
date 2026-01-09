@@ -66,7 +66,6 @@ if df_static is not None:
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
     st.sidebar.title("LFM Admin")
-    # Cambio nome qui: da "Spunta Giocatori" a "Giocatori Svincolati"
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🏃 Giocatori Svincolati", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
 
     # --- DASHBOARD ---
@@ -99,7 +98,7 @@ if df_static is not None:
                         {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}</div></div>""", unsafe_allow_html=True)
                 st.divider()
 
-    # --- GIOCATORI SVINCOLATI (ex Spunta Giocatori) ---
+    # --- GIOCATORI SVINCOLATI ---
     elif menu == "🏃 Giocatori Svincolati":
         st.title("🏃 Gestione Giocatori Svincolati")
         cerca = st.text_input("Cerca nome giocatore per svincolarlo:")
@@ -107,7 +106,7 @@ if df_static is not None:
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
             if not df_filtered.empty:
-                df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
+                df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
                 res_editor = st.data_editor(df_edit_view, column_config={"Rimborsato": st.column_config.CheckboxColumn("Svincola"), "Id": None}, use_container_width=True, hide_index=True)
                 if st.button("💾 Salva modifiche rimborsi"):
                     for _, row in res_editor.iterrows():
@@ -116,9 +115,10 @@ if df_static is not None:
                     st.success("Dati aggiornati correttamente!"); st.rerun()
         st.divider()
         st.subheader("📋 Elenco completo rimborsi attivi")
-        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').sort_values(by=['Squadra_LFM', 'Nome'])
+        # Rimosso Squadra_LFM e aggiunto ordinamento alfabetico semplice
+        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').sort_values(by='Nome')
         if not df_svincolati.empty:
-            st.dataframe(df_svincolati[['Squadra_LFM', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
+            st.dataframe(df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
         else:
             st.info("Nessun giocatore svincolato al momento.")
 
