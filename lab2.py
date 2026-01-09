@@ -3,25 +3,29 @@ import pandas as pd
 
 st.set_page_config(page_title="LFM LAB 2 - Debug Mode", layout="wide")
 
-# --- 1. FUNZIONE CARICAMENTO (Semplificata e Robusta) ---
+# --- 1. FUNZIONE CARICAMENTO (Corretta per errori di codifica) ---
 @st.cache_data
 def get_data():
-    try:
-        # Caricamento file base
-        df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1)
-        df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo']
-        df_quot = pd.read_csv('quot.csv')
-        
-        # Pulizia ID
-        df_rose['Id'] = pd.to_numeric(df_rose['Id'], errors='coerce').fillna(0).astype(int)
-        df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce').fillna(0).astype(int)
-        
-        # Ritorna i due dataframe separati per gestirli meglio
-        return df_rose[df_rose['Id'] > 0], df_quot[df_quot['Id'] > 0]
-    except Exception as e:
-        st.error(f"Errore caricamento CSV: {e}")
-        return None, None
-
+    # Proviamo le codifiche più comuni per i file creati con Excel in Italia
+    for encoding in ['latin1', 'cp1252', 'utf-8', 'utf-16']:
+        try:
+            # Caricamento Rosters
+            df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding=encoding)
+            df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo']
+            
+            # Caricamento Quotazioni
+            df_quot = pd.read_csv('quot.csv', encoding=encoding)
+            
+            # Pulizia ID
+            df_rose['Id'] = pd.to_numeric(df_rose['Id'], errors='coerce').fillna(0).astype(int)
+            df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce').fillna(0).astype(int)
+            
+            return df_rose[df_rose['Id'] > 0], df_quot[df_quot['Id'] > 0]
+        except (UnicodeDecodeError, Exception):
+            continue
+    
+    st.error("Impossibile leggere i file CSV. Assicurati che non siano aperti in Excel e che siano salvati correttamente.")
+    return None, None
 # --- 2. LOGICA PRINCIPALE ---
 df_rose, df_quot = get_data()
 
