@@ -9,6 +9,7 @@ st.set_page_config(page_title="LFM Dashboard - Golden Edition", layout="wide", p
 # --- COSTANTI GLOBALI ---
 ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
 MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier League": "#3d195b", "Liga BBVA": "#ee8707"}
+ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
 # --- FUNZIONI UTILITY ---
 def natural_sort_key(s):
@@ -111,9 +112,13 @@ if df_base is not None:
                     cap = df_stadi[df_stadi['Squadra'] == sq['Squadra_LFM']]['Stadio'].values
                     cap_txt = f"{int(cap[0]):,}" if len(cap)>0 else "N.D."
                     
+                    # Logica segnalazione rosso (meno di 25 o più di 35 giocatori)
+                    ng_val = int(sq['NG'])
+                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "white"
+                    
                     st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 12px; border-radius: 10px; margin-bottom: 8px; color: white;">
                         <div style="display: flex; justify-content: space-between;"><b>{sq['Squadra_LFM']}</b> <span style="font-size:10px;">🏟️ Capienza: {cap_txt}</span></div>
-                        <div style="font-size:20px; font-weight:bold;">{int(sq['Totale'])} cr <small style="font-size:10px; font-weight:normal;">({sq['NG']} giog.)</small></div>
+                        <div style="font-size:20px; font-weight:bold;">{int(sq['Totale'])} cr <small style="font-size:13px; font-weight:bold; color: {color_ng};">({ng_val} gioc.)</small></div>
                         <div style="font-size:10px; opacity:0.8;">✈️ {sq['Nome'] if sq['Nome'] != 0 else '-'}</div>
                         <div style="font-size:10px; opacity:0.8;">✂️ {sq['N_T'] if sq['N_T'] != 0 else '-'}</div>
                     </div>""", unsafe_allow_html=True)
@@ -213,16 +218,10 @@ if df_base is not None:
         l_f = c2.multiselect("Lega:", ORDINE_LEGHE, default=ORDINE_LEGHE)
         df_rank = df_base[(df_base['R'].isin(r_f)) & (df_base['Lega'].isin(l_f))].copy()
         df_rank['Proprietario'] = df_rank.apply(lambda r: f"✈️ {r['Squadra_LFM']}" if r['Rimborsato_Star'] else (f"✂️ {r['Squadra_LFM']}" if r['Rimborsato_Taglio'] else r['Squadra_LFM']), axis=1)
-        
-        # MODIFICA QUI: aggiungiamo .fillna('🟢') alla fine della pivot
-        pivot = df_rank.pivot_table(
-            index=['FVM', 'Nome', 'R'], 
-            columns='Lega', 
-            values='Proprietario', 
-            aggfunc=lambda x: " | ".join(x)
-        ).reset_index().fillna('🟢') # <--- Questa è la riga magica
-        
+        # Pivot con riempimento pallino verde 🟢 per i None
+        pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index().fillna('🟢')
         st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
+
     # --- 📋 ROSE ---
     elif menu == "📋 Rose Complete":
         st.title("📋 Consultazione Rose")
@@ -230,14 +229,19 @@ if df_base is not None:
         sq_sel = st.selectbox("Squadra:", sorted(df_base[df_base['Lega']==l_sel]['Squadra_LFM'].unique()))
         df_r = df_base[df_base['Squadra_LFM']==sq_sel].copy()
         df_r['Stato'] = df_r.apply(lambda r: "✈️ SVINC" if r['Rimborsato_Star'] else ("✂️ TAGLIO" if r['Rimborsato_Taglio'] else "🏃 ROSA"), axis=1)
-        st.dataframe(df_r.sort_values(by=['Stato','Nome'])[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
+        
+        # Ordinamento P-D-C-A e FVM
+        df_r['Ruolo_Ord'] = df_r['R'].map(ORDINE_RUOLI)
+        df_r = df_r.sort_values(by=['Stato', 'Ruolo_Ord', 'FVM'], ascending=[False, True, False])
+        
+        # Gradiente FVM (Verdi scuri per valori alti)
+        styled_df = df_r[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']].style.background_gradient(subset=['FVM'], cmap='Greens')
+        st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-    # --- 🟢 GIOCATORI LIBERI (CON FILTRO ESCLUSI) ---
+    # --- 🟢 GIOCATORI LIBERI ---
     elif menu == "🟢 Giocatori Liberi":
         st.title("🟢 Calciatori Liberi")
-        # 
         try:
-            # Caricamento file esclusi.csv con tabulatore \t
             df_esc = pd.read_csv('esclusi.csv', sep='\t', header=None)
             ids_esc = set(pd.to_numeric(df_esc[0], errors='coerce').dropna().astype(int))
         except: 
