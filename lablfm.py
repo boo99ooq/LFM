@@ -167,4 +167,21 @@ if df_static is not None:
         
         ruolo_order = {'P':0, 'D':1, 'C':2, 'A':3}
         df_r['Ruolo_Num'] = df_r['R'].map(ruolo_order).fillna(4)
-        df_r['Stato'] = df_r.apply(lambda r:
+        df_r['Stato'] = df_r.apply(lambda r: "❌ SVINC. *" if r['Rimborsato_Star'] else ("✂️ TAGLIO" if r['Rimborsato_Taglio'] else "🏃 ROSA"), axis=1)
+        
+        df_r = df_r.sort_values(by=['Rimborsato_Star', 'Rimborsato_Taglio', 'Ruolo_Num', 'Nome'])
+        st.dataframe(df_r[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
+
+    # --- GESTIONE SQUADRE ---
+    elif menu == "⚙️ Gestione Squadre":
+        st.title("⚙️ Setup e Download")
+        edited = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, hide_index=True)
+        if st.button("Applica Modifiche"):
+            st.session_state.df_leghe_full = fix_league_names(edited); st.rerun()
+        
+        st.divider()
+        st.download_button("📥 Scarica database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids)}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        st.download_button("📥 Scarica database_tagli.csv", pd.DataFrame({'Id': list(st.session_state.tagli_ids)}).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
+        st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
+
+else: st.error("Dati non caricati.")
