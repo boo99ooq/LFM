@@ -117,30 +117,60 @@ if df_base is not None:
                         <div style="font-size:20px; font-weight:bold;">{int(sq['Totale'])} cr</div>
                     </div>""", unsafe_allow_html=True)
 
-    # --- 📅 CALENDARIO PREMIER ---
+   # --- 📅 CALENDARIO PREMIER (Versione Corretta) ---
     elif menu == "📅 Calendario Premier":
         st.title("📅 Calendario & Bonus Automatici")
         try:
-            df_cal = pd.read_csv('Calendario_PREMIER-LEAGUE.csv', header=None)
-            giornate = sorted(list(set([str(v) for v in df_cal[0].dropna() if "Giornata" in str(v)] + [str(v) for v in df_cal[6].dropna() if "Giornata" in str(v)])))
-            sel_g = st.selectbox("Seleziona Giornata:", giornate)
+            # Forziamo il caricamento con encoding specifico per evitare errori di lettura
+            df_cal = pd.read_csv('Calendario_PREMIER-LEAGUE.csv', header=None, encoding='utf-8')
             
-            partite_news = []
-            for r in range(len(df_cal)):
-                for c in [0, 6]:
-                    if str(df_cal.iloc[r, c]) == sel_g:
-                        for i in range(1, 6):
-                            if r+i < len(df_cal):
-                                h, a = str(df_cal.iloc[r+i, c]), str(df_cal.iloc[r+i, c+3])
-                                sc_h, sc_a = str(df_cal.iloc[r+i, c+1]), str(df_cal.iloc[r+i, c+2])
-                                try:
-                                    if float(sc_h.replace(',','.')) == 0 and float(sc_a.replace(',','.')) == 0:
-                                        b_h, _ = calculate_stadium_bonus(df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0)
-                                        _, b_a = calculate_stadium_bonus(df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0)
-                                        partite_news.append({"Match": f"{h} vs {a}", "Bonus Casa": f"+{b_h}", "Bonus Fuori": f"+{b_a}"})
-                                except: pass
-            st.table(pd.DataFrame(partite_news))
-        except: st.error("Carica il file Calendario_PREMIER-LEAGUE.csv")
+            # Estrazione giornate dalle colonne 0 e 6
+            giornate_A = df_cal[0].dropna().astype(str).tolist()
+            giornate_G = df_cal[6].dropna().astype(str).tolist()
+            tutte_le_giornate = [v for v in (giornate_A + giornate_G) if "Giornata" in v]
+            giornate = sorted(list(set(tutte_le_giornate)))
+            
+            if not giornate:
+                st.warning("Nessuna giornata trovata nel file. Verifica la struttura del CSV.")
+            else:
+                sel_g = st.selectbox("Seleziona Giornata:", giornate)
+                
+                partite_news = []
+                for r in range(len(df_cal)):
+                    for c in [0, 6]: # Controlla colonna A e G
+                        if str(df_cal.iloc[r, c]) == sel_g:
+                            for i in range(1, 6): # Legge i 5 match sotto la riga "Giornata"
+                                if r+i < len(df_cal):
+                                    h = str(df_cal.iloc[r+i, c]).strip()
+                                    a = str(df_cal.iloc[r+i, c+3]).strip()
+                                    sc_h = str(df_cal.iloc[r+i, c+1]).replace(',','.')
+                                    sc_a = str(df_cal.iloc[r+i, c+2]).replace(',','.')
+                                    
+                                    try:
+                                        # Filtriamo solo le partite con 0-0
+                                        if float(sc_h) == 0 and float(sc_a) == 0:
+                                            # Cerca lo stadio nei dati caricati
+                                            cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
+                                            cap_a = df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
+                                            
+                                            b_h, _ = calculate_stadium_bonus(cap_h)
+                                            _, b_a = calculate_stadium_bonus(cap_a)
+                                            
+                                            partite_news.append({
+                                                "Match": f"{h} vs {a}",
+                                                "Bonus Casa": f"+{b_h}",
+                                                "Bonus Fuori": f"+{b_a}"
+                                            })
+                                    except: continue
+                
+                if partite_news:
+                    st.table(pd.DataFrame(partite_news))
+                else:
+                    st.info("Tutte le partite di questa giornata sono state giocate.")
+
+        except Exception as e:
+            st.error(f"Errore tecnico nella lettura del file: {e}")
+            st.info("Controlla che il file si chiami esattamente Calendario_PREMIER-LEAGUE.csv")
 
     # --- 🏟️ CALCOLO RAPIDO STADIO ---
     elif menu == "🏟️ Calcolo Rapido Stadio":
