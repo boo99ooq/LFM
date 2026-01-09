@@ -37,7 +37,6 @@ if 'refunded_ids' not in st.session_state:
 if 'tagli_map' not in st.session_state:
     try:
         db_t = pd.read_csv('database_tagli.csv')
-        # Creazione chiave unica Id_Squadra
         db_t['Key'] = db_t['Id'].astype(str) + "_" + db_t['Squadra'].astype(str)
         st.session_state.tagli_map = set(db_t['Key'].tolist())
     except: st.session_state.tagli_map = set()
@@ -65,7 +64,7 @@ st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full
 ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
 MAPPATURA_COLORI = {"Serie A": "#fce4ec", "Bundesliga": "#e8f5e9", "Premier League": "#e3f2fd", "Liga BBVA": "#fffde7"}
 
-# --- 3. LOGICA CORE ---
+# --- 3. COSTRUZIONE DATI ---
 df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
@@ -132,13 +131,14 @@ if df_static is not None:
         st.divider()
         st.dataframe(df_base[df_base['Rimborsato_Taglio']].sort_values(by=['Squadra_LFM', 'Nome'])[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], use_container_width=True, hide_index=True)
 
-    # --- 📊 RANKING FVM ---
+    # --- 📊 RANKING FVM AGGIORNATO (ICONE + 🟢 LIBERO) ---
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM per Lega")
         c1, c2 = st.columns(2)
         ruoli_dispo = sorted(df_base['R'].dropna().unique())
         ruolo_filt = c1.multiselect("Filtra Ruolo:", ruoli_dispo, default=ruoli_dispo)
         leghe_filt = c2.multiselect("Visualizza Colonne Leghe:", ORDINE_LEGHE, default=ORDINE_LEGHE)
+        
         df_rank = df_base.copy()
         if ruolo_filt: df_rank = df_rank[df_rank['R'].isin(ruolo_filt)]
 
@@ -149,11 +149,29 @@ if df_static is not None:
             return name
 
         df_rank['Squadra_Display'] = df_rank.apply(format_owner, axis=1)
+        
+        # Creazione Pivot
         pivot_rank = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Squadra_Display', aggfunc=lambda x: " | ".join(x)).reset_index()
+        
+        # RIEMPIMENTO DEI "NONE" CON 🟢 LIBERO
+        for lega in ORDINE_LEGHE:
+            if lega in pivot_rank.columns:
+                pivot_rank[lega] = pivot_rank[lega].fillna("🟢 LIBERO")
+            else:
+                # Se una lega non ha proprio dati nella pivot, la creiamo tutta libera
+                pivot_rank[lega] = "🟢 LIBERO"
+
         pivot_rank = pivot_rank.sort_values(by='FVM', ascending=False)
         colonne_finali = ['FVM', 'Nome', 'R'] + [l for l in leghe_filt if l in pivot_rank.columns]
-        st.dataframe(pivot_rank[colonne_finali], column_config={"FVM": st.column_config.NumberColumn("FVM", format="%d"), "R": "Ruolo", **{l: st.column_config.TextColumn(f"🏆 {l}") for l in ORDINE_LEGHE}}, use_container_width=True, hide_index=True)
-        st.info("Legenda: ✈️ = Svincolato d'ufficio (*) | ✂️ = Taglio Volontario (50%)")
+        
+        st.dataframe(pivot_rank[colonne_finali], 
+                     column_config={
+                         "FVM": st.column_config.NumberColumn("FVM", format="%d"), 
+                         "R": "Ruolo", 
+                         **{l: st.column_config.TextColumn(f"🏆 {l}") for l in ORDINE_LEGHE}
+                     }, 
+                     use_container_width=True, hide_index=True)
+        st.info("Legenda: 🟢 LIBERO = Calciatore non posseduto in quella lega | ✈️ = Svincolato d'ufficio (*) | ✂️ = Taglio Volontario (50%)")
 
     # --- 📋 VISUALIZZA ROSE ---
     elif menu == "📋 Visualizza Rose":
