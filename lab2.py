@@ -213,9 +213,16 @@ if df_base is not None:
         l_f = c2.multiselect("Lega:", ORDINE_LEGHE, default=ORDINE_LEGHE)
         df_rank = df_base[(df_base['R'].isin(r_f)) & (df_base['Lega'].isin(l_f))].copy()
         df_rank['Proprietario'] = df_rank.apply(lambda r: f"✈️ {r['Squadra_LFM']}" if r['Rimborsato_Star'] else (f"✂️ {r['Squadra_LFM']}" if r['Rimborsato_Taglio'] else r['Squadra_LFM']), axis=1)
-        pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index()
+        
+        # MODIFICA QUI: aggiungiamo .fillna('🟢') alla fine della pivot
+        pivot = df_rank.pivot_table(
+            index=['FVM', 'Nome', 'R'], 
+            columns='Lega', 
+            values='Proprietario', 
+            aggfunc=lambda x: " | ".join(x)
+        ).reset_index().fillna('🟢') # <--- Questa è la riga magica
+        
         st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
-
     # --- 📋 ROSE ---
     elif menu == "📋 Rose Complete":
         st.title("📋 Consultazione Rose")
