@@ -1,52 +1,47 @@
 import streamlit as st
 import pandas as pd
 
-# Configurazione Pagina
-st.set_page_config(page_title="FantaManager Tool", layout="wide")
+st.set_page_config(page_title="LFM Manager", layout="wide", page_icon="⚽")
 
-st.title("🔍 Ricerca Quotazioni e Rose Fantacalcio")
-st.write("Cerca un giocatore per vedere il prezzo di acquisto, la quotazione iniziale e l'FVM.")
-
-# Caricamento dati
 @st.cache_data
-def load_data():
-    # Carica il file che abbiamo appena generato
-    df = pd.read_csv('dati_fanta_completi.csv')
-    return df
+def load_and_merge():
+    # Carico le rose
+    df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1)
+    df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo_Asta']
+    # Carico le quotazioni
+    df_quot = pd.read_csv('quot.csv')
+    # Unisco
+    df_rose['Id'] = pd.to_numeric(df_rose['Id'], errors='coerce')
+    df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
+    return pd.merge(df_rose, df_quot, on='Id', how='inner')
 
-df = load_data()
+try:
+    df = load_and_merge()
 
-# Barra di ricerca
-search_query = st.text_input("Inserisci il nome del giocatore:", "")
+    st.sidebar.title("Menu LFM")
+    modalita = st.sidebar.radio("Cosa vuoi fare?", ["Cerca Giocatore", "Vedi Squadra"])
 
-if search_query:
-    # Filtro per nome (case-insensitive)
-    results = df[df['Nome'].str.contains(search_query, case=False, na=False)]
-    
-    if not results.empty:
-        for index, row in results.iterrows():
-            with st.container():
-                st.markdown(f"### 🏃 {row['Nome']} ({row['R']})")
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Squadra", row['Squadra'])
-                with col2:
-                    st.metric("Prezzo Acquisto", f"{int(row['Prezzo_Acquisto'])} cr")
-                with col3:
-                    st.metric("Quot. Iniziale", f"{int(row['Qt.I'])} cr")
-                with col4:
-                    st.metric("FVM", row['FVM'])
-                
-                # Calcolo extra: Guadagno/Perdita di valore
-                differenza = row['FVM'] - row['Qt.I']
-                st.info(f"Variazione Valore: {differenza:+.1f} rispetto all'inizio.")
-                st.divider()
+    if modalita == "Cerca Giocatore":
+        st.title("🔍 Ricerca Rapida")
+        nome = st.text_input("Inserisci nome giocatore:")
+        if nome:
+            res = df[df['Nome'].str.contains(nome, case=False, na=False)]
+            st.dataframe(res[['Nome', 'R', 'Squadra_LFM', 'Prezzo_Asta', 'Qt.I', 'FVM']])
+
     else:
-        st.warning("Nessun giocatore trovato con questo nome.")
-else:
-    st.info("Digita un nome sopra per iniziare la ricerca (es. 'Lautaro' o 'Dybala').")
+        st.title("📋 Rose League")
+        squadra = st.selectbox("Seleziona Squadra LFM:", sorted(df['Squadra_LFM'].unique()))
+        res_squadra = df[df['Squadra_LFM'] == squadra]
+        
+        # Calcolo statistiche veloci
+        spesa_tot = res_squadra['Prezzo_Asta'].sum()
+        valore_fvm = res_squadra['FVM'].sum()
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Crediti Spesi", f"{spesa_tot} cr")
+        col2.metric("Valore FVM Totale", f"{valore_fvm} cr")
+        
+        st.table(res_squadra[['Nome', 'R', 'Prezzo_Asta', 'Qt.I', 'FVM']])
 
-# Visualizzazione Tabella Completa (opzionale)
-if st.checkbox("Mostra tabella completa"):
-    st.dataframe(df)
+except Exception as e:
+    st.error(f"Errore: {e}. Controlla i file sulla repository lfm!")
