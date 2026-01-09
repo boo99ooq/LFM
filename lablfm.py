@@ -116,15 +116,38 @@ if df_static is not None:
     # --- PAGINA SVINCOLATI * (LOGICA PIENA) ---
     elif menu == "🏃 Svincolati *":
         st.title("🏃 Giocatori non più in Serie A (*)")
-        cerca = st.text_input("Cerca giocatore da svincolare (Rimborso Pieno):")
+        st.info("In questa sezione gestisci i rimborsi pieni (FVM + 50% Quota Iniziale)")
+        
+        cerca = st.text_input("Cerca giocatore da svincolare:")
         if cerca:
             df_f = df_base[df_base['Nome'].str.contains(cerca, case=False, na=False)].drop_duplicates('Id')
-            edit = st.data_editor(df_f[['Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Rimborso_Star', 'Id']], hide_index=True)
+            edit = st.data_editor(df_f[['Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Rimborso_Star', 'Id']], 
+                                  column_config={"Rimborsato_Star": "Svincola", "Id": None},
+                                  hide_index=True, use_container_width=True)
             if st.button("Salva Svincoli *"):
                 for _, r in edit.iterrows():
                     if r['Rimborsato_Star']: st.session_state.refunded_ids.add(r['Id'])
                     else: st.session_state.refunded_ids.discard(r['Id'])
+                st.success("Modifiche salvate!")
                 st.rerun()
+
+        st.divider()
+        
+        # --- ELENCO RIEPILOGATIVO RIPRISTINATO ---
+        st.subheader("📋 Riepilogo Svincolati * (Rimborsi Pieni)")
+        df_svincolati_star = df_base[df_base['Rimborsato_Star'] == True].drop_duplicates('Id').sort_values(by='Nome')
+        
+        if not df_svincolati_star.empty:
+            # Mostriamo la tabella pulita senza la colonna squadra come richiesto prima
+            st.dataframe(
+                df_svincolati_star[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso_Star']], 
+                column_config={"Rimborso_Star": "Valore Rimborso"},
+                use_container_width=True, 
+                hide_index=True
+            )
+            st.write(f"Totale giocatori svincolati d'ufficio: **{len(df_svincolati_star)}**")
+        else:
+            st.warning("Nessun giocatore svincolato * trovato nel database.")
 
     # --- PAGINA TAGLI VOLONTARI (LOGICA 50%) ---
     elif menu == "✂️ Tagli Volontari":
