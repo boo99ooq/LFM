@@ -44,7 +44,7 @@ if 'df_leghe_full' not in st.session_state:
             squadre = sorted(df_base_init['Squadra_LFM'].unique())
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
-# --- 3. UNIFICAZIONE FIORENTINA ---
+# --- 3. LOGICA DI UNIFICAZIONE E COLORI ---
 def fix_fiorentina(df_leghe):
     df = df_leghe.copy()
     df.loc[df['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
@@ -53,7 +53,16 @@ def fix_fiorentina(df_leghe):
 
 st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
 
-# --- 4. LOGICA DASHBOARD ---
+# Mappatura Colori Pastello per Lega
+COLORI_LEGA = {
+    "LEGA A": "#fce4ec", # Rosa pastello
+    "LEGA B": "#e3f2fd", # Azzurro pastello
+    "LEGA C": "#e8f5e9", # Verde pastello
+    "LEGA D": "#fffde7", # Giallo pastello
+    "DEFAULT": "#f5f5f5" # Grigio chiaro
+}
+
+# --- 4. COSTRUZIONE DASHBOARD ---
 df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
@@ -63,7 +72,7 @@ if df_static is not None:
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
     if menu == "🏠 Dashboard":
-        st.title("🏠 Situazione Crediti per Squadra")
+        st.title("🏠 Situazione Crediti e Rimborsi")
         
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         
@@ -88,20 +97,27 @@ if df_static is not None:
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
 
+                # Colore della lega corrente
+                bg_color = COLORI_LEGA.get(nome_lega.upper(), COLORI_LEGA["DEFAULT"])
+
                 for _, sq in tabella.iterrows():
-                    with st.container(border=True):
-                        # NOME E TOTALE affiancati con lo stesso font (H4)
-                        st.markdown(f"#### {sq['Squadra_LFM']} — {int(sq['Totale'])} cr")
-                        
-                        # Voci in chiaro senza abbreviazioni
-                        col_a, col_b = st.columns(2)
-                        col_a.write(f"**Crediti Residui:** {int(sq['Crediti'])}")
-                        col_b.write(f"**Rimborsi Ottenuti:** {int(sq['Rimborso'])}")
-                        
-                        if sq['Dettaglio']:
-                            st.caption(f"📝 {sq['Dettaglio']}")
-                        else:
-                            st.caption("Nessun rimborso attivo")
+                    # Card HTML personalizzata con colore pastello
+                    st.markdown(
+                        f"""
+                        <div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ccc; color: #333;">
+                            <h3 style="margin: 0; color: #000; font-size: 24px;">{sq['Squadra_LFM']} — {int(sq['Totale'])} cr</h3>
+                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #999;">
+                            <div style="display: flex; justify-content: space-between; font-size: 18px;">
+                                <span><b>Residuo:</b> {int(sq['Crediti'])}</span>
+                                <span><b>Rimborsi:</b> {int(sq['Rimborso'])}</span>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 15px; font-style: italic; color: #555;">
+                                {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 st.divider()
 
     elif menu == "🔍 Spunta Giocatori":
@@ -122,7 +138,7 @@ if df_static is not None:
             for _, row in res_editor.iterrows():
                 if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                 else: st.session_state.refunded_ids.discard(row['Id'])
-            st.success("Fatto!")
+            st.success("Dati aggiornati!")
             st.rerun()
 
         st.divider()
@@ -144,7 +160,7 @@ if df_static is not None:
             temp_df.update(edited_view.set_index('Squadra'))
             st.session_state.df_leghe_full = temp_df.reset_index()
             st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
-            st.success("Dati aggiornati!")
+            st.success("Salvataggio completato!")
             st.rerun()
         st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
         df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
