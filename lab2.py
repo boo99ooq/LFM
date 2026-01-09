@@ -78,7 +78,7 @@ if df_base is not None:
     st.sidebar.title("⚖️ LFM Golden Edition")
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "⚙️ Gestione Squadre"])
 
-    # --- 🗓️ CALENDARI (CORRETTO PER GIORNATE PARI/DISPARI) ---
+    # --- 🗓️ CALENDARI (LOGICA CORRETTA PER FILTRARE LE LEGHE) ---
     if menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Centrale Calendari")
         files_cal = [f for f in os.listdir('.') if f.startswith("Calendario_") and f.endswith(".csv")]
@@ -92,66 +92,68 @@ if df_base is not None:
             try:
                 df_cal = pd.read_csv(camp_scelto, header=None, encoding='latin1').fillna("")
                 
-                # Cerchiamo tutte le giornate in ogni colonna
-                giornate_info = [] # Lista di tuple: (nome_giornata, riga, colonna)
-                for col in range(df_cal.shape[1]):
+                # Identifica colonne dei blocchi (0 per sinistra, 6 o 7 per destra)
+                is_coppa = df_cal.shape[1] > 10
+                col_dx = 7 if is_coppa else 6
+                
+                # Filtra SOLO le giornate della "Lega" (esclude riferimenti a Serie A)
+                giornate_info = []
+                for col in [0, col_dx]:
                     for row in range(df_cal.shape[0]):
                         val = str(df_cal.iloc[row, col])
-                        if "Giornata" in val:
+                        if "Giornata lega" in val.lower() or ("Giornata" in val and "serie a" not in val.lower()):
                             giornate_info.append((val.strip(), row, col))
                 
-                # Creiamo il menu a tendina con i nomi unici ordinati
                 nomi_giornate = sorted(list(set([g[0] for g in giornate_info])), key=natural_sort_key)
-                sel_g = st.selectbox("Seleziona Giornata:", nomi_giornate)
                 
-                match_list, riposi = [], []
-                # Troviamo tutte le posizioni (riga, col) dove appare la giornata selezionata
-                posizioni = [g for g in giornate_info if g[0] == sel_g]
-                
-                for nome, r, c in posizioni:
-                    is_coppa = df_cal.shape[1] > 10 # Se ha molte colonne è il formato Champions
-                    offset = 1 if is_coppa else 0
+                if not nomi_giornate:
+                    st.error("Nessuna giornata valida trovata. Verifica che le celle contengano 'Giornata lega'.")
+                else:
+                    sel_g = st.selectbox("Seleziona Giornata:", nomi_giornate)
+                    match_list, riposi = [], []
+                    posizioni = [g for g in giornate_info if g[0] == sel_g]
                     
-                    for i in range(1, 13):
-                        if r + i < df_cal.shape[0]:
-                            row_data = df_cal.iloc[r+i]
-                            # Se troviamo un'altra giornata nello stesso blocco, ci fermiamo
-                            if "Giornata" in str(row_data[c]): break
-                            
-                            # Squadre a Riposo
-                            val_check = str(row_data[c+offset]) if is_coppa else str(row_data[c])
-                            if "Riposa" in val_check:
-                                riposi.append(val_check.strip())
-                                continue
-                            
-                            try:
-                                h = str(row_data[c + offset]).strip()
-                                a = str(row_data[c + offset + 3]).strip()
-                                if not h or h == "" or a == "": continue
+                    for nome, r, c in posizioni:
+                        offset = 1 if is_coppa else 0
+                        for i in range(1, 15):
+                            if r + i < df_cal.shape[0]:
+                                row_data = df_cal.iloc[r+i]
+                                if "Giornata" in str(row_data[c]): break
                                 
-                                sh = str(row_data[c + offset + 1]).replace(',','.').replace('"','').strip()
-                                sa = str(row_data[c + offset + 2]).replace(',','.').replace('"','').strip()
+                                val_check = str(row_data[c+offset]) if is_coppa else str(row_data[c])
+                                if "Riposa" in val_check:
+                                    riposi.append(val_check.strip())
+                                    continue
                                 
-                                if float(sh) == 0 and float(sa) == 0:
-                                    cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
-                                    cap_a = df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
-                                    bh, _ = calculate_stadium_bonus(cap_h)
-                                    _, ba = calculate_stadium_bonus(cap_a)
-                                    match_list.append({"Partita": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
-                            except: continue
+                                try:
+                                    h = str(row_data[c + offset]).strip()
+                                    a = str(row_data[c + offset + 3]).strip()
+                                    if not h or h == "" or a == "" or h == "nan": continue
+                                    
+                                    sh = str(row_data[c + offset + 1]).replace(',','.').replace('"','').strip()
+                                    sa = str(row_data[c + offset + 2]).replace(',','.').replace('"','').strip()
+                                    
+                                    if float(sh) == 0 and float(sa) == 0:
+                                        cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
+                                        cap_a = df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
+                                        bh, _ = calculate_stadium_bonus(cap_h)
+                                        _, ba = calculate_stadium_bonus(cap_a)
+                                        match_list.append({"Partita": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
+                                except: continue
 
-                if match_list:
-                    st.subheader("🏟️ Partite e Bonus")
-                    st.table(pd.DataFrame(match_list))
-                if riposi:
-                    st.subheader("☕ Squadre a riposo")
-                    for rip in sorted(list(set(riposi))): st.write(f"- {rip}")
-                    
+                    if match_list:
+                        st.subheader(f"🏟️ Bonus Stadio - {sel_g}")
+                        st.table(pd.DataFrame(match_list))
+                    else:
+                        st.info("Tutte le partite di questa giornata sono state giocate.")
+                    if riposi:
+                        st.subheader("☕ Squadre a riposo")
+                        for rip in sorted(list(set(riposi))): st.write(f"- {rip}")
             except Exception as e: st.error(f"Errore: {e}")
 
-    # --- LE ALTRE SEZIONI (DASHBOARD, MERCATO, ECC.) RIMANGONO UVALI A PRIMA ---
+    # --- 🏠 RESTO DEL CODICE (Dashboard, Mercato, etc.) ---
     elif menu == "🏠 Dashboard":
-        st.title("🏠 Riepilogo Crediti e News")
+        st.title("🏠 Riepilogo Crediti")
         ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
         MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier League": "#3d195b", "Liga BBVA": "#ee8707"}
         leghe_effettive = [l for l in ORDINE_LEGHE if l in df_base['Lega'].values]
