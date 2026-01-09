@@ -67,16 +67,15 @@ if df_static is not None:
         
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         
-        # LAYOUT 2x2 (Due colonne)
+        # LAYOUT 2x2
         cols_container = st.columns(2)
         
         for i, nome_lega in enumerate(leghe_valide):
-            # Alterna tra colonna 0 (sinistra) e colonna 1 (destra)
             with cols_container[i % 2]:
                 st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
                 
-                # Calcolo rimborsi
+                # Dati rimborsi
                 df_rimb_active = df_l[df_l['Rimborsato'] == True]
                 res_rimborsi = df_rimb_active.groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
                 res_nomi = df_rimb_active.groupby('Squadra_LFM')['Nome'].apply(lambda x: ", ".join(x)).reset_index()
@@ -89,18 +88,15 @@ if df_static is not None:
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
 
-                # Schede Squadra
                 for _, sq in tabella.iterrows():
                     with st.container(border=True):
-                        st.markdown(f"#### {sq['Squadra_LFM']}")
+                        # NOME E TOTALE affiancati con lo stesso font (H4)
+                        st.markdown(f"#### {sq['Squadra_LFM']} — {int(sq['Totale'])} cr")
                         
-                        # Tabella interna con abbreviazioni per evitare il "va a capo"
-                        voci = {
-                            "Res.": [int(sq['Crediti'])],
-                            "Rimb.": [int(sq['Rimborso'])],
-                            "TOT": [int(sq['Totale'])]
-                        }
-                        st.table(pd.DataFrame(voci))
+                        # Voci in chiaro senza abbreviazioni
+                        col_a, col_b = st.columns(2)
+                        col_a.write(f"**Crediti Residui:** {int(sq['Crediti'])}")
+                        col_b.write(f"**Rimborsi Ottenuti:** {int(sq['Rimborso'])}")
                         
                         if sq['Dettaglio']:
                             st.caption(f"📝 {sq['Dettaglio']}")
@@ -109,7 +105,6 @@ if df_static is not None:
                 st.divider()
 
     elif menu == "🔍 Spunta Giocatori":
-        # (Codice ricerca invariato)
         st.title("🔍 Gestione Svincoli")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
@@ -139,7 +134,6 @@ if df_static is not None:
             st.dataframe(df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], hide_index=True)
 
     elif menu == "⚙️ Gestione Squadre":
-        # (Codice gestione squadre invariato)
         st.title("⚙️ Gestione Leghe e Crediti")
         opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
         lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
