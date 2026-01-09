@@ -18,9 +18,13 @@ def load_static_data():
             
             df = pd.merge(df_rose, df_quot, on='Id', how='left')
             df['Nome'] = df['Nome'].fillna("ID: " + df['Id'].astype(int, errors='ignore').astype(str))
+            
+            # Calcoli numerici
             df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
             df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
+            df['Prezzo_Asta'] = pd.to_numeric(df['Prezzo_Asta'], errors='coerce').fillna(0)
             df['Rimborso'] = df['FVM'] + (df['Qt.I'] / 2)
+            
             df['Squadra_LFM'] = df['Squadra_LFM'].str.strip()
             return df
         except: continue
@@ -39,7 +43,7 @@ if 'df_leghe_full' not in st.session_state:
         df_temp = pd.read_csv('leghe.csv', encoding='latin1')
         df_temp['Squadra'] = df_temp['Squadra'].str.strip()
         df_temp['Lega'] = df_temp['Lega'].str.strip()
-        if 'Crediti' not in df_temp.columns: df_temp['Crediti'] = 0
+        df_temp['Crediti'] = pd.to_numeric(df_temp['Crediti'], errors='coerce').fillna(0)
         st.session_state.df_leghe_full = df_temp
     except:
         df_static_init = load_static_data()
@@ -79,14 +83,19 @@ if df_static is not None:
                     df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
-                    tabella.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
-                    st.table(tabella.sort_values(by='Squadra'))
+                    
+                    # RIMOZIONE DECIMALI: Trasformiamo in intero per la visualizzazione
+                    tab_display = tabella.copy()
+                    tab_display.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
+                    for col in ['Crediti Residui', 'Rimborsi', 'Totale Disponibile']:
+                        tab_display[col] = tab_display[col].astype(int)
+                    
+                    st.table(tab_display.sort_values(by='Squadra'))
 
     # --- RICERCA E SPUNTE ---
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
         
-        # PARTE 1: RICERCA E EDITING
         st.subheader("1. Cerca e Svincola")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
@@ -95,8 +104,13 @@ if df_static is not None:
         else:
             df_filtered = df_display.head(5)
 
+        # Pulizia decimali per l'editor
+        df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
+        for col in ['Qt.I', 'FVM', 'Rimborso']:
+            df_edit_view[col] = df_edit_view[col].apply(lambda x: int(x) if x == int(x) else x)
+
         res_editor = st.data_editor(
-            df_filtered[['Rimborsato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso', 'Id']],
+            df_edit_view,
             column_config={"Rimborsato": st.column_config.CheckboxColumn("Svincola"), "Id": None},
             disabled=["Nome", "R", "Qt.I", "FVM", "Rimborso"],
             use_container_width=True
@@ -111,19 +125,21 @@ if df_static is not None:
 
         st.divider()
 
-        # PARTE 2: LISTA COMPLETA SPUNTATI (NUOVA!)
         st.subheader("📋 Riepilogo Giocatori Svincolati")
-        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id')
+        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').copy()
         
         if not df_svincolati.empty:
+            # Pulizia decimali riepilogo
+            for col in ['Qt.I', 'FVM', 'Rimborso']:
+                df_svincolati[col] = df_svincolati[col].apply(lambda x: int(x) if x == int(x) else x)
+            
             st.dataframe(
                 df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], 
                 use_container_width=True,
                 hide_index=True
             )
-            st.caption(f"Totale giocatori svincolati: {len(df_svincolati)}")
         else:
-            st.info("Nessun giocatore svincolato al momento.")
+            st.info("Nessun giocatore svincolato.")
 
     # --- GESTIONE SQUADRE ---
     elif menu == "⚙️ Gestione Squadre":
@@ -131,6 +147,10 @@ if df_static is not None:
         opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
         lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
         df_to_edit = st.session_state.df_leghe_full if lega_selezionata == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
+        
+        # Pulizia crediti nell'editor
+        df_to_edit['Crediti'] = df_to_edit['Crediti'].astype(int)
+        
         edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", key="editor_leghe")
 
         if st.button("Applica Modifiche"):
