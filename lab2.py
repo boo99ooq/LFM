@@ -81,10 +81,10 @@ if df_base is not None:
 
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
-        st.title("🏠 Riepilogo Crediti e News")
+        st.title("🏠 Riepilogo Crediti e Statistiche")
         
-        st.info("📢 **Bacheca News & Alert**")
-        st.markdown("* ⚠️ **Alert Rose:** Il contatore diventa rosso se la rosa ha meno di 25 o più di 35 giocatori.")
+        st.info("📢 **Bacheca News & Statistiche**")
+        st.markdown("* 📊 **Novità:** Calcolo della media crediti disponibile per ogni lega (Crediti + Rimborsi).")
         
         st.subheader("🔄 Ultimi Movimenti")
         news_star = df_base[df_base['Rimborsato_Star']].copy()
@@ -105,19 +105,25 @@ if df_base is not None:
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_effettive):
             with cols[i % 2]:
-                st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
                 
+                # Calcoli aggregati
                 res_star = df_l[df_l['Rimborsato_Star']].groupby('Squadra_LFM').agg({'Rimborso_Star':'sum','Nome': lambda x: ", ".join(x)}).reset_index()
                 res_tagli = df_l[df_l['Rimborsato_Taglio']].groupby('Squadra_LFM').agg({'Rimborso_Taglio':'sum','Nome': lambda x: ", ".join(x)}).reset_index()
-                
-                # Conteggio attivi
                 attivi = df_l[~(df_l['Rimborsato_Star']) & ~(df_l['Rimborsato_Taglio'])].groupby('Squadra_LFM').size().reset_index(name='Num_Giocatori')
                 
+                # Tabella riepilogativa lega
                 tabella = pd.merge(df_l[['Squadra_LFM', 'Crediti']].drop_duplicates(), res_star, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_tagli.rename(columns={'Nome':'N_T'}), on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, attivi, on='Squadra_LFM', how='left').fillna(0)
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso_Star'] + tabella['Rimborso_Taglio']
+                
+                # CALCOLO MEDIA CREDITI
+                media_crediti = tabella['Totale'].mean()
+                
+                # Header Lega con Media
+                st.markdown(f"## 🏆 {nome_lega}")
+                st.markdown(f"<div style='margin-bottom:10px; font-size:14px; color:#555;'>💰 Media Crediti Disponibili: <b>{int(media_crediti)} cr</b></div>", unsafe_allow_html=True)
                 
                 bg_color = MAPPATURA_COLORI.get(nome_lega, "#f5f5f5")
                 
@@ -126,15 +132,15 @@ if df_base is not None:
                     if sq['Nome']: d_html += f"<div style='font-size:12px;color:#ffcdd2;'><b>✈️ Svinc:</b> {sq['Nome']} (+{int(sq['Rimborso_Star'])})</div>"
                     if sq['N_T']: d_html += f"<div style='font-size:12px;color:#e1bee7;'><b>✂️ Tagli:</b> {sq['N_T']} (+{int(sq['Rimborso_Taglio'])})</div>"
                     
-                    # LOGICA ALERT: Rosso se fuori dal range [25, 35]
                     n_g = int(sq['Num_Giocatori'])
                     if 25 <= n_g <= 35:
-                        colore_count = "#81c784" # Verde
+                        colore_count = "#81c784"
                         icona = "🏃"
                     else:
-                        colore_count = "#ef5350" # Rosso
+                        colore_count = "#ef5350"
                         icona = "⚠️" if n_g > 35 else "🏃"
                     
+                    # Box Squadra
                     st.markdown(f"""<div style="background-color: {bg_color}; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.2); color: white;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <b style="font-size:16px; color: white;">{sq['Squadra_LFM']}</b>
@@ -149,7 +155,7 @@ if df_base is not None:
                         </div>
                     </div>""", unsafe_allow_html=True)
 
-    # --- LE ALTRE PAGINE RIMANGONO UGUALI ---
+    # --- LE ALTRE PAGINE RIMANGONO INVARIATE ---
     elif menu == "🏃 Svincolati *":
         st.title("✈️ Rimborsi da *")
         c1, c2 = st.columns([4, 1])
