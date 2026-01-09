@@ -68,7 +68,7 @@ if df_static is not None:
     st.sidebar.title("LFM Admin")
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
 
-    # --- DASHBOARD (Card Colorate) ---
+    # --- DASHBOARD (Invariata) ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Crediti e Rimborsi")
         ordine_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
@@ -98,7 +98,7 @@ if df_static is not None:
                         {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}</div></div>""", unsafe_allow_html=True)
                 st.divider()
 
-    # --- SPUNTA GIOCATORI ---
+    # --- SPUNTA GIOCATORI (Invariata) ---
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
         cerca = st.text_input("Cerca nome giocatore:")
@@ -119,7 +119,7 @@ if df_static is not None:
         if not df_svincolati.empty:
             st.dataframe(df_svincolati[['Squadra_LFM', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
 
-    # --- NUOVA PAGINA: VISUALIZZA ROSE ---
+    # --- VISUALIZZA ROSE (Ordinamento P-D-C-A) ---
     elif menu == "📋 Visualizza Rose":
         st.title("📋 Consultazione Rose")
         
@@ -127,39 +127,28 @@ if df_static is not None:
         leghe_disp = ["Tutte"] + sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l)])
         lega_sel = col1.selectbox("Seleziona Lega:", leghe_disp)
         
-        if lega_sel != "Tutte":
-            squadre_disp = sorted(df_base[df_base['Lega'] == lega_sel]['Squadra_LFM'].unique())
-        else:
-            squadre_disp = sorted(df_base['Squadra_LFM'].unique())
-            
+        squadre_disp = sorted(df_base[df_base['Lega'] == lega_sel]['Squadra_LFM'].unique()) if lega_sel != "Tutte" else sorted(df_base['Squadra_LFM'].unique())
         squadra_sel = col2.selectbox("Seleziona Squadra:", squadre_disp)
         
-        # Filtro dati per la squadra scelta
         df_rosa_sel = df_base[df_base['Squadra_LFM'] == squadra_sel].copy()
         
-        # Creiamo una colonna visiva per lo stato
+        # --- LOGICA DI ORDINAMENTO RUOLI ---
+        # Mappiamo i ruoli a numeri per l'ordinamento personalizzato
+        ruolo_order = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
+        df_rosa_sel['Ruolo_Num'] = df_rosa_sel['R'].map(ruolo_order).fillna(4)
+        
+        # Ordiniamo per: Stato (Prima attivi), Ruolo (P-D-C-A), Nome
+        df_rosa_sel = df_rosa_sel.sort_values(by=['Rimborsato', 'Ruolo_Num', 'Nome'])
+        
         df_rosa_sel['Stato'] = df_rosa_sel['Rimborsato'].apply(lambda x: "✅ RIMBORSATO" if x else "🏃 In Rosa")
         
-        # Ordinamento: prima quelli in rosa, poi i rimborsati (o viceversa)
-        df_rosa_sel = df_rosa_sel.sort_values(by=['Rimborsato', 'R', 'Nome'])
-        
-        # Visualizzazione tabella pulita
         st.subheader(f"Rosa: {squadra_sel}")
-        
-        def color_rimborsati(row):
-            return ['background-color: #ffcccc' if row.Rimborsato else '' for _ in row]
-
         st.dataframe(
             df_rosa_sel[['Stato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']],
-            column_config={
-                "Stato": st.column_config.TextColumn("Stato"),
-                "Rimborso": st.column_config.NumberColumn("Valore Rimborso")
-            },
-            use_container_width=True,
-            hide_index=True
+            column_config={"R": "Ruolo", "Qt.I": "Quota I.", "FVM": "FVM", "Rimborso": "Valore"},
+            use_container_width=True, hide_index=True
         )
         
-        # Conteggio rapido
         in_rosa = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == False])
         svincolati = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == True])
         st.write(f"📊 Giocatori attivi: **{in_rosa}** | Giocatori rimborsati: **{svincolati}**")
