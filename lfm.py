@@ -47,12 +47,18 @@ if 'df_leghe_full' not in st.session_state:
 # --- 3. UNIFICAZIONE TOTALE NOMI E LEGA ---
 def fix_league_names(df_leghe):
     df = df_leghe.copy()
-    # 1. Trasformiamo "Lega A" in "Serie A" per farle combaciare
-    df['Lega'] = df['Lega'].replace("Lega A", "Serie A")
-    # 2. Forza la Fiorentina in Serie A (se fosse altrove)
+    # Pulizia stringhe per sicurezza
+    df['Lega'] = df['Lega'].astype(str).str.strip()
+    df['Squadra'] = df['Squadra'].astype(str).str.strip()
+    
+    # TRASFORMAZIONE: Qualsiasi cosa sia "Lega A" o contenga "Lega A" diventa "Serie A"
+    df.loc[df['Lega'].str.contains("Lega A", case=False, na=False), 'Lega'] = "Serie A"
+    
+    # FORZATURA FIORENTINA: Se la squadra è Fiorentina, va in Serie A
     df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "Serie A"
     return df
 
+# Applichiamo la correzione subito
 st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
 
 # MAPPATURA COLORI FISSA
@@ -66,6 +72,7 @@ MAPPATURA_COLORI = {
 # --- 4. COSTRUZIONE DASHBOARD ---
 df_static = load_static_data()
 if df_static is not None:
+    # Merge con i dati puliti
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
@@ -75,12 +82,11 @@ if df_static is not None:
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Crediti e Rimborsi")
         
-        # Ordine desiderato delle leghe
-        tutte_le_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
-        # Filtriamo solo quelle che hanno dati
-        leghe_effettive = [l for l in tutte_le_leghe if l in df_base['Lega'].values]
+        # Definiamo l'ordine e filtriamo solo le leghe che hanno squadre associate
+        ordine_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
+        leghe_effettive = [l for l in ordine_leghe if l in df_base['Lega'].values]
 
-        # LAYOUT 2x2
+        # Layout 2x2
         cols_container = st.columns(2)
         
         for i, nome_lega in enumerate(leghe_effettive):
@@ -88,7 +94,7 @@ if df_static is not None:
                 st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
                 
-                # Calcolo dati
+                # Calcolo aggregato rimborsi per squadra
                 df_rimb_active = df_l[df_l['Rimborsato'] == True]
                 res_rimborsi = df_rimb_active.groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
                 res_nomi = df_rimb_active.groupby('Squadra_LFM')['Nome'].apply(lambda x: ", ".join(x)).reset_index()
@@ -122,7 +128,7 @@ if df_static is not None:
                 st.divider()
 
     elif menu == "🔍 Spunta Giocatori":
-        # (Resto del codice invariato)
+        # (Codice invariato)
         st.title("🔍 Gestione Svincoli")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
@@ -143,14 +149,6 @@ if df_static is not None:
             st.success("Dati aggiornati!")
             st.rerun()
 
-        st.divider()
-        st.subheader("📋 Giocatori Svincolati")
-        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').copy()
-        if not df_svincolati.empty:
-            for col in ['Qt.I', 'FVM', 'Rimborso']:
-                df_svincolati[col] = df_svincolati[col].apply(lambda x: int(x) if x == int(x) else x)
-            st.dataframe(df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], hide_index=True)
-
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Gestione Leghe e Crediti")
         opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
@@ -165,7 +163,5 @@ if df_static is not None:
             st.success("Salvataggio completato!")
             st.rerun()
         st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
-        df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
-        st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
 
-else: st.error("Errore caricamento file.")
+else: st.error("File non caricati correttamente.")
