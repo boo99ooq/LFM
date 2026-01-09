@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="LFM Admin", layout="wide", page_icon="⚖️")
 
-# --- 1. CARICAMENTO DATI ---
+# --- 1. CARICAMENTO E PULIZIA DATI ---
 @st.cache_data
 def load_data():
     for enc in ['latin1', 'cp1252', 'utf-8']:
@@ -21,19 +21,20 @@ def load_data():
             try: 
                 leghe = pd.read_csv('leghe.csv', encoding=enc)
                 leghe.columns = ['Squadra', 'Lega']
-                # Pulizia stringhe
                 leghe['Squadra'] = leghe['Squadra'].str.strip()
                 leghe['Lega'] = leghe['Lega'].str.strip()
+                
+                # --- LOGICA DI UNIONE FORZATA ---
+                # Qualsiasi cosa contenga "Serie A" o legata alla "Fiorentina" viene rinominata "LEGA A"
+                leghe.loc[leghe['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
+                leghe.loc[leghe['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "LEGA A"
+                
                 df['Squadra_LFM'] = df['Squadra_LFM'].str.strip()
-                
-                # --- CORREZIONE MANUALE FIORENTINA ---
-                # Se la squadra è Fiorentina, forziamo la Lega a "Lega A" (modifica il nome tra virgolette se serve)
-                leghe.loc[leghe['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "Lega A"
-                
                 df = pd.merge(df, leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
             except: 
                 df['Lega'] = 'Da Assegnare'
 
+            # Pulizia e calcolo rimborso semplice
             df['Nome'] = df['Nome'].fillna("ID: " + df['Id'].astype(int, errors='ignore').astype(str))
             df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
             df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
@@ -61,10 +62,10 @@ if df_base is not None:
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard Rimborsi", "🔍 Spunta Giocatori", "⚙️ Configurazione"])
 
     if menu == "🏠 Dashboard Rimborsi":
-        st.title("🏠 Riepilogo Rimborsi Ufficiali")
+        st.title("🏠 Riepilogo Rimborsi")
         
-        # Prendiamo solo le leghe che hanno senso (evitiamo doppioni sporchi)
-        leghe_valide = sorted([l for l in df_base['Lega'].unique() if pd.notna(l)])
+        # Filtriamo per avere solo le leghe unificate
+        leghe_valide = sorted([l for l in df_base['Lega'].unique() if pd.notna(l) and l != 'nan'])
         
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_valide):
@@ -73,7 +74,7 @@ if df_base is not None:
                     st.subheader(f"🏆 {nome_lega}")
                     df_l = df_base[df_base['Lega'] == nome_lega]
                     
-                    # Tabella semplificata: solo Squadra e Rimborso accumulato
+                    # Calcolo rimborsi
                     res = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
                     squadre_tutte = pd.DataFrame({'Squadra': df_l['Squadra_LFM'].unique()})
                     tabella = pd.merge(squadre_tutte, res, left_on='Squadra', right_on='Squadra_LFM', how='left').fillna(0)
@@ -82,9 +83,11 @@ if df_base is not None:
 
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Ricerca e Svincolo")
-        cerca = st.text_input("Cerca nome giocatore:")
+        st.info("Spunta un giocatore qui: verrà applicato a tutte le squadre che lo possiedono.")
         
+        cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
+        
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
         else:
@@ -97,14 +100,14 @@ if df_base is not None:
             use_container_width=True
         )
 
-        if st.button("Salva modifiche"):
+        if st.button("Conferma Modifiche"):
             for _, row in res_editor.iterrows():
                 if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                 else: st.session_state.refunded_ids.discard(row['Id'])
-            st.success("Dati aggiornati!")
+            st.success("Sincronizzazione completata!")
             st.rerun()
 
     elif menu == "⚙️ Configurazione":
-        st.title("⚙️ Backup")
+        st.title("⚙️ Backup Database")
         df_save = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
         st.download_button("Scarica database_lfm.csv", df_save.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
