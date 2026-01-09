@@ -79,6 +79,35 @@ if df_base is not None:
 
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
+        # --- SEZIONE NEWS NELLA DASHBOARD ---
+    st.info("📢 **Bacheca News & Ultimi Movimenti**")
+    
+    # 1. Spazio per messaggi manuali (puoi scriverlo qui nel codice)
+    st.markdown("""
+    * 📅 **Prossima Asta:** Definire data
+    * ⚠️ **Nota Tecnica:** Controllate sempre i crediti residui prima di operare.
+    """)
+    
+    # 2. Logica per mostrare gli ultimi movimenti in automatico
+    st.subheader("🔄 Ultimi Movimenti di Mercato")
+    
+    # Uniamo svincolati e tagliati in un'unica lista temporanea per le news
+    news_star = df_base[df_base['Rimborsato_Star']].copy()
+    news_star['Tipo'] = "✈️ SVINCOLO *"
+    
+    news_tagli = df_base[df_base['Rimborsato_Taglio']].copy()
+    news_tagli['Tipo'] = "✂️ TAGLIO TECNICO"
+    
+    movimenti = pd.concat([news_star, news_tagli]).sort_values(by='Nome') # Qui l'ideale sarebbe avere una data, ma ordiniamo per nome
+    
+    if not movimenti.empty:
+        # Mostriamo gli ultimi 5 (o tutti se sono pochi)
+        for _, mov in movimenti.head(5).iterrows():
+            st.write(f"**{mov['Tipo']}**: {mov['Nome']} ({mov['Squadra_LFM']})")
+    else:
+        st.write(" *Nessun movimento recente registrato.*")
+    
+    st.divider()
         st.title("🏠 Riepilogo Crediti e Rimborsi")
         leghe_effettive = [l for l in ORDINE_LEGHE if l in df_base['Lega'].values]
         cols = st.columns(2)
