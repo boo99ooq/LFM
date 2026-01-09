@@ -8,8 +8,8 @@ st.set_page_config(page_title="LFM Manager - Pro Edition", layout="wide", page_i
 # --- 1. CARICAMENTO DATI BASE ---
 @st.cache_data
 def load_static_data():
-    # Usiamo latin1 per gestire meglio i caratteri speciali dei file Excel/CSV
     try:
+        # Caricamento rose e quotazioni con codifica latin1 per sicurezza
         df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding='latin1')
         df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo_Asta']
         df_quot = pd.read_csv('quot.csv', encoding='latin1')
@@ -64,7 +64,6 @@ except: df_stadi = pd.DataFrame(columns=['Squadra', 'Lega', 'Stadio'])
 df_base, df_all_quot = load_static_data()
 
 if df_base is not None:
-    # Merge con i dati delle leghe per avere i crediti aggiornati
     df_base = pd.merge(df_base, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato_Star'] = df_base['Id'].isin(st.session_state.refunded_ids)
     df_base['Taglio_Key'] = df_base['Id'].astype(int).astype(str) + "_" + df_base['Squadra_LFM'].astype(str)
@@ -108,7 +107,6 @@ if df_base is not None:
                     n_g = int(sq['NG'])
                     col_alert = "#81c784" if 25 <= n_g <= 35 else "#ef5350"
                     bg_color = MAPPATURA_COLORI.get(nome_lega, "#333")
-                    
                     st.markdown(f"""<div style="background-color: {bg_color}; padding: 12px; border-radius: 10px; margin-bottom: 8px; color: white; border: 1px solid rgba(255,255,255,0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <b>{sq['Squadra_LFM']}</b>
@@ -120,13 +118,20 @@ if df_base is not None:
     # --- 🗓️ CALENDARI CAMPIONATI ---
     elif menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Centrale Calendari & Bonus Stadio")
+        
+        # Trova file calendari
         files_cal = [f for f in os.listdir('.') if f.startswith("Calendario_") and f.endswith(".csv")]
         
         if not files_cal:
             st.warning("Carica i file CSV dei calendari (es: Calendario_SERIE-A.csv)")
         else:
-            camp_scelto = st.selectbox("Seleziona Campionato:", files_cal)
+            # Creiamo un dizionario {Nome Pulito: Nome File Originale}
+            mappa_nomi = {f.replace("Calendario_", "").replace(".csv", "").replace("-", " "): f for f in files_cal}
+            nome_pulito_scelto = st.selectbox("Seleziona Campionato:", sorted(mappa_nomi.keys()))
+            camp_scelto = mappa_nomi[nome_pulito_scelto]
+            
             try:
+                # Caricamento con latin1 per gestire simboli come ª
                 df_cal = pd.read_csv(camp_scelto, header=None, encoding='latin1')
                 giornate = sorted(list(set(
                     [str(x) for x in df_cal[0].dropna() if "Giornata" in str(x)] + 
@@ -141,7 +146,8 @@ if df_base is not None:
                             for i in range(1, 6):
                                 if r+i < len(df_cal):
                                     h, a = str(df_cal.iloc[r+i, c]).strip(), str(df_cal.iloc[r+i, c+3]).strip()
-                                    sh, sa = str(df_cal.iloc[r+i, c+1]).replace(',','.'), str(df_cal.iloc[r+i, c+2]).replace(',','.')
+                                    sh = str(df_cal.iloc[r+i, c+1]).replace('"', '').replace(',', '.').strip()
+                                    sa = str(df_cal.iloc[r+i, c+2]).replace('"', '').replace(',', '.').strip()
                                     try:
                                         if float(sh) == 0 and float(sa) == 0:
                                             cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
@@ -150,12 +156,14 @@ if df_base is not None:
                                             _, ba = calculate_stadium_bonus(cap_a)
                                             match_list.append({"Partita": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
                                     except: continue
-                if match_list: st.table(pd.DataFrame(match_list))
-                else: st.info("Tutte le partite giocate.")
-            except Exception as e: st.error(f"Errore: {e}")
+                if match_list: 
+                    st.table(pd.DataFrame(match_list))
+                else: 
+                    st.info("Tutte le partite di questa giornata sono state giocate.")
+            except Exception as e: st.error(f"Errore nella lettura del file: {e}")
 
     # --- 🏃 GESTIONE MERCATO ---
-    elif menu == "🏃 Gesteione Mercato":
+    elif menu == "🏃 Gestione Mercato":
         st.title("🏃 Operazioni Mercato")
         t1, t2 = st.tabs(["✈️ Svincoli * (100%)", "✂️ Tagli (50%)"])
         
@@ -183,7 +191,7 @@ if df_base is not None:
 
     # --- 📊 RANKING FVM ---
     elif menu == "📊 Ranking FVM":
-        st.title("📊 Ranking FVM Internazionale")
+        st.title("📊 Ranking FVM")
         df_rank = df_base.copy()
         df_rank['Proprietario'] = df_rank.apply(lambda r: f"✈️ {r['Squadra_LFM']}" if r['Rimborsato_Star'] else (f"✂️ {r['Squadra_LFM']}" if r['Rimborsato_Taglio'] else r['Squadra_LFM']), axis=1)
         pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index()
