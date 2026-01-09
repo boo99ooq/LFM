@@ -1,3 +1,6 @@
+import streamlit as st
+import pandas as pd
+
 @st.cache_data
 def load_and_merge():
     # Usiamo l'argomento 'encoding' per gestire i caratteri speciali
