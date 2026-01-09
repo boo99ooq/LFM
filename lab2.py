@@ -168,16 +168,43 @@ if df_base is not None:
 
     elif menu == "🟢 Giocatori Liberi":
         st.title("🟢 Calciatori Liberi Ovunque")
+        
+        # 1. Carichiamo la Blacklist (esclusi.csv)
+        # Usiamo \t perché il file sembra separato da tabulatori
+        try:
+            df_esclusi = pd.read_csv('esclusi.csv', sep='\t')
+            # Se il file non ha intestazione corretta, prendiamo la prima colonna
+            blacklisted_ids = set(pd.to_numeric(df_esclusi.iloc[:, 0], errors='coerce').dropna().unique())
+        except:
+            blacklisted_ids = set()
+
+        # 2. Identifichiamo gli ID di chi ha già una squadra
         ids_posseduti = set(df_base['Id'].unique())
-        df_liberi = df_all_quot[~df_all_quot['Id'].isin(ids_posseduti)].copy()
+        
+        # 3. Filtriamo il listone quotazioni:
+        # Mostriamo solo chi NON ha squadra E chi NON è nella blacklist
+        df_liberi = df_all_quot[
+            (~df_all_quot['Id'].isin(ids_posseduti)) & 
+            (~df_all_quot['Id'].isin(blacklisted_ids))
+        ].copy()
+        
         c1, c2 = st.columns(2)
         ruoli_lib = sorted(df_liberi['R'].dropna().unique())
         r_sel = c1.multiselect("Filtra per Ruolo:", ruoli_lib, default=ruoli_lib)
         cerca_lib = c2.text_input("Cerca per nome:")
-        if r_sel: df_liberi = df_liberi[df_liberi['R'].isin(r_sel)]
-        if cerca_lib: df_liberi = df_liberi[df_liberi['Nome'].str.contains(cerca_lib, case=False, na=False)]
-        st.dataframe(df_liberi.sort_values(by='FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
-
+        
+        if r_sel:
+            df_liberi = df_liberi[df_liberi['R'].isin(r_sel)]
+        if cerca_lib:
+            df_liberi = df_liberi[df_liberi['Nome'].str.contains(cerca_lib, case=False, na=False)]
+            
+        st.write(f"Giocatori disponibili: {len(df_liberi)}")
+        
+        if blacklisted_ids:
+            st.success(f"✅ Filtro attivo: {len(blacklisted_ids)} giocatori non più in Serie A rimossi dalla vista.")
+            
+        st.dataframe(df_liberi.sort_values(by='FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], 
+                     use_container_width=True, hide_index=True)
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Configurazione")
         c1, c2 = st.columns([4, 1])
