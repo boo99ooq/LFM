@@ -19,9 +19,7 @@ def load_static_data():
             df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
             df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
             
-            # CALCOLO RIMBORSI * (Pieno: FVM + Qt.I/2)
             df['Rimborso_Star'] = df['FVM'] + (df['Qt.I'] / 2)
-            # CALCOLO TAGLI VOLONTARI (50% del totale: (FVM + Qt.I)/2)
             df['Rimborso_Taglio'] = (df['FVM'] + df['Qt.I']) / 2
             
             df['Squadra_LFM'] = df['Squadra_LFM'].str.strip()
@@ -70,12 +68,11 @@ df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato_Star'] = df_base['Id'].isin(st.session_state.refunded_ids)
-    # Chiave tecnica nascosta
     df_base['Taglio_Key'] = df_base['Id'].astype(int).astype(str) + "_" + df_base['Squadra_LFM'].astype(str)
     df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
 
     st.sidebar.title("⚖️ LFM Admin")
-    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🏃 Svincolati *", "✂️ Tagli Volontari", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🏃 Svincolati *", "✂️ Tagli Volontari", "📊 Ranking FVM", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
 
     # --- DASHBOARD ---
     if menu == "🏠 Dashboard":
@@ -112,14 +109,9 @@ if df_static is not None:
         c1, c2 = st.columns([4, 1])
         cerca = c1.text_input("Cerca giocatore:", key="cerca_star")
         if c2.button("Reset 🔄", key="res_star"): st.rerun()
-        
         if cerca:
             df_f = df_base[df_base['Nome'].str.contains(cerca, case=False, na=False)].drop_duplicates('Id')
-            edit = st.data_editor(
-                df_f[['Rimborsato_Star', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Star', 'Id']], 
-                column_config={"Rimborsato_Star": "Svincola", "Id": None, "R": "Ruolo", "Qt.I": "Quot."},
-                hide_index=True, use_container_width=True
-            )
+            edit = st.data_editor(df_f[['Rimborsato_Star', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Star', 'Id']], column_config={"Rimborsato_Star": "Svincola", "Id": None, "R": "Ruolo", "Qt.I": "Quot."}, hide_index=True, use_container_width=True)
             if st.button("Salva Svincoli *"):
                 for _, r in edit.iterrows():
                     if r['Rimborsato_Star']: st.session_state.refunded_ids.add(r['Id'])
@@ -131,38 +123,48 @@ if df_static is not None:
 
     # --- TAGLI VOLONTARI ---
     elif menu == "✂️ Tagli Volontari":
-        st.title("✂️ Tagli Volontari (Specifici per Squadra)")
+        st.title("✂️ Tagli Volontari (Specifici)")
         c1, c2 = st.columns([4, 1])
         cerca_t = c1.text_input("Cerca giocatore per squadra:", key="cerca_tagli")
         if c2.button("Reset 🔄", key="res_tagli"): st.rerun()
-        
         if cerca_t:
             df_t = df_base[df_base['Nome'].str.contains(cerca_t, case=False, na=False)]
-            # Visualizzazione con FVM e Quotazione, Nascondendo la Key tecnica
-            edit_t = st.data_editor(
-                df_t[['Rimborsato_Taglio', 'Nome', 'R', 'FVM', 'Qt.I', 'Squadra_LFM', 'Rimborso_Taglio', 'Taglio_Key']], 
-                column_config={
-                    "Taglio_Key": None, 
-                    "Rimborsato_Taglio": "Taglia",
-                    "R": "Ruolo",
-                    "Qt.I": "Quot.",
-                    "Squadra_LFM": "Squadra",
-                    "Rimborso_Taglio": "Rimborso (50%)"
-                }, 
-                hide_index=True, use_container_width=True
-            )
+            edit_t = st.data_editor(df_t[['Rimborsato_Taglio', 'Nome', 'R', 'FVM', 'Qt.I', 'Squadra_LFM', 'Rimborso_Taglio', 'Taglio_Key']], column_config={"Taglio_Key": None, "Rimborsato_Taglio": "Taglia", "R": "Ruolo", "Qt.I": "Quot.", "Squadra_LFM": "Squadra", "Rimborso_Taglio": "Rimborso (50%)"}, hide_index=True, use_container_width=True)
             if st.button("Applica Tagli"):
                 for _, r in edit_t.iterrows():
                     if r['Rimborsato_Taglio']: st.session_state.tagli_map.add(r['Taglio_Key'])
                     else: st.session_state.tagli_map.discard(r['Taglio_Key'])
                 st.rerun()
         st.divider()
-        st.subheader("📋 Elenco Tagli Attivi")
         df_tv = df_base[df_base['Rimborsato_Taglio']].sort_values(by=['Squadra_LFM', 'Nome'])
+        st.dataframe(df_tv[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], column_config={"Rimborso_Taglio": "Rimborso (50%)", "Qt.I": "Quot."}, use_container_width=True, hide_index=True)
+
+    # --- NUOVA PAGINA: RANKING FVM ---
+    elif menu == "📊 Ranking FVM":
+        st.title("📊 Ranking Calciatori per FVM")
+        
+        # Filtri Ranking
+        c1, c2 = st.columns(2)
+        ruolo_filt = c1.multiselect("Filtra per Ruolo:", ["P", "D", "C", "A"], default=["P", "D", "C", "A"])
+        
+        # Prepariamo i dati: raggruppiamo per giocatore per vedere tutte le sue squadre
+        df_rank = df_base.copy()
+        if ruolo_filt:
+            df_rank = df_rank[df_rank['R'].isin(ruolo_filt)]
+        
+        # Aggreghiamo le squadre che possiedono lo stesso giocatore
+        df_rank_agg = df_rank.groupby(['Id', 'Nome', 'R', 'FVM'])['Squadra_LFM'].apply(lambda x: ", ".join(x)).reset_index()
+        df_rank_agg = df_rank_agg.sort_values(by='FVM', ascending=False)
+        
         st.dataframe(
-            df_tv[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], 
-            column_config={"Rimborso_Taglio": "Rimborso (50%)", "Qt.I": "Quot."},
-            use_container_width=True, hide_index=True
+            df_rank_agg[['FVM', 'Nome', 'R', 'Squadra_LFM']], 
+            column_config={
+                "FVM": st.column_config.NumberColumn("FVM", format="%d"),
+                "R": "Ruolo",
+                "Squadra_LFM": "Posseduto da (Squadre LFM)"
+            },
+            use_container_width=True,
+            hide_index=True
         )
 
     # --- VISUALIZZA ROSE ---
@@ -184,23 +186,19 @@ if df_static is not None:
         opzioni_lega = ["Tutte"] + sorted(list(st.session_state.df_leghe_full['Lega'].unique()))
         lega_filtro = c1.selectbox("Filtra squadre per lega:", opzioni_lega, key="filtro_lega_gest")
         if c2.button("Reset 🔄", key="res_gest"): st.rerun()
-        
         df_to_edit = st.session_state.df_leghe_full if lega_filtro == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_filtro]
         edited = st.data_editor(df_to_edit, use_container_width=True, hide_index=True)
-        
         if st.button("Salva Modifiche"):
             temp_df = st.session_state.df_leghe_full.copy().set_index('Squadra')
             temp_df.update(edited.set_index('Squadra'))
             st.session_state.df_leghe_full = fix_league_names(temp_df.reset_index())
             st.success("Dati aggiornati!"); st.rerun()
-        
         st.divider()
         st.subheader("📥 Backup Dati")
         tagli_list = []
         for key in st.session_state.tagli_map:
             pid, psq = key.split("_")
             tagli_list.append({'Id': pid, 'Squadra': psq, 'Rimborsato': True})
-        
         c1, c2, c3 = st.columns(3)
         c1.download_button("database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
         c2.download_button("database_tagli.csv", pd.DataFrame(tagli_list).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
