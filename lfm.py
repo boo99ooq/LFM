@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="LFM Admin Pro", layout="wide", page_icon="⚖️")
 
-# --- 1. CARICAMENTO DATI "STATICI" (ROSE E QUOTAZIONI) ---
+# --- 1. CARICAMENTO DATI STATICI ---
 @st.cache_data
 def load_static_data():
     for enc in ['latin1', 'cp1252', 'utf-8']:
@@ -16,7 +16,6 @@ def load_static_data():
             df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
             df_rose = df_rose.dropna(subset=['Id'])
             
-            # Uniamo rose e quotazioni (questi cambiano raramente)
             df = pd.merge(df_rose, df_quot, on='Id', how='left')
             df['Nome'] = df['Nome'].fillna("ID: " + df['Id'].astype(int, errors='ignore').astype(str))
             df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
@@ -27,9 +26,7 @@ def load_static_data():
         except: continue
     return None
 
-# --- 2. GESTIONE MEMORIA SESSIONE (STATO ATTUALE) ---
-
-# Inizializza i rimborsi spuntati
+# --- 2. GESTIONE SESSIONE ---
 if 'refunded_ids' not in st.session_state:
     try:
         db_p = pd.read_csv('database_lfm.csv')
@@ -37,42 +34,43 @@ if 'refunded_ids' not in st.session_state:
     except:
         st.session_state.refunded_ids = set()
 
-# Inizializza la tabella leghe/crediti in memoria per renderla reattiva
 if 'df_leghe_full' not in st.session_state:
     try:
         df_temp = pd.read_csv('leghe.csv', encoding='latin1')
         df_temp['Squadra'] = df_temp['Squadra'].str.strip()
         df_temp['Lega'] = df_temp['Lega'].str.strip()
         if 'Crediti' not in df_temp.columns: df_temp['Crediti'] = 0
-        
-        # Unificazione forzata Fiorentina/Serie A (Logica richiesta)
-        df_temp.loc[df_temp['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
-        df_temp.loc[df_temp['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "LEGA A"
-        
         st.session_state.df_leghe_full = df_temp
     except:
-        # Se il file manca, creiamo una base dalle squadre presenti
-        df_base_static = load_static_data()
-        if df_base_static is not None:
-            squadre = sorted(df_base_static['Squadra_LFM'].unique())
+        df_static_init = load_static_data()
+        if df_static_init is not None:
+            squadre = sorted(df_static_init['Squadra_LFM'].unique())
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
-# --- 3. COSTRUZIONE DATABASE DINAMICO ---
-df_static = load_static_data()
+# --- 3. UNIFICAZIONE FORZATA (FIORENTINA) ---
+# Questa logica viene eseguita SEMPRE prima di mostrare qualsiasi tabella
+def fix_fiorentina(df_leghe):
+    df = df_leghe.copy()
+    # Qualsiasi riga che sia "Serie A" o "Fiorentina" diventa "LEGA A"
+    df.loc[df['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
+    df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "LEGA A"
+    return df
 
-if df_static is not None and 'df_leghe_full' in st.session_state:
-    # Uniamo i dati statici con quelli dinamici della sessione (Leghe e Crediti)
+st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
+
+# --- 4. COSTRUZIONE DB ---
+df_static = load_static_data()
+if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
-    # Sidebar
     st.sidebar.title("LFM Admin")
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
-    # --- DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Leghe e Saldi")
-        leghe_valide = sorted([l for l in df_base['Lega'].unique() if pd.notna(l) and l != 'nan'])
+        # Filtro per eliminare eventuali righe sporche (NaN)
+        leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_valide):
@@ -80,21 +78,13 @@ if df_static is not None and 'df_leghe_full' in st.session_state:
                 with st.container(border=True):
                     st.subheader(f"🏆 {nome_lega}")
                     df_l = df_base[df_base['Lega'] == nome_lega]
-                    
-                    # Calcolo Rimborsi
                     res_rimborsi = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
-                    
-                    # Crediti Manuali dalla sessione
                     df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
-                    
-                    # Tabella finale
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                     tabella.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
-                    
                     st.table(tabella.sort_values(by='Squadra'))
 
-    # --- RICERCA E SPUNTE ---
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Ricerca e Svincolo")
         cerca = st.text_input("Cerca nome giocatore:")
@@ -115,43 +105,34 @@ if df_static is not None and 'df_leghe_full' in st.session_state:
             for _, row in res_editor.iterrows():
                 if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                 else: st.session_state.refunded_ids.discard(row['Id'])
-            st.success("Dati rimborsi aggiornati!")
+            st.success("Rimborsi aggiornati!")
             st.rerun()
 
-    # --- GESTIONE SQUADRE ---
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Gestione Leghe e Crediti")
         
-        opzioni_lega = ["Tutte"] + sorted(st.session_state.df_leghe_full['Lega'].unique().tolist())
+        opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
         lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
 
-        if lega_selezionata == "Tutte":
-            df_to_edit = st.session_state.df_leghe_full
-        else:
-            df_to_edit = st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
+        df_to_edit = st.session_state.df_leghe_full if lega_selezionata == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
 
         edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", key="editor_leghe")
 
         if st.button("Applica Modifiche"):
-            # Aggiornamento puntuale della sessione
             temp_df = st.session_state.df_leghe_full.copy()
             temp_df.set_index('Squadra', inplace=True)
             temp_df.update(edited_view.set_index('Squadra'))
             st.session_state.df_leghe_full = temp_df.reset_index()
-            st.success("Crediti aggiornati in memoria! Vai alla Dashboard per vedere i risultati.")
+            # Riapplichiamo il fix Fiorentina subito dopo l'edit
+            st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
+            st.success("Dati aggiornati!")
             st.rerun()
 
         st.divider()
-        st.subheader("💾 Salvataggio Permanente")
-        col_down1, col_down2 = st.columns(2)
-        
-        with col_down1:
-            csv_leghe = st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Scarica leghe.csv", csv_leghe, "leghe.csv", help="Carica su GitHub per salvare i Crediti Residui")
-        
-        with col_down2:
-            df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
-            st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        csv_leghe = st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Scarica leghe.csv", csv_leghe, "leghe.csv")
+        df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
+        st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
 
 else:
-    st.error("Assicurati che i file CSV siano presenti su GitHub.")
+    st.error("File mancanti.")
