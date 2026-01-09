@@ -48,10 +48,8 @@ if 'df_leghe_full' not in st.session_state:
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
 # --- 3. UNIFICAZIONE FORZATA (FIORENTINA) ---
-# Questa logica viene eseguita SEMPRE prima di mostrare qualsiasi tabella
 def fix_fiorentina(df_leghe):
     df = df_leghe.copy()
-    # Qualsiasi riga che sia "Serie A" o "Fiorentina" diventa "LEGA A"
     df.loc[df['Lega'].str.contains("Serie A", case=False, na=False), 'Lega'] = "LEGA A"
     df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "LEGA A"
     return df
@@ -67,11 +65,10 @@ if df_static is not None:
     st.sidebar.title("LFM Admin")
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
+    # --- DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Leghe e Saldi")
-        # Filtro per eliminare eventuali righe sporche (NaN)
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
-        
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_valide):
             with cols[i % 2]:
@@ -85,14 +82,18 @@ if df_static is not None:
                     tabella.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
                     st.table(tabella.sort_values(by='Squadra'))
 
+    # --- RICERCA E SPUNTE ---
     elif menu == "🔍 Spunta Giocatori":
-        st.title("🔍 Ricerca e Svincolo")
+        st.title("🔍 Gestione Svincoli")
+        
+        # PARTE 1: RICERCA E EDITING
+        st.subheader("1. Cerca e Svincola")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
         else:
-            df_filtered = df_display.head(10)
+            df_filtered = df_display.head(5)
 
         res_editor = st.data_editor(
             df_filtered[['Rimborsato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso', 'Id']],
@@ -101,21 +102,35 @@ if df_static is not None:
             use_container_width=True
         )
 
-        if st.button("Salva modifiche rimborsi"):
+        if st.button("💾 Applica Modifiche"):
             for _, row in res_editor.iterrows():
                 if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                 else: st.session_state.refunded_ids.discard(row['Id'])
-            st.success("Rimborsi aggiornati!")
+            st.success("Stato rimborsi aggiornato!")
             st.rerun()
 
+        st.divider()
+
+        # PARTE 2: LISTA COMPLETA SPUNTATI (NUOVA!)
+        st.subheader("📋 Riepilogo Giocatori Svincolati")
+        df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id')
+        
+        if not df_svincolati.empty:
+            st.dataframe(
+                df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], 
+                use_container_width=True,
+                hide_index=True
+            )
+            st.caption(f"Totale giocatori svincolati: {len(df_svincolati)}")
+        else:
+            st.info("Nessun giocatore svincolato al momento.")
+
+    # --- GESTIONE SQUADRE ---
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Gestione Leghe e Crediti")
-        
         opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
         lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
-
         df_to_edit = st.session_state.df_leghe_full if lega_selezionata == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
-
         edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", key="editor_leghe")
 
         if st.button("Applica Modifiche"):
@@ -123,7 +138,6 @@ if df_static is not None:
             temp_df.set_index('Squadra', inplace=True)
             temp_df.update(edited_view.set_index('Squadra'))
             st.session_state.df_leghe_full = temp_df.reset_index()
-            # Riapplichiamo il fix Fiorentina subito dopo l'edit
             st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
             st.success("Dati aggiornati!")
             st.rerun()
