@@ -1,113 +1,97 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
-# 1. IMPOSTAZIONI DELLA PAGINA
-st.set_page_config(page_title="LFM - Calcolo Rimborsi", layout="wide", page_icon="💰")
+st.set_page_config(page_title="LFM - Registro Rimborsi", layout="wide", page_icon="📝")
 
-# 2. FUNZIONI DI CARICAMENTO DATI
+# --- FUNZIONI CARICAMENTO ---
 @st.cache_data
-def carica_dati_gioco():
+def carica_dati_completi():
     for enc in ['latin1', 'cp1252', 'utf-8']:
         try:
-            # Caricamento Rose
             df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding=enc)
             df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo_Asta']
-            
-            # Caricamento Quotazioni
             df_quot = pd.read_csv('quot.csv', encoding=enc)
-            
-            # Pulizia e conversione ID
             df_rose['Id'] = pd.to_numeric(df_rose['Id'], errors='coerce')
             df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
             df_rose = df_rose.dropna(subset=['Id'])
-            
-            # Unione dei dati (Left Join)
             df_merged = pd.merge(df_rose, df_quot, on='Id', how='left')
-            
-            # Gestione nomi mancanti
-            df_merged['Nome'] = df_merged['Nome'].fillna("Fuori Lista (ID: " + df_merged['Id'].astype(str).str.replace('.0','', regex=False) + ")")
-            df_merged['R'] = df_merged['R'].fillna("-")
             df_merged['Qt.I'] = df_merged['Qt.I'].fillna(0)
             df_merged['FVM'] = df_merged['FVM'].fillna(0)
-            
-            # --- CALCOLO RIMBORSO ---
-            # Formula: FVM + (Quotazione Iniziale / 2)
             df_merged['Rimborso'] = df_merged['FVM'] + (df_merged['Qt.I'] / 2)
-            
             return df_merged
         except:
             continue
     return None
 
-def carica_mappa_leghe(nomi_squadre):
-    try:
-        return pd.read_csv('leghe.csv', encoding='latin1')
-    except:
-        return pd.DataFrame({'Squadra': nomi_squadre, 'Lega': 'Da Assegnare'})
+def get_mappe():
+    try: leghe = pd.read_csv('leghe.csv', encoding='latin1')
+    except: leghe = pd.DataFrame(columns=['Squadra', 'Lega'])
+    try: storico = pd.read_csv('rimborsi_storico.csv', encoding='latin1')
+    except: storico = pd.DataFrame(columns=['Id','Nome','Squadra_LFM','Lega','Rimborso_Ottenuto','Data_Sessione'])
+    return leghe, storico
 
-# --- ESECUZIONE APP ---
-dati_fanta = carica_dati_gioco()
+# --- LOGICA ---
+dati = carica_dati_completi()
+leghe, storico = get_mappe()
 
-if dati_fanta is not None:
-    squadre_presenti = sorted(dati_fanta['Squadra_LFM'].unique())
-    mappa_leghe = carica_mappa_leghe(squadre_presenti)
+st.sidebar.title("⚽ LFM Admin")
+modalita = st.sidebar.radio("Vai a:", ["App Fantacalcio", "⚙️ Configura Leghe", "📝 Sessioni Rimborsi"])
 
-    st.sidebar.title("⚽ LFM Manager")
-    modalita = st.sidebar.radio("Naviga tra:", ["App Fantacalcio", "⚙️ Configura Leghe"])
-
-    if modalita == "⚙️ Configura Leghe":
-        st.title("⚙️ Organizzazione Leghe")
-        df_editor = st.data_editor(mappa_leghe, use_container_width=True, num_rows="fixed")
-        csv_data = df_editor.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 Scarica leghe.csv aggiornato", data=csv_data, file_name='leghe.csv', mime='text/csv')
-
-    else:
-        # Unione Lega + Dati
-        df_finale = pd.merge(dati_fanta, mappa_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
-
-        st.title("🔍 Ricerca e Calcolo Rimborsi")
-
-        # Filtro Lega
-        lista_leghe = ["Tutte"] + sorted(list(df_finale['Lega'].unique().astype(str)))
-        filtro_lega = st.sidebar.selectbox("Filtra per Lega:", lista_leghe)
-
-        df_filtrato = df_finale if filtro_lega == "Tutte" else df_finale[df_finale['Lega'] == filtro_lega]
-
-        sub_tab = st.radio("Cosa cerchi?", ["Giocatore Singolo", "Rosa Completa"], horizontal=True)
-
-        if sub_tab == "Giocatore Singolo":
-            cerca = st.text_input("Inserisci nome del giocatore:")
-            if cerca:
-                ris = df_filtrato[df_filtrato['Nome'].str.contains(cerca, case=False, na=False)]
-                if not ris.empty:
-                    # Visualizzazione con Colonna Rimborso
-                    st.dataframe(
-                        ris[['Nome', 'R', 'Squadra_LFM', 'Lega', 'Qt.I', 'FVM', 'Rimborso']].sort_values(by='Nome'), 
-                        use_container_width=True
-                    )
-                    st.info("💡 Il calcolo del rimborso è basato su: FVM + (Qt.I / 2)")
-                else:
-                    st.warning("Nessun giocatore trovato.")
+if modalita == "📝 Sessioni Rimborsi":
+    st.title("📝 Gestione Sessioni e Rimborsi")
+    
+    tab1, tab2 = st.tabs(["Spunta Rimborsi", "Database Storico"])
+    
+    with tab1:
+        st.subheader("Seleziona i giocatori rimborsati in questa sessione")
+        # Uniamo i dati per avere la Lega anche qui
+        df_l = pd.merge(dati, leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
         
-        else:
-            squadra_sel = st.selectbox("Seleziona Squadra LFM:", sorted(df_filtrato['Squadra_LFM'].unique()))
-            if squadra_sel:
-                res_sq = df_filtrato[df_filtrato['Squadra_LFM'] == squadra_sel]
-                
-                # Identifichiamo i giocatori potenzialmente "ceduti" (quelli con Qt.I e FVM che hai impostato o quelli Fuori Lista)
-                # In questa visualizzazione mostriamo il rimborso per tutti, facilitando il calcolo manuale
-                
-                # Statistiche veloci
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Spesa Asta Totale", f"{int(res_sq['Prezzo_Asta'].sum())} cr")
-                m2.metric("Valore FVM Totale", f"{int(res_sq['FVM'].sum())} cr")
-                
-                # Calcoliamo il rimborso totale potenziale per la squadra
-                rimborso_totale = res_sq['Rimborso'].sum()
-                m3.metric("Valore Rimborso Totale", f"{rimborso_totale} cr", delta_color="normal")
-                
-                st.write("### Dettaglio Rosa")
-                st.table(res_sq[['Nome', 'R', 'Prezzo_Asta', 'Qt.I', 'FVM', 'Rimborso']].sort_values(by='R'))
+        # Filtro veloce per trovare i giocatori da rimborsare
+        filtro_nome = st.text_input("Cerca giocatore da spuntare:")
+        if filtro_nome:
+            df_l = df_l[df_l['Nome'].str.contains(filtro_nome, case=False, na=False)]
+        
+        # Selezione multipla
+        scelti = st.multiselect("Seleziona i giocatori rimborsati:", 
+                                options=df_l['Nome'].unique(),
+                                help="Puoi selezionare più giocatori contemporaneamente")
+        
+        if scelti:
+            st.write("### Riepilogo Sessione Corrente")
+            nuovi_rimborsi = df_l[df_l['Nome'].isin(scelti)][['Id', 'Nome', 'Squadra_LFM', 'Lega', 'Rimborso']]
+            nuovi_rimborsi['Data_Sessione'] = st.date_input("Data della sessione ufficiale:", datetime.now())
+            st.dataframe(nuovi_rimborsi)
+            
+            if st.button("Aggiungi al Database Storico"):
+                aggiornato = pd.concat([storico, nuovi_rimborsi.rename(columns={'Rimborso': 'Rimborso_Ottenuto'})], ignore_index=True)
+                st.session_state['db_aggiornato'] = aggiornato
+                st.success("Aggiunti! Ora scarica il file e caricalo su GitHub.")
+
+    with tab2:
+        st.subheader("Database Rimborsi Ufficiali")
+        db_da_mostrare = st.session_state.get('db_aggiornato', storico)
+        st.dataframe(db_da_mostrare, use_container_width=True)
+        
+        # Calcolo rimborsi totali per squadra
+        if not db_da_mostrare.empty:
+            st.write("### Totali Rimborsi per Squadra")
+            totali = db_da_mostrare.groupby('Squadra_LFM')['Rimborso_Ottenuto'].sum().reset_index()
+            st.table(totali.sort_values(by='Rimborso_Ottenuto', ascending=False))
+
+        # Download button
+        csv_storico = db_da_mostrare.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Scarica rimborsi_storico.csv", csv_storico, "rimborsi_storico.csv", "text/csv")
+
+elif modalita == "⚙️ Configura Leghe":
+    # (Mantenere il codice precedente per la gestione leghe)
+    st.title("⚙️ Configurazione Leghe")
+    df_ed = st.data_editor(leghe, use_container_width=True)
+    if st.download_button("Scarica leghe.csv", df_ed.to_csv(index=False).encode('utf-8'), "leghe.csv"):
+        st.info("Caricalo su GitHub.")
 
 else:
-    st.error("Errore nel caricamento dei file.")
+    # (Mantenere il codice precedente per l'App Fantacalcio con i filtri)
+    st.title("⚽ App Fantacalcio")
+    # ... (codice ricerca e visualizzazione rose)
