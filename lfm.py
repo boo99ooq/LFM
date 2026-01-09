@@ -18,10 +18,8 @@ def load_data():
             
             df = pd.merge(df_rose, df_quot, on='Id', how='left')
             
-            # Gestione Leghe e Crediti Manuali
             try: 
                 leghe = pd.read_csv('leghe.csv', encoding=enc)
-                # Assicuriamoci che esistano le colonne Squadra, Lega, Crediti
                 if 'Crediti' not in leghe.columns:
                     leghe['Crediti'] = 0
                 
@@ -66,7 +64,6 @@ if df_base is not None:
 
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Leghe")
-        
         leghe_valide = sorted([l for l in df_base['Lega'].unique() if pd.notna(l) and l != 'nan'])
         
         cols = st.columns(2)
@@ -75,22 +72,15 @@ if df_base is not None:
                 with st.container(border=True):
                     st.subheader(f"🏆 {nome_lega}")
                     df_l = df_base[df_base['Lega'] == nome_lega]
-                    
-                    # Calcolo rimborsi spuntati
                     res_rimborsi = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
-                    
-                    # Prendiamo i crediti manuali (una riga per squadra)
                     df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
-                    
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella.columns = ['Squadra', 'Crediti Manuali', 'Rimborsi da Erogare']
-                    
                     st.table(tabella.sort_values(by='Squadra'))
 
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Ricerca e Svincolo")
         cerca = st.text_input("Cerca nome giocatore:")
-        
         df_display = df_base.drop_duplicates('Id').copy()
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
@@ -113,26 +103,43 @@ if df_base is not None:
 
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Gestione Leghe e Crediti")
-        st.write("Qui puoi spostare le squadre tra le leghe e inserire i crediti residui manualmente.")
         
-        # Carichiamo il file leghe.csv per l'editing
-        try:
-            df_leghe_edit = pd.read_csv('leghe.csv', encoding='latin1')
-            if 'Crediti' not in df_leghe_edit.columns:
-                df_leghe_edit['Crediti'] = 0
-        except:
-            squadre = sorted(df_base['Squadra_LFM'].unique())
-            df_leghe_edit = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
+        # Caricamento del file leghe per l'editing
+        if 'df_leghe_full' not in st.session_state:
+            try:
+                df_temp = pd.read_csv('leghe.csv', encoding='latin1')
+                if 'Crediti' not in df_temp.columns: df_temp['Crediti'] = 0
+                st.session_state.df_leghe_full = df_temp
+            except:
+                squadre = sorted(df_base['Squadra_LFM'].unique())
+                st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
-        new_leghe = st.data_editor(df_leghe_edit, use_container_width=True, num_rows="fixed")
-        
-        csv_leghe = new_leghe.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Scarica leghe.csv aggiornato", csv_leghe, "leghe.csv", "text/csv")
-        
+        # MENU DI SELEZIONE LEGA
+        opzioni_lega = ["Tutte"] + sorted(st.session_state.df_leghe_full['Lega'].unique().tolist())
+        lega_selezionata = st.selectbox("Filtra per Lega per facilitare l'editing:", opzioni_lega)
+
+        # Filtriamo il dataframe per l'editor
+        if lega_selezionata == "Tutte":
+            df_to_edit = st.session_state.df_leghe_full
+        else:
+            df_to_edit = st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
+
+        st.write(f"Modifica i dati per: **{lega_selezionata}**")
+        edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", key="editor_leghe")
+
+        # Pulsante per applicare le modifiche alla memoria globale
+        if st.button("Applica Modifiche alla lista totale"):
+            # Aggiorniamo il dataframe principale con i dati modificati nella vista
+            st.session_state.df_leghe_full.set_index('Squadra', inplace=True)
+            st.session_state.df_leghe_full.update(edited_view.set_index('Squadra'))
+            st.session_state.df_leghe_full.reset_index(inplace=True)
+            st.success("Modifiche applicate con successo! Ora puoi scaricare il file.")
+
         st.divider()
-        st.write("### Backup Rimborsi")
-        df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
-        st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        st.subheader("Salvataggio Permanente")
+        csv_leghe = st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Scarica leghe.csv aggiornato", csv_leghe, "leghe.csv", "text/csv")
+        st.caption("Nota: Scarica il file e caricalo su GitHub per rendere le modifiche definitive.")
 
 else:
     st.error("Verifica i file su GitHub.")
