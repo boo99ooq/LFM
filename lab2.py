@@ -99,7 +99,7 @@ if df_base is not None:
                         <div style="display: flex; justify-content: space-between;"><b>{sq['Squadra_LFM']}</b><b style="color:#1e88e5;">{int(sq['Totale'])} cr</b></div>
                         <hr style="margin:8px 0;"><div style="background-color: rgba(255,255,255,0.4); padding: 8px; border-radius: 6px; border: 1px dashed #999;">{d_html if d_html else "<i>Nessuna operazione attiva</i>"}</div></div>""", unsafe_allow_html=True)
 
-    # --- 🏃 SVINCOLATI * ---
+    # --- 🏃 SVINCOLATI * (Con tabella riepilogativa) ---
     elif menu == "🏃 Svincolati *":
         st.title("✈️ Rimborsi da *")
         c1, c2 = st.columns([4, 1])
@@ -113,8 +113,11 @@ if df_base is not None:
                     if r['Rimborsato_Star']: st.session_state.refunded_ids.add(r['Id'])
                     else: st.session_state.refunded_ids.discard(r['Id'])
                 st.rerun()
+        st.divider()
+        st.subheader("📋 Riepilogo Svincolati d'ufficio (*)")
+        st.dataframe(df_base[df_base['Rimborsato_Star']].drop_duplicates('Id').sort_values(by='Nome')[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso_Star']], use_container_width=True, hide_index=True)
 
-    # --- ✂️ TAGLI VOLONTARI ---
+    # --- ✂️ TAGLI VOLONTARI (Con tabella riepilogativa) ---
     elif menu == "✂️ Tagli Volontari":
         st.title("✂️ Tagli Volontari")
         c1, c2 = st.columns([4, 1])
@@ -128,15 +131,17 @@ if df_base is not None:
                     if r['Rimborsato_Taglio']: st.session_state.tagli_map.add(r['Taglio_Key'])
                     else: st.session_state.tagli_map.discard(r['Taglio_Key'])
                 st.rerun()
+        st.divider()
+        st.subheader("📋 Riepilogo Tagli Tecnici")
+        st.dataframe(df_base[df_base['Rimborsato_Taglio']].sort_values(by=['Squadra_LFM', 'Nome'])[['Squadra_LFM', 'Nome', 'R', 'FVM', 'Qt.I', 'Rimborso_Taglio']], use_container_width=True, hide_index=True)
 
-    # --- 📊 RANKING FVM (VERSIONE CON 🟢 LIBERO) ---
+    # --- 📊 RANKING FVM ---
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM per Lega")
         c1, c2 = st.columns(2)
         ruoli_dispo = sorted(df_base['R'].dropna().unique())
         ruolo_filt = c1.multiselect("Filtra Ruolo:", ruoli_dispo, default=ruoli_dispo)
         leghe_filt = c2.multiselect("Visualizza Colonne Leghe:", ORDINE_LEGHE, default=ORDINE_LEGHE)
-        
         df_rank = df_base.copy()
         if ruolo_filt: df_rank = df_rank[df_rank['R'].isin(ruolo_filt)]
 
@@ -148,16 +153,14 @@ if df_base is not None:
 
         df_rank['Squadra_Display'] = df_rank.apply(format_owner, axis=1)
         pivot_rank = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Squadra_Display', aggfunc=lambda x: " | ".join(x)).reset_index()
-        
         for lega in ORDINE_LEGHE:
             if lega in pivot_rank.columns: pivot_rank[lega] = pivot_rank[lega].fillna("🟢 LIBERO")
             else: pivot_rank[lega] = "🟢 LIBERO"
-
         pivot_rank = pivot_rank.sort_values(by='FVM', ascending=False)
         colonne_finali = ['FVM', 'Nome', 'R'] + [l for l in leghe_filt if l in pivot_rank.columns]
         st.dataframe(pivot_rank[colonne_finali], column_config={"FVM": st.column_config.NumberColumn("FVM", format="%d"), "R": "Ruolo", **{l: st.column_config.TextColumn(f"🏆 {l}") for l in ORDINE_LEGHE}}, use_container_width=True, hide_index=True)
 
-    # --- 🟢 GIOCATORI LIBERI (CON FILTRO ESCLUSI.CSV) ---
+    # --- 🟢 GIOCATORI LIBERI ---
     elif menu == "🟢 Giocatori Liberi":
         st.title("🟢 Calciatori Liberi Ovunque")
         try:
@@ -167,15 +170,11 @@ if df_base is not None:
 
         ids_posseduti = set(df_base['Id'].unique())
         df_liberi = df_all_quot[(~df_all_quot['Id'].isin(ids_posseduti)) & (~df_all_quot['Id'].isin(blacklisted_ids))].copy()
-        
         c1, c2 = st.columns(2)
         r_sel = c1.multiselect("Ruolo:", sorted(df_liberi['R'].dropna().unique()), default=sorted(df_liberi['R'].dropna().unique()))
         cerca_lib = c2.text_input("Cerca per nome:")
-        
         if r_sel: df_liberi = df_liberi[df_liberi['R'].isin(r_sel)]
         if cerca_lib: df_liberi = df_liberi[df_liberi['Nome'].str.contains(cerca_lib, case=False, na=False)]
-            
-        st.write(f"Giocatori disponibili: {len(df_liberi)}")
         st.dataframe(df_liberi.sort_values(by='FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
 
     # --- 📋 VISUALIZZA ROSE ---
