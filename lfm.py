@@ -63,47 +63,48 @@ if df_static is not None:
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
     if menu == "🏠 Dashboard":
-        st.title("🏠 Riepilogo Crediti e Rimborsi")
+        st.title("🏠 Situazione Crediti per Squadra")
         
-        # Filtro leghe (A, B, C, D)
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         
-        # LAYOUT IN FILA PER 4
+        # 4 Colonne (una per Lega)
         cols_leghe = st.columns(len(leghe_valide))
         
         for i, nome_lega in enumerate(leghe_valide):
             with cols_leghe[i]:
-                st.markdown(f"### 🏆 {nome_lega}")
+                st.subheader(f"🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
                 
-                # Calcolo rimborsi e aggregazione nomi giocatori
+                # Dati rimborsi
                 df_rimb_active = df_l[df_l['Rimborsato'] == True]
                 res_rimborsi = df_rimb_active.groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
-                
-                # Creiamo la stringa dei nomi rimborsati per ogni squadra
                 res_nomi = df_rimb_active.groupby('Squadra_LFM')['Nome'].apply(lambda x: ", ".join(x)).reset_index()
                 res_nomi.columns = ['Squadra_LFM', 'Dettaglio']
                 
                 df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
                 
-                # Unione dati
                 tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_nomi, on='Squadra_LFM', how='left').fillna("")
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
 
-                # Visualizzazione per ogni squadra nella colonna della lega
+                # Generazione Schede Squadra
                 for _, sq in tabella.iterrows():
                     with st.container(border=True):
-                        st.markdown(f"**{sq['Squadra_LFM']}**")
-                        # Metrica con font grande per il totale
-                        st.metric(label="Totale Disponibile", value=int(sq['Totale']))
+                        st.markdown(f"#### {sq['Squadra_LFM']}")
                         
-                        # Mostriamo i nomi solo se ci sono rimborsi
+                        # Piccola tabella interna per i valori
+                        voci = {
+                            "Residuo": [int(sq['Crediti'])],
+                            "Rimborsi": [int(sq['Rimborso'])],
+                            "TOTALE": [int(sq['Totale'])]
+                        }
+                        st.table(pd.DataFrame(voci))
+                        
                         if sq['Dettaglio']:
                             st.caption(f"📝 {sq['Dettaglio']}")
                         else:
-                            st.caption("Nessun rimborso")
+                            st.caption("Nessun rimborso attivo")
 
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
