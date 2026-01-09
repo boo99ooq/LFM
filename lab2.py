@@ -90,7 +90,7 @@ if df_base is not None:
     st.sidebar.title("⚖️ LFM Golden Edition")
     menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "⚙️ Gestione Squadre"])
 
-    # --- 🏠 DASHBOARD ---
+   # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Dashboard Riepilogo")
         leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].values]
@@ -98,31 +98,52 @@ if df_base is not None:
         for i, lega_nome in enumerate(leghe_eff):
             with cols[i % 2]:
                 df_l = df_base[df_base['Lega'] == lega_nome]
+                
+                # Calcoli per rimborsi e conteggi
                 res_star = df_l[df_l['Rimborsato_Star']].groupby('Squadra_LFM').agg({'Rimborso_Star':'sum', 'Nome': lambda x: ", ".join(x)}).reset_index()
                 res_tagli = df_l[df_l['Rimborsato_Taglio']].groupby('Squadra_LFM').agg({'Rimborso_Taglio':'sum', 'Nome': lambda x: ", ".join(x)}).reset_index()
-                attivi = df_l[~(df_l['Rimborsato_Star']) & ~(df_l['Rimborsato_Taglio'])].groupby('Squadra_LFM').size().reset_index(name='NG')
+                
+                # Consideriamo solo i giocatori ATTIVI in rosa per NG, FVM totale e Quotazione totale
+                df_attivi = df_l[~(df_l['Rimborsato_Star']) & ~(df_l['Rimborsato_Taglio'])]
+                attivi_stats = df_attivi.groupby('Squadra_LFM').agg({
+                    'Nome': 'count',
+                    'FVM': 'sum',
+                    'Qt.I': 'sum'
+                }).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
                 
                 tabella = pd.merge(df_l[['Squadra_LFM', 'Crediti']].drop_duplicates(), res_star, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_tagli.rename(columns={'Nome':'N_T'}), on='Squadra_LFM', how='left').fillna(0)
-                tabella = pd.merge(tabella, attivi, on='Squadra_LFM', how='left').fillna(0)
-                tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso_Star'] + tabella['Rimborso_Taglio']
+                tabella = pd.merge(tabella, attivi_stats, on='Squadra_LFM', how='left').fillna(0)
+                tabella['Totale_Crediti'] = tabella['Crediti'] + tabella['Rimborso_Star'] + tabella['Rimborso_Taglio']
                 
                 st.markdown(f"### 🏆 {lega_nome}")
                 for _, sq in tabella.sort_values(by='Squadra_LFM').iterrows():
                     cap = df_stadi[df_stadi['Squadra'] == sq['Squadra_LFM']]['Stadio'].values
-                    cap_txt = f"{int(cap[0]):,}" if len(cap)>0 else "N.D."
+                    # Capienza con formato 'k' (es. 60000 -> 60k)
+                    cap_txt = f"{int(cap[0]/1000)}k" if len(cap)>0 and cap[0] > 0 else "N.D."
                     
-                    # Logica segnalazione rosso (meno di 25 o più di 35 giocatori)
+                    # Segnalazione rosso NG
                     ng_val = int(sq['NG'])
-                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "white"
+                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "#00ff00" # Verde se OK, rosso se fuori range
                     
-                    st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 12px; border-radius: 10px; margin-bottom: 8px; color: white;">
-                        <div style="display: flex; justify-content: space-between;"><b>{sq['Squadra_LFM']}</b> <span style="font-size:10px;">🏟️ Capienza: {cap_txt}</span></div>
-                        <div style="font-size:20px; font-weight:bold;">{int(sq['Totale'])} cr <small style="font-size:13px; font-weight:bold; color: {color_ng};">({ng_val} gioc.)</small></div>
-                        <div style="font-size:10px; opacity:0.8;">✈️ {sq['Nome'] if sq['Nome'] != 0 else '-'}</div>
-                        <div style="font-size:10px; opacity:0.8;">✂️ {sq['N_T'] if sq['N_T'] != 0 else '-'}</div>
+                    st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 15px; border-radius: 10px; margin-bottom: 12px; color: white; border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <b style="font-size: 18px;">{sq['Squadra_LFM']}</b> 
+                            <span style="font-size:12px; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">🏟️ {cap_txt}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div style="font-size:22px; font-weight:bold;">{int(sq['Totale_Crediti'])} <small style="font-size:12px;">cr residui</small></div>
+                            <div style="font-size:14px; font-weight:bold; color: {color_ng};">({ng_val} gioc.)</div>
+                        </div>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); display: flex; justify-content: space-between; font-size:11px; opacity:0.9;">
+                            <span>📊 Valore FVM: <b>{int(sq['FVM_Tot'])}</b></span>
+                            <span>💰 Valore Quot: <b>{int(sq['Quot_Tot'])}</b></span>
+                        </div>
+                        <div style="font-size:10px; opacity:0.7; margin-top: 5px;">
+                            ✈️ {sq['Nome'] if sq['Nome'] != 0 else '-'} <br>
+                            ✂️ {sq['N_T'] if sq['N_T'] != 0 else '-'}
+                        </div>
                     </div>""", unsafe_allow_html=True)
-
     # --- 🗓️ CALENDARI ---
     elif menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Calendari Campionati")
