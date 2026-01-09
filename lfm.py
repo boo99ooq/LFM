@@ -1,0 +1,52 @@
+import streamlit as st
+import pandas as pd
+
+# Configurazione Pagina
+st.set_page_config(page_title="FantaManager Tool", layout="wide")
+
+st.title("🔍 Ricerca Quotazioni e Rose Fantacalcio")
+st.write("Cerca un giocatore per vedere il prezzo di acquisto, la quotazione iniziale e l'FVM.")
+
+# Caricamento dati
+@st.cache_data
+def load_data():
+    # Carica il file che abbiamo appena generato
+    df = pd.read_csv('dati_fanta_completi.csv')
+    return df
+
+df = load_data()
+
+# Barra di ricerca
+search_query = st.text_input("Inserisci il nome del giocatore:", "")
+
+if search_query:
+    # Filtro per nome (case-insensitive)
+    results = df[df['Nome'].str.contains(search_query, case=False, na=False)]
+    
+    if not results.empty:
+        for index, row in results.iterrows():
+            with st.container():
+                st.markdown(f"### 🏃 {row['Nome']} ({row['R']})")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Squadra", row['Squadra'])
+                with col2:
+                    st.metric("Prezzo Acquisto", f"{int(row['Prezzo_Acquisto'])} cr")
+                with col3:
+                    st.metric("Quot. Iniziale", f"{int(row['Qt.I'])} cr")
+                with col4:
+                    st.metric("FVM", row['FVM'])
+                
+                # Calcolo extra: Guadagno/Perdita di valore
+                differenza = row['FVM'] - row['Qt.I']
+                st.info(f"Variazione Valore: {differenza:+.1f} rispetto all'inizio.")
+                st.divider()
+    else:
+        st.warning("Nessun giocatore trovato con questo nome.")
+else:
+    st.info("Digita un nome sopra per iniziare la ricerca (es. 'Lautaro' o 'Dybala').")
+
+# Visualizzazione Tabella Completa (opzionale)
+if st.checkbox("Mostra tabella completa"):
+    st.dataframe(df)
