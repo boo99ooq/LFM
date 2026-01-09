@@ -44,16 +44,18 @@ if 'df_leghe_full' not in st.session_state:
             squadre = sorted(df_static_init['Squadra_LFM'].unique())
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
-# --- 3. LOGICA DI UNIFICAZIONE E COLORI FORZATI ---
+# --- 3. UNIFICAZIONE TOTALE NOMI E LEGA ---
 def fix_league_names(df_leghe):
     df = df_leghe.copy()
-    # Forza la Fiorentina in Serie A
+    # 1. Trasformiamo "Lega A" in "Serie A" per farle combaciare
+    df['Lega'] = df['Lega'].replace("Lega A", "Serie A")
+    # 2. Forza la Fiorentina in Serie A (se fosse altrove)
     df.loc[df['Squadra'].str.contains("Fiorentina", case=False, na=False), 'Lega'] = "Serie A"
     return df
 
 st.session_state.df_leghe_full = fix_league_names(st.session_state.df_leghe_full)
 
-# MAPPATURA COLORI MANUALE (Forzata come richiesto)
+# MAPPATURA COLORI FISSA
 MAPPATURA_COLORI = {
     "Serie A": "#fce4ec",        # Rosa pastello
     "Bundesliga": "#e8f5e9",     # Verde pastello
@@ -64,7 +66,6 @@ MAPPATURA_COLORI = {
 # --- 4. COSTRUZIONE DASHBOARD ---
 df_static = load_static_data()
 if df_static is not None:
-    # Merge dinamico con le leghe aggiornate
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
@@ -72,21 +73,17 @@ if df_static is not None:
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "⚙️ Gestione Squadre"])
 
     if menu == "🏠 Dashboard":
-        st.title("🏠 Situazione Crediti e Rimborsi")
+        st.title("🏠 Riepilogo Crediti e Rimborsi")
         
-        # Prendiamo le leghe nell'ordine preferito
-        leghe_display = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
-        # Aggiungiamo eventuali altre leghe trovate nel file che non sono tra le 4 principali
-        altre_leghe = [l for l in df_base['Lega'].unique() if pd.notna(l) and l not in leghe_display]
-        tutte_le_leghe = leghe_display + sorted(altre_leghe)
-        
-        # Filtriamo solo quelle che hanno effettivamente delle squadre
-        tutte_le_leghe = [l for l in tutte_le_leghe if l in df_base['Lega'].values]
+        # Ordine desiderato delle leghe
+        tutte_le_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
+        # Filtriamo solo quelle che hanno dati
+        leghe_effettive = [l for l in tutte_le_leghe if l in df_base['Lega'].values]
 
         # LAYOUT 2x2
         cols_container = st.columns(2)
         
-        for i, nome_lega in enumerate(tutte_le_leghe):
+        for i, nome_lega in enumerate(leghe_effettive):
             with cols_container[i % 2]:
                 st.markdown(f"## 🏆 {nome_lega}")
                 df_l = df_base[df_base['Lega'] == nome_lega]
@@ -103,7 +100,6 @@ if df_static is not None:
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                 tabella = tabella.sort_values(by='Squadra_LFM')
 
-                # Colore forzato o grigio di default
                 bg_color = MAPPATURA_COLORI.get(nome_lega, "#f5f5f5")
 
                 for _, sq in tabella.iterrows():
@@ -126,6 +122,7 @@ if df_static is not None:
                 st.divider()
 
     elif menu == "🔍 Spunta Giocatori":
+        # (Resto del codice invariato)
         st.title("🔍 Gestione Svincoli")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
