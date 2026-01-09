@@ -78,7 +78,7 @@ if df_base is not None:
     st.sidebar.title("⚖️ LFM Golden Edition")
     menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "⚙️ Gestione Squadre"])
 
-    # --- 🗓️ CALENDARI (LOGICA CORRETTA PER FILTRARE LE LEGHE) ---
+    # --- 🗓️ CALENDARI (LOGICA UNIVERSALE CORRETTA) ---
     if menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Centrale Calendari")
         files_cal = [f for f in os.listdir('.') if f.startswith("Calendario_") and f.endswith(".csv")]
@@ -92,66 +92,82 @@ if df_base is not None:
             try:
                 df_cal = pd.read_csv(camp_scelto, header=None, encoding='latin1').fillna("")
                 
-                # Identifica colonne dei blocchi (0 per sinistra, 6 o 7 per destra)
-                is_coppa = df_cal.shape[1] > 10
-                col_dx = 7 if is_coppa else 6
+                # 1. TROVA TUTTE LE INTESTAZIONI DI GIORNATA
+                giornate_trovate = []
+                for r in range(len(df_cal)):
+                    for c in range(df_cal.shape[1]):
+                        cella = str(df_cal.iloc[r, c]).strip()
+                        if "giornata" in cella.lower() and "serie a" not in cella.lower():
+                            giornate_trovate.append({"nome": cella, "r": r, "c": c})
                 
-                # Filtra SOLO le giornate della "Lega" (esclude riferimenti a Serie A)
-                giornate_info = []
-                for col in [0, col_dx]:
-                    for row in range(df_cal.shape[0]):
-                        val = str(df_cal.iloc[row, col])
-                        if "Giornata lega" in val.lower() or ("Giornata" in val and "serie a" not in val.lower()):
-                            giornate_info.append((val.strip(), row, col))
+                elenco_nomi = sorted(list(set([g["nome"] for g in giornate_trovate])), key=natural_sort_key)
+                sel_g = st.selectbox("Seleziona Giornata:", elenco_nomi)
                 
-                nomi_giornate = sorted(list(set([g[0] for g in giornate_info])), key=natural_sort_key)
+                match_list = []
+                riposi = []
                 
-                if not nomi_giornate:
-                    st.error("Nessuna giornata valida trovata. Verifica che le celle contengano 'Giornata lega'.")
+                # 2. PROCESSA OGNI BLOCCO DELLA GIORNATA SELEZIONATA
+                posizioni = [g for g in giornate_trovate if g["nome"] == sel_g]
+                
+                for pos in posizioni:
+                    r_start, c_start = pos["r"], pos["c"]
+                    for i in range(1, 15):
+                        if r_start + i < len(df_cal):
+                            row = df_cal.iloc[r_start + i]
+                            
+                            # Se troviamo un'altra intestazione, il blocco è finito
+                            testo_cella_base = str(row[c_start]).strip()
+                            if "giornata" in testo_cella_base.lower(): break
+                            
+                            # LOGICA DINAMICA PER OFFSET (SQUADRA CASA)
+                            # Se la cella base è corta (es. Gruppo "A"), la squadra è nella colonna dopo
+                            if testo_cella_base != "" and len(testo_cella_base) <= 2:
+                                idx_casa = c_start + 1
+                            else:
+                                idx_casa = c_start
+                            
+                            squadra_casa = str(row[idx_casa]).strip()
+                            if not squadra_casa or squadra_casa == "nan": continue
+                            
+                            # Gestione Riposi
+                            if "riposa" in squadra_casa.lower():
+                                riposi.append(squadra_casa)
+                                continue
+                                
+                            try:
+                                squadra_fuori = str(row[idx_casa + 3]).strip()
+                                # Pulizia punteggi (gestisce "0", "0,0", "" ecc)
+                                sh_str = str(row[idx_casa + 1]).replace(',','.').replace('"','').strip()
+                                sa_str = str(row[idx_casa + 2]).replace(',','.').replace('"','').strip()
+                                
+                                # Solo se la partita deve essere ancora giocata
+                                if sh_str == "0" and sa_str == "0":
+                                    cap_h = df_stadi[df_stadi['Squadra']==squadra_casa]['Stadio'].values[0] if squadra_casa in df_stadi['Squadra'].values else 0
+                                    cap_a = df_stadi[df_stadi['Squadra']==squadra_fuori]['Stadio'].values[0] if squadra_fuori in df_stadi['Squadra'].values else 0
+                                    
+                                    bh, _ = calculate_stadium_bonus(cap_h)
+                                    _, ba = calculate_stadium_bonus(cap_a)
+                                    
+                                    match_list.append({
+                                        "Partita": f"{squadra_casa} vs {squadra_fuori}",
+                                        "Bonus Casa": f"+{bh}",
+                                        "Bonus Fuori": f"+{ba}"
+                                    })
+                            except: continue
+
+                if match_list:
+                    st.subheader(f"🏟️ Bonus Stadio - {sel_g}")
+                    st.table(pd.DataFrame(match_list))
                 else:
-                    sel_g = st.selectbox("Seleziona Giornata:", nomi_giornate)
-                    match_list, riposi = [], []
-                    posizioni = [g for g in giornate_info if g[0] == sel_g]
-                    
-                    for nome, r, c in posizioni:
-                        offset = 1 if is_coppa else 0
-                        for i in range(1, 15):
-                            if r + i < df_cal.shape[0]:
-                                row_data = df_cal.iloc[r+i]
-                                if "Giornata" in str(row_data[c]): break
-                                
-                                val_check = str(row_data[c+offset]) if is_coppa else str(row_data[c])
-                                if "Riposa" in val_check:
-                                    riposi.append(val_check.strip())
-                                    continue
-                                
-                                try:
-                                    h = str(row_data[c + offset]).strip()
-                                    a = str(row_data[c + offset + 3]).strip()
-                                    if not h or h == "" or a == "" or h == "nan": continue
-                                    
-                                    sh = str(row_data[c + offset + 1]).replace(',','.').replace('"','').strip()
-                                    sa = str(row_data[c + offset + 2]).replace(',','.').replace('"','').strip()
-                                    
-                                    if float(sh) == 0 and float(sa) == 0:
-                                        cap_h = df_stadi[df_stadi['Squadra']==h]['Stadio'].values[0] if h in df_stadi['Squadra'].values else 0
-                                        cap_a = df_stadi[df_stadi['Squadra']==a]['Stadio'].values[0] if a in df_stadi['Squadra'].values else 0
-                                        bh, _ = calculate_stadium_bonus(cap_h)
-                                        _, ba = calculate_stadium_bonus(cap_a)
-                                        match_list.append({"Partita": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
-                                except: continue
+                    st.info("Nessuna partita da giocare (0-0) trovata per questa giornata.")
+                
+                if riposi:
+                    st.subheader("☕ Squadre a riposo")
+                    for rip in sorted(list(set(riposi))): st.write(f"- {rip}")
 
-                    if match_list:
-                        st.subheader(f"🏟️ Bonus Stadio - {sel_g}")
-                        st.table(pd.DataFrame(match_list))
-                    else:
-                        st.info("Tutte le partite di questa giornata sono state giocate.")
-                    if riposi:
-                        st.subheader("☕ Squadre a riposo")
-                        for rip in sorted(list(set(riposi))): st.write(f"- {rip}")
-            except Exception as e: st.error(f"Errore: {e}")
+            except Exception as e: st.error(f"Errore tecnico: {e}")
 
-    # --- 🏠 RESTO DEL CODICE (Dashboard, Mercato, etc.) ---
+    # --- 🏠 DASHBOARD ---
     elif menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Crediti")
         ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
@@ -168,7 +184,7 @@ if df_base is not None:
                 tabella = pd.merge(tabella, res_tagli, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, attivi, on='Squadra_LFM', how='left').fillna(0)
                 tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso_Star'] + tabella['Rimborso_Taglio']
-                st.markdown(f"### 🏆 {nome_lega} (Media: {int(tabella['Totale'].mean())} cr)")
+                st.markdown(f"### 🏆 {nome_lega}")
                 bg_color = MAPPATURA_COLORI.get(nome_lega, "#333")
                 for _, sq in tabella.sort_values(by='Squadra_LFM').iterrows():
                     n_g = int(sq['NG'])
@@ -178,6 +194,7 @@ if df_base is not None:
                         <div style="font-size:18px; font-weight:bold;">{int(sq['Totale'])} cr</div>
                     </div>""", unsafe_allow_html=True)
 
+    # --- RESTANTI SEZIONI ---
     elif menu == "🏃 Gestione Mercato":
         st.title("🏃 Operazioni Mercato")
         t1, t2 = st.tabs(["✈️ Svincoli * (100%)", "✂️ Tagli (50%)"])
