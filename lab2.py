@@ -88,7 +88,7 @@ if df_base is not None:
     df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
 
     st.sidebar.title("⚖️ LFM Golden Edition")
-    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "📈 Statistiche Leghe", "⚙️ Gestione Squadre"])
 
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
@@ -244,6 +244,29 @@ if df_base is not None:
         df_r = df_r.sort_values(by=['Stato', 'Ruolo_Ord', 'FVM'], ascending=[False, True, False])
         styled_df = df_r[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']].style.background_gradient(subset=['FVM'], cmap='Greens')
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+    # --- 📈 STATISTICHE LEGHE ---
+    elif menu == "📈 Statistiche Leghe":
+        st.title("📈 Medie Comparative per Lega")
+        df_stats_base = st.session_state.df_leghe_full.copy()
+        df_stats_base = pd.merge(df_stats_base, df_stadi, on='Squadra', how='left').fillna(0)
+        df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
+        tecnici = df_attivi.groupby('Squadra_LFM').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'Squadra_LFM': 'Squadra', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'})
+        df_final_stats = pd.merge(df_stats_base, tecnici, on='Squadra', how='left').fillna(0)
+        medie_lega = df_final_stats.groupby('Lega').agg({'Stadio': 'mean', 'Crediti': 'mean', 'FVM_Tot': 'mean', 'Quot_Tot': 'mean'}).reset_index().round(1)
+        
+        display_stats = medie_lega.copy()
+        display_stats['Stadio'] = display_stats['Stadio'].apply(lambda x: f"{x}k")
+        display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
+        st.table(display_stats)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Confronto FVM Medio")
+            st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
+        with c2:
+            st.subheader("Confronto Crediti Medi")
+            st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
 
     # --- 🟢 LIBERI ---
     elif menu == "🟢 Giocatori Liberi":
