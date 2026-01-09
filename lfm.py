@@ -66,10 +66,9 @@ if df_static is not None:
     df_base['Rimborsato'] = df_base['Id'].isin(st.session_state.refunded_ids)
 
     st.sidebar.title("LFM Admin")
-    # Cambio nome qui: da "Spunta Giocatori" a "Giocatori Svincolati"
-    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🏃 Giocatori Svincolati", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Vai a:", ["🏠 Dashboard", "🔍 Spunta Giocatori", "📋 Visualizza Rose", "⚙️ Gestione Squadre"])
 
-    # --- DASHBOARD ---
+    # --- DASHBOARD (Invariata) ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Crediti e Rimborsi")
         ordine_leghe = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
@@ -99,48 +98,57 @@ if df_static is not None:
                         {f"📝 {sq['Dettaglio']}" if sq['Dettaglio'] else "Nessun rimborso attivo"}</div></div>""", unsafe_allow_html=True)
                 st.divider()
 
-    # --- GIOCATORI SVINCOLATI (ex Spunta Giocatori) ---
-    elif menu == "🏃 Giocatori Svincolati":
-        st.title("🏃 Gestione Giocatori Svincolati")
-        cerca = st.text_input("Cerca nome giocatore per svincolarlo:")
+    # --- SPUNTA GIOCATORI (Invariata) ---
+    elif menu == "🔍 Spunta Giocatori":
+        st.title("🔍 Gestione Svincoli")
+        cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
         if cerca:
             df_filtered = df_display[df_display['Nome'].str.contains(cerca, case=False, na=False)]
             if not df_filtered.empty:
                 df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
                 res_editor = st.data_editor(df_edit_view, column_config={"Rimborsato": st.column_config.CheckboxColumn("Svincola"), "Id": None}, use_container_width=True, hide_index=True)
-                if st.button("💾 Salva modifiche rimborsi"):
+                if st.button("💾 Salva modifiche"):
                     for _, row in res_editor.iterrows():
                         if row['Rimborsato']: st.session_state.refunded_ids.add(row['Id'])
                         else: st.session_state.refunded_ids.discard(row['Id'])
-                    st.success("Dati aggiornati correttamente!"); st.rerun()
+                    st.success("Dati salvati!"); st.rerun()
         st.divider()
-        st.subheader("📋 Elenco completo rimborsi attivi")
+        st.subheader("📋 Riepilogo Svincolati")
         df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').sort_values(by=['Squadra_LFM', 'Nome'])
         if not df_svincolati.empty:
             st.dataframe(df_svincolati[['Squadra_LFM', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
-        else:
-            st.info("Nessun giocatore svincolato al momento.")
 
-    # --- VISUALIZZA ROSE ---
+    # --- VISUALIZZA ROSE (Ordinamento P-D-C-A) ---
     elif menu == "📋 Visualizza Rose":
         st.title("📋 Consultazione Rose")
+        
         col1, col2 = st.columns(2)
         leghe_disp = ["Tutte"] + sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l)])
         lega_sel = col1.selectbox("Seleziona Lega:", leghe_disp)
+        
         squadre_disp = sorted(df_base[df_base['Lega'] == lega_sel]['Squadra_LFM'].unique()) if lega_sel != "Tutte" else sorted(df_base['Squadra_LFM'].unique())
         squadra_sel = col2.selectbox("Seleziona Squadra:", squadre_disp)
+        
         df_rosa_sel = df_base[df_base['Squadra_LFM'] == squadra_sel].copy()
+        
+        # --- LOGICA DI ORDINAMENTO RUOLI ---
+        # Mappiamo i ruoli a numeri per l'ordinamento personalizzato
         ruolo_order = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
         df_rosa_sel['Ruolo_Num'] = df_rosa_sel['R'].map(ruolo_order).fillna(4)
+        
+        # Ordiniamo per: Stato (Prima attivi), Ruolo (P-D-C-A), Nome
         df_rosa_sel = df_rosa_sel.sort_values(by=['Rimborsato', 'Ruolo_Num', 'Nome'])
+        
         df_rosa_sel['Stato'] = df_rosa_sel['Rimborsato'].apply(lambda x: "✅ RIMBORSATO" if x else "🏃 In Rosa")
+        
         st.subheader(f"Rosa: {squadra_sel}")
         st.dataframe(
             df_rosa_sel[['Stato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']],
             column_config={"R": "Ruolo", "Qt.I": "Quota I.", "FVM": "FVM", "Rimborso": "Valore"},
             use_container_width=True, hide_index=True
         )
+        
         in_rosa = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == False])
         svincolati = len(df_rosa_sel[df_rosa_sel['Rimborsato'] == True])
         st.write(f"📊 Giocatori attivi: **{in_rosa}** | Giocatori rimborsati: **{svincolati}**")
