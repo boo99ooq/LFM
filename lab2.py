@@ -20,6 +20,12 @@ def calculate_stadium_bonus(capienza):
     trasferta = math.floor((casa / 2) * 2) / 2
     return casa, trasferta
 
+def format_num(num):
+    """Rimuove il .0 se presente per pulizia visiva"""
+    if num == int(num):
+        return str(int(num))
+    return str(round(num, 1))
+
 def fix_league_names(df):
     if 'Lega' in df.columns:
         df['Lega'] = df['Lega'].replace(['Lega A', 'nan', 'Da Assegnare', None], 'Serie A')
@@ -83,13 +89,10 @@ except:
 df_base, df_all_quot = load_static_data()
 
 if df_base is not None:
-    # --- FIX CRUCIALE --- 
-    # Puliamo i nomi per il merge (rimozione spazi e uniformità)
     leghe_pulite = st.session_state.df_leghe_full.copy()
     leghe_pulite['Squadra_Key'] = leghe_pulite['Squadra'].str.strip().str.upper()
     df_base['Squadra_Key'] = df_base['Squadra_LFM'].str.strip().str.upper()
     
-    # Rimuoviamo colonne duplicate prima del merge se esistono
     if 'Lega' in df_base.columns: df_base = df_base.drop(columns=['Lega', 'Crediti', 'Squadra_y'], errors='ignore')
 
     df_base = pd.merge(df_base, leghe_pulite.drop(columns=['Squadra']), on='Squadra_Key', how='left')
@@ -104,8 +107,6 @@ if df_base is not None:
     if menu == "🏠 Dashboard":
         st.title("🏠 Dashboard Riepilogo")
         leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].dropna().unique()]
-        if not leghe_eff:
-            st.error("⚠️ Attenzione: Nessuna squadra associata a una Lega. Verifica che i nomi delle squadre nel file leghe.csv siano IDENTICI a quelli del file roster.")
         cols = st.columns(2)
         for i, lega_nome in enumerate(leghe_eff):
             with cols[i % 2]:
@@ -122,20 +123,19 @@ if df_base is not None:
                 for _, sq in tabella.sort_values(by='Squadra_LFM').iterrows():
                     cap = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == sq['Squadra_LFM'].strip().upper()]['Stadio'].values
                     cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
-                    ng_val = int(sq['NG'])
-                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "#00ff00"
+                    color_ng = "#ff4b4b" if sq['NG'] < 25 or sq['NG'] > 35 else "#00ff00"
                     st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 15px; border-radius: 10px; margin-bottom: 12px; color: white; border: 1px solid rgba(255,255,255,0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <b style="font-size: 18px;">{sq['Squadra_LFM']}</b> 
                             <span style="font-size:12px; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">🏟️ {cap_txt}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <div style="font-size:22px; font-weight:bold;">{int(sq['Totale_Cr'])} <small style="font-size:12px;">cr residui</small></div>
-                            <div style="font-size:14px; font-weight:bold; color: {color_ng};">({ng_val} gioc.)</div>
+                            <div style="font-size:22px; font-weight:bold;">{format_num(sq['Totale_Cr'])} <small style="font-size:12px;">cr residui</small></div>
+                            <div style="font-size:14px; font-weight:bold; color: {color_ng};">({int(sq['NG'])} gioc.)</div>
                         </div>
                         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); display: flex; justify-content: space-between; font-size:11px; opacity:0.9;">
-                            <span>📊 Valore FVM: <b>{int(sq['FVM_Tot'])}</b></span>
-                            <span>💰 Valore Quot: <b>{int(sq['Quot_Tot'])}</b></span>
+                            <span>📊 Valore FVM: <b>{format_num(sq['FVM_Tot'])}</b></span>
+                            <span>💰 Valore Quot: <b>{format_num(sq['Quot_Tot'])}</b></span>
                         </div>
                         <div style="font-size:10px; opacity:0.7; margin-top: 5px;">
                             ✈️ {sq['Nome'] if sq['Nome'] != 0 else '-'} | ✂️ {sq['N_T'] if sq['N_T'] != 0 else '-'}
@@ -163,7 +163,7 @@ if df_base is not None:
                             cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
                             cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
                             bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
-                            res.append({"Match": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
+                            res.append({"Match": f"{h} vs {a}", "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
                         except: pass
             st.table(pd.DataFrame(res))
 
@@ -196,12 +196,44 @@ if df_base is not None:
                                     cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
                                     cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
                                     bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
-                                    res.append({"Girone": str(row[col_idx]).strip(), "Match": f"{h} vs {a}", "Bonus Casa": f"+{bh}", "Bonus Fuori": f"+{ba}"})
+                                    res.append({"Girone": str(row[col_idx]).strip(), "Match": f"{h} vs {a}", "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
                             except: continue
                 st.table(pd.DataFrame(res))
                 if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
 
-    # --- 🏃 MERCATO ---
+    # --- 📈 STATISTICHE LEGHE ---
+    elif menu == "📈 Statistiche Leghe":
+        st.title("📈 Medie Comparative per Lega")
+        df_stats_base = st.session_state.df_leghe_full.copy()
+        df_stats_base['Squadra_Key'] = df_stats_base['Squadra'].str.strip().str.upper()
+        stadi_puliti = df_stadi.copy()
+        stadi_puliti['Squadra_Key'] = stadi_puliti['Squadra'].str.strip().str.upper()
+        df_stats_base = pd.merge(df_stats_base, stadi_puliti[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
+        df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
+        tecnici = df_attivi.groupby('Squadra_Key').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'})
+        df_final_stats = pd.merge(df_stats_base, tecnici, on='Squadra_Key', how='left').fillna(0)
+        
+        if 'Lega' in df_final_stats.columns and not df_final_stats[df_final_stats['Lega'] != 0].empty:
+            df_calc = df_final_stats[df_final_stats['Lega'] != 0]
+            medie_lega = df_calc.groupby('Lega').agg({'Stadio': 'mean', 'Crediti': 'mean', 'FVM_Tot': 'mean', 'Quot_Tot': 'mean'}).reset_index()
+            
+            # Formattazione per la tabella senza .0
+            display_stats = medie_lega.copy()
+            for col in ['Stadio', 'Crediti', 'FVM_Tot', 'Quot_Tot']:
+                display_stats[col] = display_stats[col].apply(format_num)
+            display_stats['Stadio'] = display_stats['Stadio'] + "k"
+            display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
+            st.table(display_stats)
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("Confronto FVM Medio")
+                st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
+            with c2:
+                st.subheader("Confronto Crediti Medi")
+                st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
+
+    # --- ALTRO MENU (MERCATO, RANKING, ROSE, ECC.) ---
     elif menu == "🏃 Gestione Mercato":
         st.title("🏃 Gestione Mercato")
         t1, t2 = st.tabs(["✈️ Svincoli (*)", "✂️ Tagli"])
@@ -215,7 +247,6 @@ if df_base is not None:
                         if r['Rimborsato_Star']: st.session_state.refunded_ids.add(r['Id'])
                         else: st.session_state.refunded_ids.discard(r['Id'])
                     st.rerun()
-            st.subheader("📋 Riepilogo Svincoli")
             st.dataframe(df_base[df_base['Rimborsato_Star']][['Nome', 'Qt.I', 'FVM', 'Rimborso_Star']].drop_duplicates('Nome'), hide_index=True)
         with t2:
             c2 = st.text_input("Cerca per taglio:")
@@ -227,10 +258,8 @@ if df_base is not None:
                         if r['Rimborsato_Taglio']: st.session_state.tagli_map.add(r['Taglio_Key'])
                         else: st.session_state.tagli_map.discard(r['Taglio_Key'])
                     st.rerun()
-            st.subheader("📋 Riepilogo Tagli")
             st.dataframe(df_base[df_base['Rimborsato_Taglio']][['Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Taglio']], hide_index=True)
 
-    # --- 📊 RANKING ---
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM Internazionale")
         c1, c2 = st.columns(2)
@@ -242,7 +271,6 @@ if df_base is not None:
             pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index().fillna('🟢')
             st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
 
-    # --- 📋 ROSE ---
     elif menu == "📋 Rose Complete":
         st.title("📋 Consultazione Rose")
         leghe_disp = sorted(df_base['Lega'].dropna().unique())
@@ -255,52 +283,7 @@ if df_base is not None:
             df_r = df_r.sort_values(by=['Stato', 'Ruolo_Ord', 'FVM'], ascending=[False, True, False])
             styled_df = df_r[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']].style.background_gradient(subset=['FVM'], cmap='Greens')
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        else: st.warning("Dati leghe non disponibili.")
 
-    # --- 📈 STATISTICHE LEGHE ---
-    elif menu == "📈 Statistiche Leghe":
-        st.title("📈 Medie Comparative per Lega")
-        
-        # Prepariamo i dati delle squadre unendo Leghe e Stadi con pulizia chiavi
-        df_stats_base = st.session_state.df_leghe_full.copy()
-        df_stats_base['Squadra_Key'] = df_stats_base['Squadra'].str.strip().str.upper()
-        
-        stadi_puliti = df_stadi.copy()
-        stadi_puliti['Squadra_Key'] = stadi_puliti['Squadra'].str.strip().str.upper()
-        
-        df_stats_base = pd.merge(df_stats_base, stadi_puliti[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
-        
-        # Calcoliamo i dati tecnici dei giocatori attivi
-        df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
-        tecnici = df_attivi.groupby('Squadra_Key').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'})
-        
-        df_final_stats = pd.merge(df_stats_base, tecnici, on='Squadra_Key', how='left').fillna(0)
-        
-        if 'Lega' in df_final_stats.columns and not df_final_stats[df_final_stats['Lega'] != 0].empty:
-            df_calc = df_final_stats[df_final_stats['Lega'] != 0]
-            medie_lega = df_calc.groupby('Lega').agg({
-                'Stadio': 'mean', 
-                'Crediti': 'mean', 
-                'FVM_Tot': 'mean', 
-                'Quot_Tot': 'mean'
-            }).reset_index().round(1)
-            
-            display_stats = medie_lega.copy()
-            display_stats['Stadio'] = display_stats['Stadio'].apply(lambda x: f"{x}k")
-            display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
-            st.table(display_stats)
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("Confronto FVM Medio")
-                st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
-            with c2:
-                st.subheader("Confronto Crediti Medi")
-                st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
-        else:
-            st.error("Errore: Impossibile trovare i dati delle Leghe per il calcolo. Verifica i file leghe.csv e fantamanager-2021-rosters.csv")
-
-    # --- 🟢 LIBERI ---
     elif menu == "🟢 Giocatori Liberi":
         st.title("🟢 Calciatori Liberi")
         try:
@@ -311,7 +294,6 @@ if df_base is not None:
         df_lib = df_all_quot[~df_all_quot['Id'].isin(ids_occ) & ~df_all_quot['Id'].isin(ids_esc)]
         st.dataframe(df_lib.sort_values('FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
 
-    # --- ⚙️ GESTIONE ---
     elif menu == "⚙️ Gestione Squadre":
         st.title("⚙️ Configurazione & Backup")
         edited = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, hide_index=True)
