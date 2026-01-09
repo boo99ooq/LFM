@@ -19,7 +19,6 @@ def load_static_data():
             df = pd.merge(df_rose, df_quot, on='Id', how='left')
             df['Nome'] = df['Nome'].fillna("ID: " + df['Id'].astype(int, errors='ignore').astype(str))
             
-            # Calcoli numerici
             df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
             df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
             df['Prezzo_Asta'] = pd.to_numeric(df['Prezzo_Asta'], errors='coerce').fillna(0)
@@ -84,19 +83,28 @@ if df_static is not None:
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                     
-                    # RIMOZIONE DECIMALI: Trasformiamo in intero per la visualizzazione
+                    # Calcolo metrica lega
+                    tot_lega = tabella['Totale'].sum()
+                    st.write(f"💰 **Totale Circolante Lega:** {int(tot_lega)}")
+
+                    # Visualizzazione Tabella con Totale Disponibile in Grassetto
                     tab_display = tabella.copy()
                     tab_display.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
-                    for col in ['Crediti Residui', 'Rimborsi', 'Totale Disponibile']:
-                        tab_display[col] = tab_display[col].astype(int)
                     
-                    st.table(tab_display.sort_values(by='Squadra'))
+                    # Applichiamo il grassetto visivo (Markdown)
+                    tab_display['Totale Disponibile'] = tab_display['Totale Disponibile'].apply(lambda x: f"**{int(x)}**")
+                    tab_display['Crediti Residui'] = tab_display['Crediti Residui'].astype(int)
+                    tab_display['Rimborsi'] = tab_display['Rimborsi'].astype(int)
+                    
+                    st.dataframe(
+                        tab_display.sort_values(by='Squadra'),
+                        use_container_width=True,
+                        hide_index=True
+                    )
 
     # --- RICERCA E SPUNTE ---
     elif menu == "🔍 Spunta Giocatori":
         st.title("🔍 Gestione Svincoli")
-        
-        st.subheader("1. Cerca e Svincola")
         cerca = st.text_input("Cerca nome giocatore:")
         df_display = df_base.drop_duplicates('Id').copy()
         if cerca:
@@ -104,7 +112,6 @@ if df_static is not None:
         else:
             df_filtered = df_display.head(5)
 
-        # Pulizia decimali per l'editor
         df_edit_view = df_filtered[['Rimborsato', 'Nome', 'R', 'Qt.I', 'FVM', 'Rimborso', 'Id']].copy()
         for col in ['Qt.I', 'FVM', 'Rimborso']:
             df_edit_view[col] = df_edit_view[col].apply(lambda x: int(x) if x == int(x) else x)
@@ -124,20 +131,12 @@ if df_static is not None:
             st.rerun()
 
         st.divider()
-
         st.subheader("📋 Riepilogo Giocatori Svincolati")
         df_svincolati = df_base[df_base['Rimborsato'] == True].drop_duplicates('Id').copy()
-        
         if not df_svincolati.empty:
-            # Pulizia decimali riepilogo
             for col in ['Qt.I', 'FVM', 'Rimborso']:
                 df_svincolati[col] = df_svincolati[col].apply(lambda x: int(x) if x == int(x) else x)
-            
-            st.dataframe(
-                df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], 
-                use_container_width=True,
-                hide_index=True
-            )
+            st.dataframe(df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
         else:
             st.info("Nessun giocatore svincolato.")
 
@@ -147,8 +146,6 @@ if df_static is not None:
         opzioni_lega = ["Tutte"] + sorted([str(l) for l in st.session_state.df_leghe_full['Lega'].unique() if pd.notna(l)])
         lega_selezionata = st.selectbox("Filtra per Lega:", opzioni_lega)
         df_to_edit = st.session_state.df_leghe_full if lega_selezionata == "Tutte" else st.session_state.df_leghe_full[st.session_state.df_leghe_full['Lega'] == lega_selezionata]
-        
-        # Pulizia crediti nell'editor
         df_to_edit['Crediti'] = df_to_edit['Crediti'].astype(int)
         
         edited_view = st.data_editor(df_to_edit, use_container_width=True, num_rows="fixed", key="editor_leghe")
