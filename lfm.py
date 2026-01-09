@@ -45,9 +45,9 @@ if 'df_leghe_full' not in st.session_state:
         df_temp['Crediti'] = pd.to_numeric(df_temp['Crediti'], errors='coerce').fillna(0)
         st.session_state.df_leghe_full = df_temp
     except:
-        df_static_init = load_static_data()
-        if df_static_init is not None:
-            squadre = sorted(df_static_init['Squadra_LFM'].unique())
+        df_base_init = load_static_data()
+        if df_base_init is not None:
+            squadre = sorted(df_base_init['Squadra_LFM'].unique())
             st.session_state.df_leghe_full = pd.DataFrame({'Squadra': squadre, 'Lega': 'Da Assegnare', 'Crediti': 0})
 
 # --- 3. UNIFICAZIONE FORZATA (FIORENTINA) ---
@@ -59,7 +59,7 @@ def fix_fiorentina(df_leghe):
 
 st.session_state.df_leghe_full = fix_fiorentina(st.session_state.df_leghe_full)
 
-# --- 4. COSTRUZIONE DB ---
+# --- 4. COSTRUZIONE DATABASE ---
 df_static = load_static_data()
 if df_static is not None:
     df_base = pd.merge(df_static, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
@@ -71,36 +71,37 @@ if df_static is not None:
     # --- DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Riepilogo Leghe e Saldi")
+        
+        # Iniezione CSS per aumentare la dimensione del font in tutte le tabelle
+        st.markdown("""
+            <style>
+            table { font-size: 20px !important; }
+            th { font-size: 22px !important; background-color: #262730 !important; color: white !important; }
+            </style>
+            """, unsafe_allow_html=True)
+
         leghe_valide = sorted([str(l) for l in df_base['Lega'].unique() if pd.notna(l) and str(l) != 'nan'])
         cols = st.columns(2)
         for i, nome_lega in enumerate(leghe_valide):
             with cols[i % 2]:
                 with st.container(border=True):
-                    st.subheader(f"🏆 {nome_lega}")
+                    st.header(f"🏆 {nome_lega}")
                     df_l = df_base[df_base['Lega'] == nome_lega]
+                    
+                    # Calcolo Rimborsi
                     res_rimborsi = df_l[df_l['Rimborsato'] == True].groupby('Squadra_LFM')['Rimborso'].sum().reset_index()
+                    # Crediti Manuali
                     df_crediti = df_l[['Squadra_LFM', 'Crediti']].drop_duplicates()
+                    
                     tabella = pd.merge(df_crediti, res_rimborsi, on='Squadra_LFM', how='left').fillna(0)
                     tabella['Totale'] = tabella['Crediti'] + tabella['Rimborso']
                     
-                    # Calcolo metrica lega
-                    tot_lega = tabella['Totale'].sum()
-                    st.write(f"💰 **Totale Circolante Lega:** {int(tot_lega)}")
-
-                    # Visualizzazione Tabella con Totale Disponibile in Grassetto
-                    tab_display = tabella.copy()
-                    tab_display.columns = ['Squadra', 'Crediti Residui', 'Rimborsi', 'Totale Disponibile']
+                    # Pulizia colonne e decimali
+                    tabella.columns = ['Squadra', 'Residuo', 'Rimborsi', 'TOTALE']
+                    for col in ['Residuo', 'Rimborsi', 'TOTALE']:
+                        tabella[col] = tabella[col].astype(int)
                     
-                    # Applichiamo il grassetto visivo (Markdown)
-                    tab_display['Totale Disponibile'] = tab_display['Totale Disponibile'].apply(lambda x: f"**{int(x)}**")
-                    tab_display['Crediti Residui'] = tab_display['Crediti Residui'].astype(int)
-                    tab_display['Rimborsi'] = tab_display['Rimborsi'].astype(int)
-                    
-                    st.dataframe(
-                        tab_display.sort_values(by='Squadra'),
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                    st.table(tabella.sort_values(by='Squadra'))
 
     # --- RICERCA E SPUNTE ---
     elif menu == "🔍 Spunta Giocatori":
@@ -137,8 +138,6 @@ if df_static is not None:
             for col in ['Qt.I', 'FVM', 'Rimborso']:
                 df_svincolati[col] = df_svincolati[col].apply(lambda x: int(x) if x == int(x) else x)
             st.dataframe(df_svincolati[['Nome', 'R', 'Qt.I', 'FVM', 'Rimborso']], use_container_width=True, hide_index=True)
-        else:
-            st.info("Nessun giocatore svincolato.")
 
     # --- GESTIONE SQUADRE ---
     elif menu == "⚙️ Gestione Squadre":
@@ -160,10 +159,9 @@ if df_static is not None:
             st.rerun()
 
         st.divider()
-        csv_leghe = st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Scarica leghe.csv", csv_leghe, "leghe.csv")
+        st.download_button("📥 Scarica leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
         df_save_rimborsi = pd.DataFrame({'Id': list(st.session_state.refunded_ids), 'Rimborsato': True})
         st.download_button("📥 Scarica database_lfm.csv", df_save_rimborsi.to_csv(index=False).encode('utf-8'), "database_lfm.csv")
 
 else:
-    st.error("File mancanti.")
+    st.error("File mancanti su GitHub.")
