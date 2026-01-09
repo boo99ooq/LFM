@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="LFM - Gestione Leghe", layout="wide")
+st.set_page_config(page_title="LFM - Gestione Leghe", layout="wide", page_icon="⚽")
 
+# --- FUNZIONI DI CARICAMENTO ---
 @st.cache_data
-def carica_dati():
-    # Caricamento file principali con gestione codifica
+def carica_dati_gioco():
     for enc in ['latin1', 'cp1252', 'utf-8']:
         try:
             df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding=enc)
@@ -19,60 +19,76 @@ def carica_dati():
             continue
     return None
 
-# Funzione per caricare le assegnazioni leghe
 def carica_mappa_leghe(nomi_squadre):
     try:
-        return pd.read_csv('leghe.csv')
+        # Legge il file che hai appena caricato su GitHub
+        return pd.read_csv('leghe.csv', encoding='latin1')
     except:
-        # Se il file non esiste, crea una mappa base con tutte "Senza Lega"
+        # Se c'è un errore, crea una lista base
         return pd.DataFrame({'Squadra': nomi_squadre, 'Lega': 'Da Assegnare'})
 
-dati = carica_dati()
+# --- LOGICA APPLICATIVA ---
+dati_fanta = carica_dati_gioco()
 
-if dati is not None:
-    squadre_uniche = sorted(dati['Squadra_LFM'].unique())
-    mappa_leghe = carica_mappa_leghe(squadre_uniche)
+if dati_fanta is not None:
+    squadre_presenti = sorted(dati_fanta['Squadra_LFM'].unique())
+    mappa_leghe = carica_mappa_leghe(squadre_presenti)
 
-    # --- SIDEBAR NAVIGAZIONE ---
-    st.sidebar.title("Menu")
-    modalita = st.sidebar.radio("Vai a:", ["⚽ App Fantacalcio", "⚙️ Configura Leghe"])
+    st.sidebar.title("⚽ LFM Manager")
+    modalita = st.sidebar.radio("Naviga tra:", ["App Fantacalcio", "⚙️ Configura Leghe"])
 
     if modalita == "⚙️ Configura Leghe":
-        st.title("⚙️ Gestione Suddivisione Leghe")
-        st.write("Modifica la colonna 'Lega' qui sotto per spostare le squadre. Al termine, copia il tasto in fondo.")
+        st.title("⚙️ Organizzazione Leghe")
+        st.write("Modifica i nomi delle leghe direttamente nella tabella. Una volta finito, scarica il file e caricalo su GitHub.")
         
-        # TABELLA EDITABILE: Qui puoi scrivere direttamente i nomi delle leghe
-        edited_df = st.data_editor(mappa_leghe, use_container_width=True, num_rows="fixed")
+        # Tabella interattiva per assegnare le squadre
+        df_editor = st.data_editor(mappa_leghe, use_container_width=True, num_rows="fixed")
         
-        # Poiché Streamlit non può salvare direttamente su GitHub, generiamo il file da scaricare
-        csv = edited_df.to_csv(index=False).encode('utf-8')
+        # Pulsante di scaricamento
+        csv_data = df_editor.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Scarica file leghe.csv aggiornato",
-            data=csv,
+            label="📥 Scarica leghe.csv aggiornato",
+            data=csv_data,
             file_name='leghe.csv',
-            mime='text/csv',
-            help="Scarica questo file e caricalo su GitHub sovrascrivendo quello vecchio"
+            mime='text/csv'
         )
-        
-        st.info("💡 Dopo aver scaricato il file, trascinalo nella tua repository GitHub per rendere le modifiche permanenti.")
+        st.info("💡 Carica questo file su GitHub per salvare le modifiche permanentemente.")
 
     else:
-        # --- APP DI RICERCA NORMALE ---
-        # Uniamo le leghe definite dall'utente ai dati di gioco
-        dati_completi = pd.merge(dati, edited_df if 'edited_df' in locals() else mappa_leghe, 
-                                 left_on='Squadra_LFM', right_on='Squadra', how='left')
+        # UNIONE DATI GIOCATORI + ASSEGNAZIONE LEGA
+        # Usiamo il df_editor se stiamo lavorando nella sessione, altrimenti la mappa caricata
+        current_map = mappa_leghe 
+        df_finale = pd.merge(dati_fanta, current_map, left_on='Squadra_LFM', right_on='Squadra', how='left')
+
+        st.title("🔍 Analisi Rose e Quotazioni")
+
+        # Filtro Lega
+        lista_leghe = ["Tutte"] + sorted(list(df_finale['Lega'].unique().astype(str)))
+        filtro_lega = st.sidebar.selectbox("Filtra per Lega:", lista_leghe)
+
+        df_filtrato = df_finale if filtro_lega == "Tutte" else df_finale[df_finale['Lega'] == filtro_lega]
+
+        # Sottodivisione Ricerca o Squadra
+        sub_tab = st.radio("Cosa cerchi?", ["Giocatore Singolo", "Rosa Completa"], horizontal=True)
+
+        if sub_tab == "Giocatore Singolo":
+            cerca = st.text_input("Inserisci nome (anche parziale):")
+            if cerca:
+                ris = df_filtrato[df_filtrato['Nome'].str.contains(cerca, case=False, na=False)]
+                st.dataframe(ris[['Nome', 'R', 'Squadra_LFM', 'Lega', 'Prezzo_Asta', 'FVM']], use_container_width=True)
         
-        st.title("🔍 Ricerca Giocatori e Rose")
-        
-        lega_filtro = st.sidebar.selectbox("Filtra per Lega:", ["Tutte"] + list(edited_df['Lega'].unique() if 'edited_df' in locals() else mappa_leghe['Lega'].unique()))
-        
-        df_visualizza = dati_completi if lega_filtro == "Tutte" else dati_completi[dati_completi['Lega'] == lega_filtro]
-        
-        nome_cerca = st.text_input("Cerca giocatore:")
-        if nome_cerca:
-            res = df_visualizza[df_visualizza['Nome'].str.contains(nome_cerca, case=False, na=False)]
-            st.dataframe(res[['Nome', 'R', 'Squadra_LFM', 'Lega', 'Prezzo_Asta', 'FVM']])
         else:
-            squadra_cerca = st.selectbox("Oppure seleziona squadra:", sorted(df_visualizza['Squadra_LFM'].unique()))
-            res_sq = df_visualizza[df_visualizza['Squadra_LFM'] == squadra_cerca]
-            st.table(res_sq[['Nome', 'R', 'Prezzo_Asta', 'FVM']])
+            squadra_sel = st.selectbox("Seleziona Squadra:", sorted(df_filtrato['Squadra_LFM'].unique()))
+            if squadra_sel:
+                res_sq = df_filtrato[df_filtrato['Squadra_LFM'] == squadra_sel]
+                
+                # Statistiche
+                m1, m2 = st.columns(2)
+                m1.metric("Spesa Asta", f"{int(res_sq['Prezzo_Asta'].sum())} cr")
+                m2.metric("Valore Mercato", f"{int(res_sq['FVM'].sum())} cr")
+                
+                st.table(res_sq[['Nome', 'R', 'Prezzo_Asta', 'FVM']].sort_values(by='R'))
+
+else:
+    st.error("Impossibile caricare i dati. Verifica i file CSV su GitHub.")
+    
