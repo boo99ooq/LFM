@@ -2,12 +2,11 @@ import streamlit as st
 import pandas as pd
 
 # 1. IMPOSTAZIONI DELLA PAGINA
-st.set_page_config(page_title="LFM - Manager League", layout="wide", page_icon="⚽")
+st.set_page_config(page_title="LFM - Calcolo Rimborsi", layout="wide", page_icon="💰")
 
 # 2. FUNZIONI DI CARICAMENTO DATI
 @st.cache_data
 def carica_dati_gioco():
-    # Gestione codifiche per nomi accentati
     for enc in ['latin1', 'cp1252', 'utf-8']:
         try:
             # Caricamento Rose
@@ -22,14 +21,18 @@ def carica_dati_gioco():
             df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
             df_rose = df_rose.dropna(subset=['Id'])
             
-            # Unione dei dati (Left Join per non perdere i ceduti)
+            # Unione dei dati (Left Join)
             df_merged = pd.merge(df_rose, df_quot, on='Id', how='left')
             
-            # Pulizia dati mancanti per i giocatori fuori lista
+            # Gestione nomi mancanti
             df_merged['Nome'] = df_merged['Nome'].fillna("Fuori Lista (ID: " + df_merged['Id'].astype(str).str.replace('.0','', regex=False) + ")")
             df_merged['R'] = df_merged['R'].fillna("-")
             df_merged['Qt.I'] = df_merged['Qt.I'].fillna(0)
             df_merged['FVM'] = df_merged['FVM'].fillna(0)
+            
+            # --- CALCOLO RIMBORSO ---
+            # Formula: FVM + (Quotazione Iniziale / 2)
+            df_merged['Rimborso'] = df_merged['FVM'] + (df_merged['Qt.I'] / 2)
             
             return df_merged
         except:
@@ -54,10 +57,7 @@ if dati_fanta is not None:
 
     if modalita == "⚙️ Configura Leghe":
         st.title("⚙️ Organizzazione Leghe")
-        st.write("Assegna le squadre alle leghe. Scarica il file e caricalo su GitHub per salvare.")
-        
         df_editor = st.data_editor(mappa_leghe, use_container_width=True, num_rows="fixed")
-        
         csv_data = df_editor.to_csv(index=False).encode('utf-8')
         st.download_button(label="📥 Scarica leghe.csv aggiornato", data=csv_data, file_name='leghe.csv', mime='text/csv')
 
@@ -65,7 +65,7 @@ if dati_fanta is not None:
         # Unione Lega + Dati
         df_finale = pd.merge(dati_fanta, mappa_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
 
-        st.title("🔍 Ricerca e Quotazioni")
+        st.title("🔍 Ricerca e Calcolo Rimborsi")
 
         # Filtro Lega
         lista_leghe = ["Tutte"] + sorted(list(df_finale['Lega'].unique().astype(str)))
@@ -76,27 +76,38 @@ if dati_fanta is not None:
         sub_tab = st.radio("Cosa cerchi?", ["Giocatore Singolo", "Rosa Completa"], horizontal=True)
 
         if sub_tab == "Giocatore Singolo":
-            cerca = st.text_input("Inserisci nome (anche parziale):")
+            cerca = st.text_input("Inserisci nome del giocatore:")
             if cerca:
-                # Filtraggio
                 ris = df_filtrato[df_filtrato['Nome'].str.contains(cerca, case=False, na=False)]
-                # Mostriamo solo i dati richiesti: Nome, Ruolo, Squadra, Lega, Quotazione Iniziale e FVM
-                st.dataframe(
-                    ris[['Nome', 'R', 'Squadra_LFM', 'Lega', 'Qt.I', 'FVM']].sort_values(by='Nome'), 
-                    use_container_width=True
-                )
+                if not ris.empty:
+                    # Visualizzazione con Colonna Rimborso
+                    st.dataframe(
+                        ris[['Nome', 'R', 'Squadra_LFM', 'Lega', 'Qt.I', 'FVM', 'Rimborso']].sort_values(by='Nome'), 
+                        use_container_width=True
+                    )
+                    st.info("💡 Il calcolo del rimborso è basato su: FVM + (Qt.I / 2)")
+                else:
+                    st.warning("Nessun giocatore trovato.")
         
         else:
-            squadra_sel = st.selectbox("Seleziona Squadra:", sorted(df_filtrato['Squadra_LFM'].unique()))
+            squadra_sel = st.selectbox("Seleziona Squadra LFM:", sorted(df_filtrato['Squadra_LFM'].unique()))
             if squadra_sel:
                 res_sq = df_filtrato[df_filtrato['Squadra_LFM'] == squadra_sel]
                 
+                # Identifichiamo i giocatori potenzialmente "ceduti" (quelli con Qt.I e FVM che hai impostato o quelli Fuori Lista)
+                # In questa visualizzazione mostriamo il rimborso per tutti, facilitando il calcolo manuale
+                
                 # Statistiche veloci
-                m1, m2 = st.columns(2)
-                m1.metric("Prezzo d'Asta Totale", f"{int(res_sq['Prezzo_Asta'].sum())} cr")
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Spesa Asta Totale", f"{int(res_sq['Prezzo_Asta'].sum())} cr")
                 m2.metric("Valore FVM Totale", f"{int(res_sq['FVM'].sum())} cr")
                 
-                st.table(res_sq[['Nome', 'R', 'Prezzo_Asta', 'Qt.I', 'FVM']].sort_values(by='R'))
+                # Calcoliamo il rimborso totale potenziale per la squadra
+                rimborso_totale = res_sq['Rimborso'].sum()
+                m3.metric("Valore Rimborso Totale", f"{rimborso_totale} cr", delta_color="normal")
+                
+                st.write("### Dettaglio Rosa")
+                st.table(res_sq[['Nome', 'R', 'Prezzo_Asta', 'Qt.I', 'FVM', 'Rimborso']].sort_values(by='R'))
 
 else:
-    st.error("Errore: Assicurati che i file 'fantamanager-2021-rosters.csv', 'quot.csv' e 'leghe.csv' siano su GitHub.")
+    st.error("Errore nel caricamento dei file.")
