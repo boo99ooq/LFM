@@ -22,7 +22,8 @@ def calculate_stadium_bonus(capienza):
 
 def fix_league_names(df):
     if 'Lega' in df.columns:
-        df['Lega'] = df['Lega'].replace(['Lega A', 'nan', 'Da Assegnare'], 'Serie A')
+        df['Lega'] = df['Lega'].replace(['Lega A', 'nan', 'Da Assegnare', None], 'Serie A')
+        df['Lega'] = df['Lega'].fillna('Serie A')
     return df
 
 # --- 1. CARICAMENTO DATI ---
@@ -82,7 +83,9 @@ except:
 df_base, df_all_quot = load_static_data()
 
 if df_base is not None:
-    df_base = pd.merge(df_base, st.session_state.df_leghe_full, left_on='Squadra_LFM', right_on='Squadra', how='left')
+    # Assicuriamoci che df_leghe_full sia pulito prima del merge
+    leghe_pulite = st.session_state.df_leghe_full.drop_duplicates('Squadra')
+    df_base = pd.merge(df_base, leghe_pulite, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base['Rimborsato_Star'] = df_base['Id'].isin(st.session_state.refunded_ids)
     df_base['Taglio_Key'] = df_base['Id'].astype(int).astype(str) + "_" + df_base['Squadra_LFM'].astype(str)
     df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
@@ -93,7 +96,8 @@ if df_base is not None:
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Dashboard Riepilogo")
-        leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].values]
+        leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].dropna().unique()]
+        if not leghe_eff: st.warning("Nessuna lega trovata. Controlla il file leghe.csv")
         cols = st.columns(2)
         for i, lega_nome in enumerate(leghe_eff):
             with cols[i % 2]:
@@ -226,17 +230,19 @@ if df_base is not None:
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM Internazionale")
         c1, c2 = st.columns(2)
-        r_f = c1.multiselect("Ruolo:", sorted(df_base['R'].unique()), default=sorted(df_base['R'].unique()))
+        r_f = c1.multiselect("Ruolo:", sorted(df_base['R'].dropna().unique()), default=sorted(df_base['R'].dropna().unique()))
         l_f = c2.multiselect("Lega:", ORDINE_LEGHE, default=ORDINE_LEGHE)
         df_rank = df_base[(df_base['R'].isin(r_f)) & (df_base['Lega'].isin(l_f))].copy()
         df_rank['Proprietario'] = df_rank.apply(lambda r: f"✈️ {r['Squadra_LFM']}" if r['Rimborsato_Star'] else (f"✂️ {r['Squadra_LFM']}" if r['Rimborsato_Taglio'] else r['Squadra_LFM']), axis=1)
-        pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index().fillna('🟢')
-        st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
+        if not df_rank.empty:
+            pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index().fillna('🟢')
+            st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
 
     # --- 📋 ROSE ---
     elif menu == "📋 Rose Complete":
         st.title("📋 Consultazione Rose")
-        l_sel = st.selectbox("Lega:", sorted(df_base['Lega'].unique()))
+        leghe_disp = sorted(df_base['Lega'].dropna().unique())
+        l_sel = st.selectbox("Lega:", leghe_disp)
         sq_sel = st.selectbox("Squadra:", sorted(df_base[df_base['Lega']==l_sel]['Squadra_LFM'].unique()))
         df_r = df_base[df_base['Squadra_LFM']==sq_sel].copy()
         df_r['Stato'] = df_r.apply(lambda r: "✈️ SVINC" if r['Rimborsato_Star'] else ("✂️ TAGLIO" if r['Rimborsato_Taglio'] else "🏃 ROSA"), axis=1)
@@ -248,25 +254,42 @@ if df_base is not None:
     # --- 📈 STATISTICHE LEGHE ---
     elif menu == "📈 Statistiche Leghe":
         st.title("📈 Medie Comparative per Lega")
+        
+        # Prepariamo i dati
         df_stats_base = st.session_state.df_leghe_full.copy()
         df_stats_base = pd.merge(df_stats_base, df_stadi, on='Squadra', how='left').fillna(0)
+        
         df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
         tecnici = df_attivi.groupby('Squadra_LFM').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'Squadra_LFM': 'Squadra', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'})
+        
         df_final_stats = pd.merge(df_stats_base, tecnici, on='Squadra', how='left').fillna(0)
-        medie_lega = df_final_stats.groupby('Lega').agg({'Stadio': 'mean', 'Crediti': 'mean', 'FVM_Tot': 'mean', 'Quot_Tot': 'mean'}).reset_index().round(1)
         
-        display_stats = medie_lega.copy()
-        display_stats['Stadio'] = display_stats['Stadio'].apply(lambda x: f"{x}k")
-        display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
-        st.table(display_stats)
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.subheader("Confronto FVM Medio")
-            st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
-        with c2:
-            st.subheader("Confronto Crediti Medi")
-            st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
+        # SICUREZZA: Controlliamo se esiste la colonna Lega
+        if 'Lega' in df_final_stats.columns:
+            # Rimuoviamo eventuali righe con Lega vuota per il calcolo delle medie
+            df_final_stats = df_final_stats[df_final_stats['Lega'] != 0]
+            
+            medie_lega = df_final_stats.groupby('Lega').agg({
+                'Stadio': 'mean', 
+                'Crediti': 'mean', 
+                'FVM_Tot': 'mean', 
+                'Quot_Tot': 'mean'
+            }).reset_index().round(1)
+            
+            display_stats = medie_lega.copy()
+            display_stats['Stadio'] = display_stats['Stadio'].apply(lambda x: f"{x}k")
+            display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
+            st.table(display_stats)
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("Confronto FVM Medio")
+                st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
+            with c2:
+                st.subheader("Confronto Crediti Medi")
+                st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
+        else:
+            st.error("Errore: Impossibile trovare i dati delle Leghe. Verifica il file leghe.csv")
 
     # --- 🟢 LIBERI ---
     elif menu == "🟢 Giocatori Liberi":
