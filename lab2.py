@@ -119,12 +119,13 @@ if df_base is not None:
                 st.markdown(f"### 🏆 {lega_nome}")
                 for _, sq in tabella.sort_values(by='Squadra_LFM').iterrows():
                     cap = df_stadi[df_stadi['Squadra'] == sq['Squadra_LFM']]['Stadio'].values
-                    # Capienza con formato 'k' (es. 60000 -> 60k)
-                    cap_txt = f"{int(cap[0]/1000)}k" if len(cap)>0 and cap[0] > 0 else "N.D."
                     
-                    # Segnalazione rosso NG
+                    # CORREZIONE: Se nel file 50 = 50k, aggiungiamo solo 'k' senza dividere
+                    cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
+                    
+                    # Segnalazione rosso NG (minore di 25 o maggiore di 35)
                     ng_val = int(sq['NG'])
-                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "#00ff00" # Verde se OK, rosso se fuori range
+                    color_ng = "#ff4b4b" if ng_val < 25 or ng_val > 35 else "#00ff00"
                     
                     st.markdown(f"""<div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 15px; border-radius: 10px; margin-bottom: 12px; color: white; border: 1px solid rgba(255,255,255,0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
