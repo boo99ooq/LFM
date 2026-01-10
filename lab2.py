@@ -142,49 +142,58 @@ if df_base is not None:
                         </div>
                     </div>""", unsafe_allow_html=True)
 
-    # --- 💰 RANKING FINANZIARIO ---
+    # --- 💰 RANKING FINANZIARIO (Con Analisi Medie) ---
     elif menu == "💰 Ranking Finanziario":
         st.title("💰 Ranking Finanziario Mondiale (Top 40)")
-        st.info("Classifica basata sulla somma di: Crediti Residui + FVM Rosa Attiva + (Capienza Stadio * 10)")
         
-        # 1. Preparazione dati base squadre
+        # --- CALCOLO DATI BASE ---
         df_fin = st.session_state.df_leghe_full.copy()
         df_fin['Squadra_Key'] = df_fin['Squadra'].str.strip().str.upper()
-        
-        # 2. Integrazione Stadi
         stadi_fin = df_stadi.copy()
         stadi_fin['Squadra_Key'] = stadi_fin['Squadra'].str.strip().str.upper()
         df_fin = pd.merge(df_fin, stadi_fin[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
         
-        # 3. Calcolo Crediti Totali (inclusi rimborsi)
-        # Calcoliamo i rimborsi per ogni squadra
         res_star = df_base[df_base['Rimborsato_Star']].groupby('Squadra_Key')['Rimborso_Star'].sum().reset_index()
         res_tagli = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_Key')['Rimborso_Taglio'].sum().reset_index()
-        
         df_fin = pd.merge(df_fin, res_star, on='Squadra_Key', how='left').fillna(0)
         df_fin = pd.merge(df_fin, res_tagli, on='Squadra_Key', how='left').fillna(0)
         df_fin['Crediti_Disponibili'] = df_fin['Crediti'] + df_fin['Rimborso_Star'] + df_fin['Rimborso_Taglio']
         
-        # 4. Calcolo FVM Rosa Attiva
         df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
         fvm_tot = df_attivi.groupby('Squadra_Key')['FVM'].sum().reset_index().rename(columns={'FVM': 'FVM_Rosa'})
         df_fin = pd.merge(df_fin, fvm_tot, on='Squadra_Key', how='left').fillna(0)
-        
-        # 5. Calcolo Punteggio Finale
-        # Formula: Crediti + FVM + (Stadio * 10)
+
+        # --- BLOCCO ANALISI UTENTE MEDIO (Aggiunto qui) ---
+        st.markdown("---")
+        st.subheader("📊 Analisi dell'Utente Medio")
+        media_cr = df_fin['Crediti_Disponibili'].mean()
+        media_fvm = df_fin['FVM_Rosa'].mean()
+        media_st = df_fin['Stadio'].mean()
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Media Crediti", format_num(media_cr))
+        c2.metric("Media FVM Rosa", format_num(media_fvm))
+        c3.metric("Media Stadio", f"{format_num(media_st)}k")
+
+        with st.expander("🧐 Analisi dei Pesi Attuali"):
+            st.write(f"Con la formula attuale (**Crediti + FVM + Stadio*10**):")
+            st.write(f"- I **Crediti** pesano per il **{round(media_cr/media_fvm*100)}%** rispetto alla Rosa.")
+            st.write(f"- Lo **Stadio** (x10) pesa il **{round((media_st*10)/media_fvm*100)}%** rispetto alla Rosa.")
+            st.info("Nota: Se lo Stadio pesa più del 100-120%, sta dominando troppo la classifica rispetto ai giocatori.")
+        st.markdown("---")
+
+        # --- CALCOLO PUNTEGGIO FINALE ---
+        # Puoi cambiare i moltiplicatori qui sotto dopo aver visto le medie
         df_fin['Punteggio'] = df_fin['Crediti_Disponibili'] + df_fin['FVM_Rosa'] + (df_fin['Stadio'] * 10)
         
-        # 6. Ordinamento e Formattazione
+        # Ordinamento e Visualizzazione
         df_fin = df_fin.sort_values(by='Punteggio', ascending=False).reset_index(drop=True)
-        df_fin.index += 1  # Per avere la classifica da 1 a 40
-        
-        # Pulizia per visualizzazione
+        df_fin.index += 1
         display_fin = df_fin[['Squadra', 'Lega', 'Crediti_Disponibili', 'FVM_Rosa', 'Stadio', 'Punteggio']].copy()
         for col in ['Crediti_Disponibili', 'FVM_Rosa', 'Stadio', 'Punteggio']:
             display_fin[col] = display_fin[col].apply(format_num)
         
         st.dataframe(display_fin, use_container_width=True)
-
     # --- 🗓️ CALENDARI ---
     elif menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Calendari Campionati")
