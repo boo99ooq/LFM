@@ -156,7 +156,6 @@ if df_base is not None:
     # --- 🏆 COPPE E PRELIMINARI ---
     elif menu == "🏆 Coppe e Preliminari":
         st.title("🏆 Coppe e Preliminari")
-        # Logica di ricerca file potenziata
         files = [f for f in os.listdir('.') if any(x in f.upper() for x in ["CHAMPIONS", "EUROPA", "PRELIMINARI"]) and f.endswith(".csv")]
         if files:
             camp = st.selectbox("Seleziona Competizione:", files)
@@ -180,13 +179,23 @@ if df_base is not None:
                             try:
                                 h, a = str(row[col_idx+1]).strip(), str(row[col_idx+4]).strip()
                                 if h and h != "nan" and len(h) > 2:
+                                    # Calcolo bonus stadio per entrambe
                                     cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
-                                    bh, _ = calculate_stadium_bonus(cap_h)
-                                    res.append({"Girone": str(row[col_idx]).strip(), "Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}"})
+                                    cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
+                                    
+                                    bh, _ = calculate_stadium_bonus(cap_h) # Bonus Casa per chi gioca in casa
+                                    _, ba = calculate_stadium_bonus(cap_a) # Bonus Fuori per l'ospite
+                                    
+                                    res.append({
+                                        "Girone": str(row[col_idx]).strip(), 
+                                        "Casa": h, 
+                                        "Fuori": a, 
+                                        "Bonus Casa": f"+{format_num(bh)}",
+                                        "Bonus Fuori": f"+{format_num(ba)}"
+                                    })
                             except: continue
                 st.table(pd.DataFrame(res))
                 if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
-
     # --- 💰 RANKING FINANZIARIO ---
     elif menu == "💰 Ranking Finanziario":
         st.title("💰 Ranking Finanziario")
