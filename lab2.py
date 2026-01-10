@@ -292,4 +292,31 @@ if df_base is not None:
         stadi_puliti['Squadra_Key'] = stadi_puliti['Squadra'].str.strip().str.upper()
         df_stats_base = pd.merge(df_stats_base, stadi_puliti[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
         df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
-        tecnici = df_attivi.groupby('Squadra_Key').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'FVM': 'FVM_Tot
+        tecnici = df_attivi.groupby('Squadra_Key').agg({'FVM': 'sum', 'Qt.I': 'sum'}).reset_index().rename(columns={'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'})
+        df_final_stats = pd.merge(df_stats_base, tecnici, on='Squadra_Key', how='left').fillna(0)
+        if 'Lega' in df_final_stats.columns and not df_final_stats[df_final_stats['Lega'] != 0].empty:
+            df_calc = df_final_stats[df_final_stats['Lega'] != 0]
+            medie_lega = df_calc.groupby('Lega').agg({'Stadio': 'mean', 'Crediti': 'mean', 'FVM_Tot': 'mean'}).reset_index()
+            display_stats = medie_lega.copy()
+            for col in ['Stadio', 'Crediti', 'FVM_Tot']:
+                display_stats[col] = display_stats[col].apply(format_num)
+            display_stats['Stadio'] = display_stats['Stadio'] + "k"
+            st.table(display_stats)
+            c1, c2 = st.columns(2)
+            with c1: st.subheader("FVM Medio"); st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
+            with c2: st.subheader("Crediti Medi"); st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
+
+    # --- ⚙️ GESTIONE SQUADRE ---
+    elif menu == "⚙️ Gestione Squadre":
+        st.title("⚙️ Configurazione & Backup")
+        edited = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, hide_index=True)
+        if st.button("Salva Crediti"):
+            st.session_state.df_leghe_full = edited; st.success("Dati aggiornati!"); st.rerun()
+        st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.download_button("database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids)}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        c2.download_button("database_tagli.csv", pd.DataFrame([{'Id': k.split('_')[0], 'Squadra': k.split('_')[1]} for k in st.session_state.tagli_map]).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
+        c3.download_button("leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
+
+else:
+    st.error("Carica i file base!")
