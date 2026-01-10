@@ -101,7 +101,7 @@ if df_base is not None:
     df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
 
     st.sidebar.title("⚖️ LFM Golden Edition")
-    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "🏃 Gestione Mercato", "📊 Ranking FVM", "📋 Rose Complete", "🟢 Giocatori Liberi", "📈 Statistiche Leghe", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "🏃 Gestione Mercato", "📊 Ranking FVM", "💰 Ranking Finanziario", "📋 Rose Complete", "🟢 Giocatori Liberi", "📈 Statistiche Leghe", "⚙️ Gestione Squadre"])
 
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
@@ -141,6 +141,49 @@ if df_base is not None:
                             ✈️ {sq['Nome'] if sq['Nome'] != 0 else '-'} | ✂️ {sq['N_T'] if sq['N_T'] != 0 else '-'}
                         </div>
                     </div>""", unsafe_allow_html=True)
+
+    # --- 💰 RANKING FINANZIARIO ---
+    elif menu == "💰 Ranking Finanziario":
+        st.title("💰 Ranking Finanziario Mondiale (Top 40)")
+        st.info("Classifica basata sulla somma di: Crediti Residui + FVM Rosa Attiva + (Capienza Stadio * 10)")
+        
+        # 1. Preparazione dati base squadre
+        df_fin = st.session_state.df_leghe_full.copy()
+        df_fin['Squadra_Key'] = df_fin['Squadra'].str.strip().str.upper()
+        
+        # 2. Integrazione Stadi
+        stadi_fin = df_stadi.copy()
+        stadi_fin['Squadra_Key'] = stadi_fin['Squadra'].str.strip().str.upper()
+        df_fin = pd.merge(df_fin, stadi_fin[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
+        
+        # 3. Calcolo Crediti Totali (inclusi rimborsi)
+        # Calcoliamo i rimborsi per ogni squadra
+        res_star = df_base[df_base['Rimborsato_Star']].groupby('Squadra_Key')['Rimborso_Star'].sum().reset_index()
+        res_tagli = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_Key')['Rimborso_Taglio'].sum().reset_index()
+        
+        df_fin = pd.merge(df_fin, res_star, on='Squadra_Key', how='left').fillna(0)
+        df_fin = pd.merge(df_fin, res_tagli, on='Squadra_Key', how='left').fillna(0)
+        df_fin['Crediti_Disponibili'] = df_fin['Crediti'] + df_fin['Rimborso_Star'] + df_fin['Rimborso_Taglio']
+        
+        # 4. Calcolo FVM Rosa Attiva
+        df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
+        fvm_tot = df_attivi.groupby('Squadra_Key')['FVM'].sum().reset_index().rename(columns={'FVM': 'FVM_Rosa'})
+        df_fin = pd.merge(df_fin, fvm_tot, on='Squadra_Key', how='left').fillna(0)
+        
+        # 5. Calcolo Punteggio Finale
+        # Formula: Crediti + FVM + (Stadio * 10)
+        df_fin['Punteggio'] = df_fin['Crediti_Disponibili'] + df_fin['FVM_Rosa'] + (df_fin['Stadio'] * 10)
+        
+        # 6. Ordinamento e Formattazione
+        df_fin = df_fin.sort_values(by='Punteggio', ascending=False).reset_index(drop=True)
+        df_fin.index += 1  # Per avere la classifica da 1 a 40
+        
+        # Pulizia per visualizzazione
+        display_fin = df_fin[['Squadra', 'Lega', 'Crediti_Disponibili', 'FVM_Rosa', 'Stadio', 'Punteggio']].copy()
+        for col in ['Crediti_Disponibili', 'FVM_Rosa', 'Stadio', 'Punteggio']:
+            display_fin[col] = display_fin[col].apply(format_num)
+        
+        st.dataframe(display_fin, use_container_width=True)
 
     # --- 🗓️ CALENDARI ---
     elif menu == "🗓️ Calendari Campionati":
@@ -216,24 +259,17 @@ if df_base is not None:
         if 'Lega' in df_final_stats.columns and not df_final_stats[df_final_stats['Lega'] != 0].empty:
             df_calc = df_final_stats[df_final_stats['Lega'] != 0]
             medie_lega = df_calc.groupby('Lega').agg({'Stadio': 'mean', 'Crediti': 'mean', 'FVM_Tot': 'mean', 'Quot_Tot': 'mean'}).reset_index()
-            
-            # Formattazione per la tabella senza .0
             display_stats = medie_lega.copy()
             for col in ['Stadio', 'Crediti', 'FVM_Tot', 'Quot_Tot']:
                 display_stats[col] = display_stats[col].apply(format_num)
             display_stats['Stadio'] = display_stats['Stadio'] + "k"
             display_stats.columns = ['Lega', 'Media Stadio', 'Media Crediti Residui', 'Media Valore FVM', 'Media Valore Quot.']
             st.table(display_stats)
-            
             c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("Confronto FVM Medio")
-                st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
-            with c2:
-                st.subheader("Confronto Crediti Medi")
-                st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
+            with c1: st.subheader("Confronto FVM Medio"); st.bar_chart(medie_lega.set_index('Lega')['FVM_Tot'])
+            with c2: st.subheader("Confronto Crediti Medi"); st.bar_chart(medie_lega.set_index('Lega')['Crediti'])
 
-    # --- ALTRO MENU (MERCATO, RANKING, ROSE, ECC.) ---
+    # --- ALTRI MENU ---
     elif menu == "🏃 Gestione Mercato":
         st.title("🏃 Gestione Mercato")
         t1, t2 = st.tabs(["✈️ Svincoli (*)", "✂️ Tagli"])
