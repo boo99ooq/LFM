@@ -106,14 +106,10 @@ if df_base is not None:
         for i, lega_nome in enumerate(leghe_eff):
             with cols[i % 2]:
                 df_l = df_base[df_base['Lega'] == lega_nome]
-                
-                # Calcolo stats e liste giocatori svincolati/tagliati
                 df_attivi = df_l[~(df_l['Rimborsato_Star']) & ~(df_l['Rimborsato_Taglio'])]
                 att_stats = df_attivi.groupby('Squadra_LFM').agg({'Nome': 'count', 'FVM': 'sum', 'Qt.I': 'sum'}).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
-                
                 res_star = df_l[df_l['Rimborsato_Star']].groupby('Squadra_LFM').agg({'Rimborso_Star':'sum', 'Nome': lambda x: ", ".join(x)}).reset_index()
                 res_tagli = df_l[df_l['Rimborsato_Taglio']].groupby('Squadra_LFM').agg({'Rimborso_Taglio':'sum', 'Nome': lambda x: ", ".join(x)}).reset_index()
-                
                 tabella = pd.merge(df_l[['Squadra_LFM', 'Crediti']].drop_duplicates(), res_star, on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, res_tagli.rename(columns={'Nome':'N_T'}), on='Squadra_LFM', how='left').fillna(0)
                 tabella = pd.merge(tabella, att_stats, on='Squadra_LFM', how='left').fillna(0)
@@ -125,7 +121,6 @@ if df_base is not None:
                     cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
                     color_ng = "#ff4b4b" if sq['NG'] < 25 or sq['NG'] > 35 else "#00ff00"
                     
-                    # Preparazione testi svincolati/tagliati
                     txt_svinc = f"✈️ {sq['Nome']}" if sq['Nome'] != 0 else ""
                     txt_tagli = f"✂️ {sq['N_T']}" if sq['N_T'] != 0 else ""
                     
@@ -142,11 +137,142 @@ if df_base is not None:
                             <span>📊 FVM: <b>{format_num(sq['FVM_Tot'])}</b></span>
                             <span>💰 Quot: <b>{format_num(sq['Quot_Tot'])}</b></span>
                         </div>
-                        <div style="margin-top: 10px; padding: 8px; background: rgba(0,0,0,0.15); border-radius: 6px; font-size: 13px; line-height: 1.4;">
-                            <div style="color: #ffeb3b; font-weight: 500;">{txt_svinc}</div>
-                            <div style="color: #ffffff; font-weight: 400; opacity: 0.85;">{txt_tagli}</div>
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 15px; line-height: 1.5;">
+                            <div style="color: #ffeb3b; font-weight: bold;">{txt_svinc}</div>
+                            <div style="color: #ffffff; font-weight: 500; opacity: 0.9;">{txt_tagli}</div>
                         </div>
                     </div>""", unsafe_allow_html=True)
 
-    # --- RESTANTI SEZIONI (Calendari, Coppe, Ranking, ecc.) ---
-    # [Mantieni il codice precedente per Calendari, Coppe e Ranking]
+    # --- 🗓️ CALENDARI CAMPIONATI ---
+    elif menu == "🗓️ Calendari Campionati":
+        st.title("🗓️ Calendari Campionati")
+        files = [f for f in os.listdir('.') if f.startswith("Calendario_") and all(x not in f.upper() for x in ["CHAMPIONS", "EUROPA", "PRELIMINARI"]) and f.endswith(".csv")]
+        if files:
+            camp = st.selectbox("Seleziona:", files)
+            df_c = pd.read_csv(camp, header=None, encoding='latin1').fillna("")
+            g_pos = [(str(df_c.iloc[r, c]).strip(), r, c) for c in [0, 6] for r in range(len(df_c)) if "Giornata" in str(df_c.iloc[r, c]) and "serie a" not in str(df_c.iloc[r, c]).lower()]
+            sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
+            res = []
+            for _, r, c in [x for x in g_pos if x[0] == sel_g]:
+                for i in range(1, 11):
+                    if r+i < len(df_c):
+                        row = df_c.iloc[r+i]
+                        if "Giornata" in str(row[c]): break
+                        h, a = str(row[c]).strip(), str(row[c+3]).strip()
+                        if not h or h == "nan" or len(h) < 2: continue
+                        cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
+                        cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
+                        bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
+                        res.append({"Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
+            st.table(pd.DataFrame(res))
+
+    # --- 🏆 COPPE E PRELIMINARI ---
+    elif menu == "🏆 Coppe e Preliminari":
+        st.title("🏆 Coppe e Preliminari")
+        files = [f for f in os.listdir('.') if any(x in f.upper() for x in ["CHAMPIONS", "EUROPA", "PRELIMINARI"]) and f.endswith(".csv")]
+        if files:
+            camp = st.selectbox("Seleziona:", files)
+            df_co = pd.read_csv(camp, header=None, encoding='latin1').fillna("")
+            g_pos = []
+            for r in range(len(df_co)):
+                for c in range(len(df_co.columns)):
+                    if "Giornata" in str(df_co.iloc[r, c]) and "serie a" not in str(df_co.iloc[r, c]).lower():
+                        g_pos.append((str(df_co.iloc[r, c]).strip(), r, c))
+            if g_pos:
+                sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
+                res, rip = [], []
+                for label, r, col_idx in [x for x in g_pos if x[0] == sel_g]:
+                    for i in range(1, 16):
+                        if r+i < len(df_co):
+                            row = df_co.iloc[r+i]
+                            if "Giornata" in str(row[col_idx]): break
+                            if "Riposa" in str(row[col_idx]) or "Riposa" in str(row[col_idx+1]):
+                                rip.append(str(row[col_idx] if "Riposa" in str(row[col_idx]) else row[col_idx+1]).replace("Riposa","").strip())
+                                continue
+                            try:
+                                h, a = str(row[col_idx+1]).strip(), str(row[col_idx+4]).strip()
+                                if h and h != "nan" and len(h) > 2:
+                                    cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
+                                    cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
+                                    bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
+                                    res.append({"Girone": str(row[col_idx]).strip(), "Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
+                            except: continue
+                st.table(pd.DataFrame(res))
+                if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
+
+    # --- 💰 RANKING FINANZIARIO ---
+    elif menu == "💰 Ranking Finanziario":
+        st.title("💰 Ranking Finanziario")
+        ambito = st.selectbox("Ambito:", ["Mondiale (Top 40)"] + ORDINE_LEGHE)
+        df_fin = st.session_state.df_leghe_full.copy()
+        df_fin['Squadra_Key'] = df_fin['Squadra'].str.strip().str.upper()
+        if ambito != "Mondiale (Top 40)":
+            df_fin = df_fin[df_fin['Lega'] == ambito]
+        stadi_fin = df_stadi.copy()
+        stadi_fin['Squadra_Key'] = stadi_fin['Squadra'].str.strip().str.upper()
+        df_fin = pd.merge(df_fin, stadi_fin[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
+        res_star = df_base[df_base['Rimborsato_Star']].groupby('Squadra_Key')['Rimborso_Star'].sum().reset_index()
+        res_tagli = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_Key')['Rimborso_Taglio'].sum().reset_index()
+        df_fin = pd.merge(df_fin, res_star, on='Squadra_Key', how='left').fillna(0)
+        df_fin = pd.merge(df_fin, res_tagli, on='Squadra_Key', how='left').fillna(0)
+        df_fin['Crediti_Tot'] = df_fin['Crediti'] + df_fin['Rimborso_Star'] + df_fin['Rimborso_Taglio']
+        df_attivi = df_base[~(df_base['Rimborsato_Star']) & ~(df_base['Rimborsato_Taglio'])]
+        fvm_tot = df_attivi.groupby('Squadra_Key')['FVM'].sum().reset_index().rename(columns={'FVM': 'FVM_Rosa'})
+        df_fin = pd.merge(df_fin, fvm_tot, on='Squadra_Key', how='left').fillna(0)
+        df_fin['Punteggio'] = df_fin['Crediti_Tot'] + df_fin['FVM_Rosa'] + (df_fin['Stadio'] * 10)
+        df_fin = df_fin.sort_values(by='Punteggio', ascending=False).reset_index(drop=True)
+        df_fin.index += 1
+        display_fin = df_fin[['Squadra', 'Lega', 'Crediti_Tot', 'FVM_Rosa', 'Stadio', 'Punteggio']].copy()
+        display_fin.columns = ['Squadra', 'Lega', 'Crediti', 'FVM Rosa', 'Stadio (k)', 'TOT']
+        for col in ['Crediti', 'FVM Rosa', 'Stadio (k)', 'TOT']:
+            display_fin[col] = display_fin[col].apply(format_num)
+        st.dataframe(display_fin, use_container_width=True)
+
+    # --- ALTRI MENU (RANKING FVM, ROSE, ECC.) ---
+    elif menu == "📊 Ranking FVM":
+        st.title("📊 Ranking FVM Internazionale")
+        c1, c2 = st.columns(2)
+        r_f = c1.multiselect("Ruolo:", sorted(df_base['R'].dropna().unique()), default=sorted(df_base['R'].dropna().unique()))
+        l_f = c2.multiselect("Lega:", ORDINE_LEGHE, default=ORDINE_LEGHE)
+        df_rank = df_base[(df_base['R'].isin(r_f)) & (df_base['Lega'].isin(l_f))].copy()
+        df_rank['Proprietario'] = df_rank.apply(lambda r: f"✈️ {r['Squadra_LFM']}" if r['Rimborsato_Star'] else (f"✂️ {r['Squadra_LFM']}" if r['Rimborsato_Taglio'] else r['Squadra_LFM']), axis=1)
+        if not df_rank.empty:
+            pivot = df_rank.pivot_table(index=['FVM', 'Nome', 'R'], columns='Lega', values='Proprietario', aggfunc=lambda x: " | ".join(x)).reset_index().fillna('🟢')
+            st.dataframe(pivot.sort_values('FVM', ascending=False), use_container_width=True, hide_index=True)
+
+    elif menu == "📋 Rose Complete":
+        st.title("📋 Consultazione Rose")
+        leghe_disp = sorted(df_base['Lega'].dropna().unique())
+        if leghe_disp:
+            l_sel = st.selectbox("Lega:", leghe_disp)
+            sq_sel = st.selectbox("Squadra:", sorted(df_base[df_base['Lega']==l_sel]['Squadra_LFM'].unique()))
+            df_r = df_base[df_base['Squadra_LFM']==sq_sel].copy()
+            df_r['Stato'] = df_r.apply(lambda r: "✈️ SVINC" if r['Rimborsato_Star'] else ("✂️ TAGLIO" if r['Rimborsato_Taglio'] else "🏃 ROSA"), axis=1)
+            df_r['Ruolo_Ord'] = df_r['R'].map(ORDINE_RUOLI)
+            df_r = df_r.sort_values(by=['Stato', 'Ruolo_Ord', 'FVM'], ascending=[False, True, False])
+            styled_df = df_r[['Stato', 'Nome', 'R', 'Qt.I', 'FVM']].style.background_gradient(subset=['FVM'], cmap='Greens')
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+    elif menu == "🟢 Giocatori Liberi":
+        st.title("🟢 Calciatori Liberi")
+        try:
+            df_esc = pd.read_csv('esclusi.csv', sep='\t', header=None)
+            ids_esc = set(pd.to_numeric(df_esc[0], errors='coerce').dropna().astype(int))
+        except: ids_esc = set()
+        ids_occ = set(df_base['Id'])
+        df_lib = df_all_quot[~df_all_quot['Id'].isin(ids_occ) & ~df_all_quot['Id'].isin(ids_esc)]
+        st.dataframe(df_lib.sort_values('FVM', ascending=False)[['Nome', 'R', 'Qt.I', 'FVM']], use_container_width=True, hide_index=True)
+
+    elif menu == "⚙️ Gestione Squadre":
+        st.title("⚙️ Configurazione & Backup")
+        edited = st.data_editor(st.session_state.df_leghe_full, use_container_width=True, hide_index=True)
+        if st.button("Salva Crediti"):
+            st.session_state.df_leghe_full = edited; st.success("Dati aggiornati!"); st.rerun()
+        st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.download_button("database_lfm.csv", pd.DataFrame({'Id': list(st.session_state.refunded_ids)}).to_csv(index=False).encode('utf-8'), "database_lfm.csv")
+        c2.download_button("database_tagli.csv", pd.DataFrame([{'Id': k.split('_')[0], 'Squadra': k.split('_')[1]} for k in st.session_state.tagli_map]).to_csv(index=False).encode('utf-8'), "database_tagli.csv")
+        c3.download_button("leghe.csv", st.session_state.df_leghe_full.to_csv(index=False).encode('utf-8'), "leghe.csv")
+
+else:
+    st.error("Carica i file base!")
