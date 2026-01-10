@@ -134,24 +134,39 @@ if df_base is not None:
     # --- 🗓️ CALENDARI CAMPIONATI ---
     elif menu == "🗓️ Calendari Campionati":
         st.title("🗓️ Calendari Campionati")
-        files = [f for f in os.listdir('.') if f.startswith("Calendario_") and all(x not in f.upper() for x in ["CHAMPIONS", "EUROPA", "PRELIMINARI"]) and f.endswith(".csv")]
+        # MODIFICA: Ora include anche i file PRELIMINARI se vuoi vederli qui
+        files = [f for f in os.listdir('.') if f.startswith("Calendario_") and f.endswith(".csv")]
+        
         if files:
             camp = st.selectbox("Seleziona:", files)
             df_c = pd.read_csv(camp, header=None, encoding='latin1').fillna("")
             g_pos = [(str(df_c.iloc[r, c]).strip(), r, c) for c in [0, 6] for r in range(len(df_c)) if "Giornata" in str(df_c.iloc[r, c]) and "serie a" not in str(df_c.iloc[r, c]).lower()]
-            sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
-            res = []
-            for _, r, c in [x for x in g_pos if x[0] == sel_g]:
-                for i in range(1, 11):
-                    if r+i < len(df_c):
-                        row = df_c.iloc[r+i]
-                        if "Giornata" in str(row[c]): break
-                        h, a = str(row[c]).strip(), str(row[c+3]).strip()
-                        if not h or h == "nan" or len(h) < 2: continue
-                        cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
-                        bh, _ = calculate_stadium_bonus(cap_h)
-                        res.append({"Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}"})
-            st.table(pd.DataFrame(res))
+            
+            if g_pos:
+                sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
+                res = []
+                for _, r, c in [x for x in g_pos if x[0] == sel_g]:
+                    for i in range(1, 11):
+                        if r+i < len(df_c):
+                            row = df_c.iloc[r+i]
+                            if "Giornata" in str(row[c]): break
+                            h, a = str(row[c]).strip(), str(row[c+3]).strip()
+                            if not h or h == "nan" or len(h) < 2: continue
+                            
+                            # Calcolo bonus per entrambi
+                            cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
+                            cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
+                            
+                            bh, _ = calculate_stadium_bonus(cap_h)
+                            _, ba = calculate_stadium_bonus(cap_a)
+                            
+                            res.append({
+                                "Casa": h, 
+                                "Fuori": a, 
+                                "Bonus Casa": f"+{format_num(bh)}", 
+                                "Bonus Fuori": f"+{format_num(ba)}"
+                            })
+                st.table(pd.DataFrame(res))
 
     # --- 🏆 COPPE E PRELIMINARI ---
     elif menu == "🏆 Coppe e Preliminari":
