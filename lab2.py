@@ -101,6 +101,7 @@ if df_base is not None:
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("🏠 Dashboard Riepilogo")
+        st.write("File trovati in cartella:", os.listdir('.'))
         leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].dropna().unique()]
         cols = st.columns(2)
         for i, lega_nome in enumerate(leghe_eff):
