@@ -113,21 +113,41 @@ def main():
         st.bar_chart(rank.set_index('Squadra_LFM'))
         st.dataframe(rank, use_container_width=True, hide_index=True)
 
-    # 4. BONUS STADI E CALENDARI (RIPRISTINATO)
+    # 4. BONUS STADI E CALENDARI (VERSIONE CORRETTA)
     elif menu == "🏟️ Bonus Stadi":
         st.title("🏟️ Bonus Stadio & Calendari")
         c1, c2 = st.columns([1, 2])
+        
         with c1:
+            st.subheader("🏟️ Database Stadi")
             if not df_stadi.empty:
                 st.dataframe(df_stadi, use_container_width=True, hide_index=True)
+            else:
+                st.warning("File stadi.csv non trovato.")
+        
         with c2:
             st.subheader("🗓️ Analisi Calendari")
+            # Cerchiamo i file dei calendari
             file_cal = [f for f in os.listdir('.') if 'Calendario' in f and f.endswith('.csv')]
-            sel_cal = st.selectbox("Seleziona Calendario", file_cal)
-            if sel_cal:
-                df_c = pd.read_csv(sel_cal)
-                st.dataframe(df_c, use_container_width=True)
+            
+            if not file_cal:
+                st.info("Nessun file 'Calendario_*.csv' trovato nella cartella.")
+            else:
+                sel_cal = st.selectbox("Seleziona Calendario", file_cal)
+                
+                if sel_cal:
+                    try:
+                        # TENTATIVO 1: UTF-8
+                        df_c = pd.read_csv(sel_cal, sep=',')
+                    except UnicodeDecodeError:
+                        # TENTATIVO 2: Latin-1 (Risolve l'errore che hai ricevuto)
+                        df_c = pd.read_csv(sel_cal, sep=',', encoding='latin1')
+                    except Exception as e:
+                        st.error(f"Errore nella lettura del calendario: {e}")
+                        df_c = pd.DataFrame()
 
+                    if not df_c.empty:
+                        st.dataframe(df_c, use_container_width=True, hide_index=True)
     # 5. GIOCATORI LIBERI (LOGICA ORIGINALE)
     elif menu == "🟢 Giocatori Liberi":
         st.title("🟢 Mercato Svincolati")
