@@ -16,32 +16,40 @@ def load_all_data():
         def read_csv_safe(file):
             if not os.path.exists(file): 
                 return pd.DataFrame()
-            try: return pd.read_csv(file, sep=',', encoding='utf-8')
-            except: return pd.read_csv(file, sep=',', encoding='latin1')
+            try: 
+                df = pd.read_csv(file, sep=',', encoding='utf-8')
+            except: 
+                df = pd.read_csv(file, sep=',', encoding='latin1')
+            # PULIZIA: Rimuove spazi vuoti dai nomi delle colonne
+            df.columns = [c.strip() for c in df.columns]
+            return df
 
-        # --- NOMI FILE CORRETTI DALLA TUA LISTA ---
-        df_base = read_csv_safe('database_lfm.csv') # File 12 della tua lista
-        df_quot = read_csv_safe('quot.csv')         # File 0 della tua lista
-        df_stadi = read_csv_safe('stadi.csv')       # File 3 della tua lista
+        df_base = read_csv_safe('database_lfm.csv')
+        df_quot = read_csv_safe('quot.csv')
+        df_stadi = read_csv_safe('stadi.csv')
         
-        # Se i file fondamentali sono vuoti, avvisa ma non bloccare tutto
-        if df_base.empty:
-            st.warning("⚠️ Attenzione: 'database_lfm.csv' non trovato o vuoto.")
-        if df_quot.empty:
-            st.warning("⚠️ Attenzione: 'quot.csv' non trovato o vuoto.")
+        if df_base.empty or df_quot.empty:
+            return df_base, df_quot, df_stadi
 
-        # Controllo ID e Merge
-        if not df_base.empty and not df_quot.empty:
-            df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
-            df_base['Id'] = pd.to_numeric(df_base['Id'], errors='coerce')
-            full_df = pd.merge(df_base, df_quot, on='Id', how='left', suffixes=('', '_q'))
-            full_df['Lega'] = full_df['Lega'].fillna('Serie A')
-            return full_df, df_quot, df_stadi
+        # Assicuriamoci che l'ID sia numerico per il merge
+        df_base['Id'] = pd.to_numeric(df_base['Id'], errors='coerce')
+        df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
+
+        # Controllo se esiste la colonna 'Lega'
+        if 'Lega' not in df_base.columns:
+            st.info("ℹ️ Colonna 'Lega' non trovata in database_lfm.csv. Assegnazione automatica...")
+            df_base['Lega'] = 'Serie A' # Valore di default per evitare l'errore
+
+        # Esegui il Merge
+        full_df = pd.merge(df_base, df_quot, on='Id', how='left', suffixes=('', '_q'))
         
-        return df_base, df_quot, df_stadi
+        # Riempimento valori nulli post-merge
+        full_df['Lega'] = full_df['Lega'].fillna('Serie A')
+        
+        return full_df, df_quot, df_stadi
 
     except Exception as e:
-        st.error(f"Errore nel caricamento: {e}")
+        st.error(f"❌ Errore critico nel caricamento: {e}")
         return None, None, None
 # --- 2. LOGICA CALCOLO STADI (Migliorata) ---
 def get_stadium_bonus(df_cal, df_stadi, squadra_nome):
