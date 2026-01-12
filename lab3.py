@@ -95,6 +95,13 @@ def render_rose(df):
 # --- 4. MAIN APP ---
 
 def main():
+    st.set_page_config(page_title="LFM Dashboard", layout="wide")
+    
+    # --- RIGA DI DEBUG ---
+    st.write("File trovati nella cartella:", os.listdir(".")) 
+    # ---------------------
+    
+    df_full, df_quot, df_stadi = load_all_data()
     # Sidebar Navigation
     with st.sidebar:
         st.title("🏆 LFM Manager")
