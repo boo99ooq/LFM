@@ -163,9 +163,20 @@ if df_base is not None:
                             cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
                             cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
                             bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
-                            res.append({"Match": f"{h} vs {a}", "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
+                            
+                            # MODIFICA QUI: Separazione in CASA e FUORI
+                            res.append({
+                                "CASA": h, 
+                                "FUORI": a, 
+                                "Bonus Casa": f"+{format_num(bh)}", 
+                                "Bonus Fuori": f"+{format_num(ba)}"
+                            })
                         except: pass
-            st.table(pd.DataFrame(res))
+            
+            if res:
+                st.table(pd.DataFrame(res))
+            else:
+                st.info("Nessun match trovato per questa giornata.")
 
     # --- 🏆 COPPE E PRELIMINARI ---
     elif menu == "🏆 Coppe e Preliminari":
