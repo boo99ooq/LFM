@@ -1,124 +1,127 @@
 import streamlit as st
 import pandas as pd
+import math
 import os
 import re
 
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="LFM Dashboard - Pro Edition", layout="wide", page_icon="⚽")
+# --- CONFIGURAZIONE ---
+st.set_page_config(page_title="LFM Dashboard - Golden Edition", layout="wide", page_icon="⚖️")
 
-# Costanti per ordinamento
+# --- COSTANTI ORIGINALI ---
 ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
+MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier League": "#3d195b", "Liga BBVA": "#ee8707"}
 ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
-# --- FUNZIONI DI CARICAMENTO DATI ---
-@st.cache_data(ttl=600)
-def load_lfm_data():
-    def read_safe(f):
-        if not os.path.exists(f): 
-            return pd.DataFrame()
-        try:
-            df = pd.read_csv(f, sep=',', encoding='utf-8')
-        except:
-            df = pd.read_csv(f, sep=',', encoding='latin1')
-        
-        # Pulizia nomi colonne da spazi bianchi invisibili
-        df.columns = [c.strip() for c in df.columns]
-        return df
+# --- FUNZIONI UTILITY ---
+def calculate_stadium_bonus(capienza):
+    casa = capienza / 20
+    trasferta = math.floor((casa / 2) * 2) / 2
+    return casa, trasferta
 
-    # Caricamento file principali
+@st.cache_data(ttl=600)
+def load_all_lfm_data():
+    def read_safe(f):
+        if not os.path.exists(f): return pd.DataFrame()
+        try: return pd.read_csv(f, sep=',', encoding='utf-8')
+        except: return pd.read_csv(f, sep=',', encoding='latin1')
+
+    # Caricamento file
     df_quot = read_safe('quot.csv')
     df_leghe = read_safe('leghe.csv')
     df_rosters = read_safe('fantamanager-2021-rosters.csv')
     df_base = read_safe('database_lfm.csv')
+    df_stadi = read_safe('stadi.csv')
 
-    # Verifica minima per far girare l'app
     if df_quot.empty or df_rosters.empty:
-        return None, None, None
+        return None, None, None, None
 
-    # --- NORMALIZZAZIONE ID ---
-    # Convertiamo tutti gli ID in numeri interi per un merge perfetto
-    for d in [df_quot, df_rosters, df_base]:
-        if not d.empty and 'Id' in d.columns:
-            d['Id'] = pd.to_numeric(d['Id'], errors='coerce').fillna(0).astype(int)
+    # Pulizia nomi colonne e normalizzazione ID
+    for d in [df_quot, df_rosters, df_leghe, df_base]:
+        if not d.empty:
+            d.columns = [c.strip() for c in d.columns]
+            if 'Id' in d.columns:
+                d['Id'] = pd.to_numeric(d['Id'], errors='coerce').fillna(0).astype(int)
 
-    # --- UNIONE DEI DATI (IL CUORE) ---
-    # 1. Partiamo dai Roster (Squadra LFM <-> Id Giocatore)
-    # 2. Uniamo con le Quotazioni (Nome, Ruolo, FVM)
+    # --- COSTRUZIONE DATABASE INTEGRATO ---
+    # Uniamo Roster (Squadre-Id) con Quotazioni (Info Giocatori)
     full_df = pd.merge(df_rosters, df_quot, on='Id', how='inner')
-
-    # 3. Uniamo con le Leghe per sapere la competizione di ogni squadra
+    
+    # Uniamo con le Leghe (Lega e Crediti)
     if not df_leghe.empty:
-        # Pulizia nomi squadre per evitare errori di battitura
         df_leghe['Squadra'] = df_leghe['Squadra'].str.strip()
         full_df['Squadra_LFM'] = full_df['Squadra_LFM'].str.strip()
-        
-        full_df = pd.merge(
-            full_df, 
-            df_leghe[['Squadra', 'Lega']], 
-            left_on='Squadra_LFM', 
-            right_on='Squadra', 
-            how='left'
-        )
+        full_df = pd.merge(full_df, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
 
-    # 4. Integrazione dati rimborsi (se presenti)
-    if not df_base.empty and 'Rimborsato' in df_base.columns:
+    # Uniamo con database_lfm per i rimborsi
+    if not df_base.empty:
         full_df = pd.merge(full_df, df_base[['Id', 'Rimborsato']], on='Id', how='left')
         full_df['Rimborsato'] = full_df['Rimborsato'].fillna(False)
 
-    # Riempimento valori di sicurezza
-    full_df['Lega'] = full_df['Lega'].fillna('Da Assegnare')
+    full_df['Lega'] = full_df['Lega'].fillna('Serie A')
+    return full_df, df_quot, df_leghe, df_stadi
+
+# --- LOGICA DASHBOARD (LE SCHEDE COLORATE) ---
+def render_dashboard(df_all):
+    st.title("⚽ LFM Global Dashboard")
     
-    return full_df, df_quot, df_leghe
+    for lega in ORDINE_LEGHE:
+        color = MAPPATURA_COLORI.get(lega, "#333")
+        st.markdown(f"""
+            <div style="background-color:{color}; padding:10px; border-radius:10px; margin-bottom:10px;">
+                <h2 style="color:white; margin:0;">{lega.upper()}</h2>
+            </div>
+        """, unsafe_allow_value=True)
+        
+        df_lega = df_all[df_all['Lega'] == lega]
+        squadre = sorted(df_lega['Squadra_LFM'].unique())
+        
+        cols = st.columns(len(squadre) if squadre else 1)
+        for i, sq in enumerate(squadre):
+            with cols[i]:
+                df_sq = df_lega[df_lega['Squadra_LFM'] == sq]
+                fvm_tot = int(df_sq['FVM'].sum())
+                st.markdown(f"**{sq}**")
+                st.markdown(f"💰 {fvm_tot} mln")
+                st.caption(f"🏃 {len(df_sq)} gioc.")
 
-# --- INTERFACCIA UTENTE ---
+# --- MAIN APP ---
 def main():
-    df, df_quot, df_leghe = load_lfm_data()
+    df_full, df_quot, df_leghe, df_stadi = load_all_lfm_data()
 
-    if df is None:
-        st.error("❌ Errore critico: File 'quot.csv' o 'fantamanager-2021-rosters.csv' mancanti.")
-        st.info("Assicurati che i file CSV siano nella stessa cartella dello script su GitHub.")
+    if df_full is None:
+        st.error("Caricamento fallito. Controlla i nomi dei file CSV.")
         return
 
-    # Sidebar
-    st.sidebar.title("🏆 LFM Manager")
-    menu = st.sidebar.radio("Menu Navigazione", ["🏠 Dashboard", "📋 Rose Leghe", "📈 Ranking FVM", "🟢 Mercato"])
+    menu = st.sidebar.radio("Navigazione", ["📊 Dashboard", "📋 Rose Complete", "📈 Ranking FVM", "🟢 Mercato", "⚙️ Gestione"])
 
-    if menu == "🏠 Dashboard":
-        st.title("⚽ LFM Global Dashboard")
-        st.markdown("---")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Giocatori in Rosa", len(df))
-        c2.metric("Squadre Totali", df['Squadra_LFM'].nunique())
-        c3.metric("FVM Totale Lega", f"{int(df['FVM'].sum())} mln")
+    if menu == "📊 Dashboard":
+        render_dashboard(df_full)
 
-    elif menu == "📋 Rose Leghe":
-        st.title("📋 Rose per Competizione")
-        leghe_disponibili = sorted(df['Lega'].unique())
-        lega_sel = st.selectbox("Seleziona la Lega:", leghe_disponibili)
-        
-        df_l = df[df['Lega'] == lega_sel]
+    elif menu == "📋 Rose Complete":
+        st.title("📋 Rose per Lega")
+        lega_sel = st.selectbox("Seleziona Lega", ORDINE_LEGHE)
+        df_l = df_full[df_full['Lega'] == lega_sel]
         squadre = sorted(df_l['Squadra_LFM'].unique())
-        
         for s in squadre:
-            with st.expander(f"🛡️ {s.upper()}"):
-                rosa = df_l[df_l['Squadra_LFM'] == s].sort_values(
-                    'R', key=lambda x: x.map(ORDINE_RUOLI)
-                )
-                # Visualizzazione tabella pulita
+            with st.expander(f"🛡️ {s}"):
+                rosa = df_l[df_l['Squadra_LFM'] == s].sort_values('R', key=lambda x: x.map(ORDINE_RUOLI))
                 st.table(rosa[['R', 'Nome', 'Squadra', 'FVM']])
 
     elif menu == "📈 Ranking FVM":
-        st.title("📈 Valore Rose (Ranking FVM)")
-        ranking = df.groupby('Squadra_LFM')['FVM'].sum().sort_values(ascending=False).reset_index()
+        st.title("📈 Valore Rose")
+        ranking = df_full.groupby('Squadra_LFM')['FVM'].sum().sort_values(ascending=False).reset_index()
         st.bar_chart(ranking.set_index('Squadra_LFM'))
-        st.dataframe(ranking, use_container_width=True, hide_index=True)
+        st.dataframe(ranking, use_container_width=True)
 
     elif menu == "🟢 Mercato":
         st.title("🟢 Giocatori Svincolati")
-        ids_occupati = set(df['Id'])
-        liberi = df_quot[~df_quot['Id'].isin(ids_occupati)].sort_values('FVM', ascending=False)
-        st.write("Top 100 giocatori liberi per valore FVM:")
-        st.dataframe(liberi.head(100), use_container_width=True, hide_index=True)
+        ids_occ = set(df_full['Id'])
+        liberi = df_quot[~df_quot['Id'].isin(ids_occ)].sort_values('FVM', ascending=False)
+        st.dataframe(liberi.head(100), use_container_width=True)
+
+    elif menu == "⚙️ Gestione":
+        st.title("⚙️ Gestione Squadre & Crediti")
+        st.data_editor(df_leghe, use_container_width=True)
 
 if __name__ == "__main__":
     main()
