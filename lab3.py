@@ -190,6 +190,7 @@ if df_base is not None:
                 for c in range(len(df_co.columns)):
                     if "Giornata" in str(df_co.iloc[r, c]) and "serie a" not in str(df_co.iloc[r, c]).lower():
                         g_pos.append((str(df_co.iloc[r, c]).strip(), r, c))
+            
             if g_pos:
                 sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
                 res, rip = [], []
@@ -207,11 +208,21 @@ if df_base is not None:
                                     cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
                                     cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
                                     bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
-                                    res.append({"Girone": str(row[col_idx]).strip(), "Match": f"{h} vs {a}", "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
+                                    
+                                    # MODIFICA: Separazione colonne CASA e FUORI
+                                    res.append({
+                                        "Girone": str(row[col_idx]).strip(), 
+                                        "CASA": h, 
+                                        "FUORI": a, 
+                                        "Bonus Casa": f"+{format_num(bh)}", 
+                                        "Bonus Fuori": f"+{format_num(ba)}"
+                                    })
                             except: continue
-                st.table(pd.DataFrame(res))
-                if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
-
+                
+                if res:
+                    st.table(pd.DataFrame(res))
+                if rip: 
+                    st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
     # --- 📈 STATISTICHE LEGHE ---
     elif menu == "📈 Statistiche Leghe":
         st.title("📈 Medie Comparative per Lega")
