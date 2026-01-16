@@ -52,8 +52,7 @@ if not st.session_state.loggato:
                 st.rerun()
             else: st.error("PIN errato.")
 
-# --- 4. DASHBOARD ---
-# --- DASHBOARD AGGIORNATA CON NOMI EVIDENTI ---
+# --- LOGICA DASHBOARD AGGIORNATA CON MESSAGGIO CORRETTO ---
 else:
     st.title(f"🛡️ Blindaggio: {st.session_state.squadra}")
     if st.sidebar.button("Logout"):
@@ -80,8 +79,6 @@ else:
         max_crediti_rivali = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
         
         st.write("---")
-        st.subheader("Configura le tue clausole")
-
         tot_tasse = 0
         dati_invio = []
 
@@ -89,45 +86,45 @@ else:
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm = row['Nome'], int(row['FVM'])
             
-            # RENDIAMO IL NOME MOLTO EVIDENTE
-            with st.container():
-                # Titolo Gigante con Markdown
-                st.markdown(f"## {i+1}. {nome.upper()}")
-                
-                col1, col2, col3 = st.columns([2, 1, 1])
-                
-                with col1:
-                    clausola = st.number_input(f"Imposta Clausola (Min: {fvm})", 
-                                               min_value=fvm, 
-                                               value=fvm*2, 
-                                               key=f"cl_{nome}")
-                with col2:
-                    tassa = calcola_tassa(clausola)
-                    tot_tasse += tassa
-                    st.metric("Tassa da pagare", f"{tassa} cr")
-                
-                with col3:
-                    if clausola <= max_crediti_rivali:
-                        st.error("🟠 VULNERABILE")
-                        st.caption(f"Serve > {max_crediti_rivali}")
-                    else:
-                        st.success("🟢 BLINDATO")
-                        st.caption("Al sicuro!")
-                
-                st.write("---") # Separatore tra un giocatore e l'altro
-                dati_invio.append(f"{nome}:{clausola}")
+            # NOME GIGANTE E VISIBILE
+            st.markdown(f"# {nome.upper()}")
+            
+            col1, col2, col3 = st.columns([2, 1, 1])
+            
+            with col1:
+                clausola = st.number_input(f"Clausola (FVM: {fvm})", 
+                                           min_value=fvm, 
+                                           value=fvm*2, 
+                                           key=f"cl_{nome}")
+            with col2:
+                tassa = calcola_tassa(clausola)
+                tot_tasse += tassa
+                st.metric("Tassa", f"{tassa} cr")
+            
+            with col3:
+                if clausola <= max_crediti_rivali:
+                    st.error("🟠 VULNERABILE")
+                else:
+                    st.success("🟢 BLINDATO")
+            
+            st.write("---")
+            dati_invio.append(f"{nome}:{clausola}")
 
-        # RIEPILOGO FINALE
-        spesa_netta = max(0, tot_tasse - 60)
+        # --- LOGICA MESSAGGIO BONUS (VERSIONE CORRETTA) ---
+        eccedenza = max(0, tot_tasse - 60)
         
-        st.info(f"💡 Il Bonus Lega di 60cr copre le tue tasse fino a {tot_tasse}cr.")
-        
+        if tot_tasse <= 60:
+            st.success(f"✅ Il Bonus Lega copre interamente le tue tasse ({tot_tasse} cr). Spesa netta: 0 cr.")
+        else:
+            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60 cr. Eccedi il bonus di **{eccedenza} crediti**, che verranno scalati dal tuo budget asta.")
+
+        # Riepilogo finale
         c1, c2, c3 = st.columns(3)
         c1.metric("Totale Tasse", f"{tot_tasse} cr")
-        c2.metric("Bonus", "-60 cr")
-        c3.metric("COSTO NETTO", f"{spesa_netta} cr", delta=-spesa_netta if spesa_netta > 0 else 0)
+        c2.metric("Bonus franchigia", "60 cr")
+        c3.metric("SPESA REALE", f"{eccedenza} cr", delta=-eccedenza if eccedenza > 0 else 0)
 
         if st.button("SALVA DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_blindato(st.session_state.squadra, ";".join(dati_invio))
-            st.success(f"✅ Clausole per {st.session_state.squadra} salvate!")
+            st.success("✅ Salvataggio completato!")
             st.balloons()
