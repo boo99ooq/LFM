@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 
 # --- 1. CONFIGURAZIONE TEMPORALE ---
-SCADENZA = datetime(2026, 8, 1) # Apertura tabellone il 1° Agosto 2026
+SCADENZA = datetime(2026, 8, 1)
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
 
@@ -74,12 +74,13 @@ def mostra_monitoraggio_admin(df_leghe):
         if mancanti:
             st.code("\n".join([f"- {s}" for s in mancanti]), language="text")
 
-# --- 3. UI E CSS ---
+# --- 3. UI E CSS PERSONALIZZATO ---
 st.set_page_config(page_title="LFM - Blindaggio", layout="wide")
 st.markdown("""<style>
-    .player-title { color: #0e1117; font-weight: 850; text-transform: uppercase; margin-top: 25px; border-bottom: 2px solid #e0e0e0; }
+    .player-title { color: #1E3A8A; font-weight: 900; text-transform: uppercase; margin-top: 35px; margin-bottom: 0px; font-size: 2.2em; }
+    .fvm-label { color: #666; font-size: 0.9em; font-weight: 400; margin-bottom: 15px; }
+    .clausola-box { background-color: #f0f2f6; padding: 20px; border-radius: 15px; border: 2px solid #1E3A8A; }
     .budget-box { background-color: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E3A8A; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
-    small { font-size: 0.5em; color: #666; }
 </style>""", unsafe_allow_html=True)
 
 # --- 4. LOGICA VISUALIZZAZIONE ---
@@ -151,26 +152,33 @@ else:
         tot_tasse = 0
         dati_invio = []
 
+        # --- CICLO GIOCATORI CON LAYOUT OTTIMIZZATO ---
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm = row['Nome'], int(row['FVM'])
             def_val = max(salvati.get(nome, fvm * 2), fvm)
             
-            # Intestazione con Nome e FVM
-            st.markdown(f"<h1 class='player-title'>{nome} <small>(FVM: {fvm} cr)</small></h1>", unsafe_allow_html=True)
+            st.markdown(f"<p class='player-title'>{nome}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p class='fvm-label'>Valore di Mercato (FVM): {fvm} cr</p>", unsafe_allow_html=True)
             
-            col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
-            with col1:
-                val = st.number_input(f"Imposta Clausola", min_value=fvm, value=def_val, key=f"c_{nome}")
-                st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
-            with col2:
-                st.metric("Riferimento FVM", f"{fvm} cr")
-            with col3:
-                t = calcola_tassa(val)
-                tot_tasse += t
-                st.metric("Tassa", f"{t} cr")
-            with col4:
-                if val <= max_rivale: st.error("🟠 VULNERABILE")
-                else: st.success("🟢 BLINDATO")
+            # Box centrale per la clausola (il numero più importante)
+            with st.container():
+                col_cl, col_stats = st.columns([1.5, 2])
+                
+                with col_cl:
+                    # Input molto visibile
+                    val = st.number_input(f"IMPOSTA CLAUSOLA PER {nome}", min_value=fvm, value=def_val, key=f"c_{nome}", help="Inserisci qui la cifra finale")
+                    st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
+                
+                with col_stats:
+                    c_t, c_s = st.columns(2)
+                    with c_t:
+                        t = calcola_tassa(val)
+                        tot_tasse += t
+                        st.metric("Tassa da pagare", f"{t} cr")
+                    with c_s:
+                        if val <= max_rivale: st.error("🟠 VULNERABILE")
+                        else: st.success("🟢 BLINDATO")
+            
             dati_invio.append(f"{nome}:{val}")
 
         # --- CALCOLO FINALE ---
@@ -190,5 +198,5 @@ else:
 
         if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_su_github(st.session_state.squadra, ";".join(dati_invio))
-            st.success("✅ Salvataggio completato! Puoi rientrare per modifiche fino alla scadenza.")
+            st.success("✅ Salvataggio completato!")
             st.balloons()
