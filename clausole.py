@@ -99,24 +99,26 @@ if 'loggato' not in st.session_state:
 
 df_leghe = carica_csv("leghe.csv")
 
+# ... (codice precedente)
+
 if not st.session_state.loggato:
     st.title("🛡️ LFM - Blindaggio")
-    if not df_leghe.empty:
-        lega = st.selectbox("Lega", df_leghe['Lega'].unique())
-        squadra = st.selectbox("Squadra", df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique())
-        pin = st.text_input("PIN", type="password")
-        if st.button("ACCEDI", use_container_width=True, type="primary"):
-            pin_reale = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
-            if str(pin) == str(pin_reale):
-                st.session_state.loggato = True
-                st.session_state.squadra = squadra
-                st.rerun()
-            else: st.error("PIN errato.")
+    # ... (tutto il blocco del login deve essere indentato qui)
+    if st.button("ACCEDI", use_container_width=True, type="primary"):
+        # ... eccetera
 else:
-    # --- CONFIGURAZIONE ADMIN MULTIPLI ---
-# Inserisci qui i nomi esatti delle squadre di tutti gli amministratori
-ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914","Siviglia"]
+    # --- QUESTA È LA PARTE DA CORREGGERE ---
+    # Tutto ciò che segue deve avere lo stesso rientro (allineato verticalmente)
+    
+    ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
+    # Mostra admin se l'utente è nella lista
+    if st.session_state.squadra in ADMIN_SQUADRE:
+        mostra_monitoraggio_admin(df_leghe)
+
+    st.title(f"🛡️ Terminale: {st.session_state.squadra}")
+    
+    # ... (tutto il resto della dashboard deve continuare con questo rientro)
 # --- NELLA DASHBOARD (SOTTO IL LOGOUT) ---
 else:
     # Il controllo ora verifica se il nome della squadra loggata è nella lista admin
