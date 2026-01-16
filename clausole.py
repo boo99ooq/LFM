@@ -113,8 +113,14 @@ if not st.session_state.loggato:
                 st.rerun()
             else: st.error("PIN errato.")
 else:
-    # Mostra admin se l'utente sei TU
-    if st.session_state.squadra == "Liverpool Football Club": # <--- CAMBIA QUESTO
+    # --- CONFIGURAZIONE ADMIN MULTIPLI ---
+# Inserisci qui i nomi esatti delle squadre di tutti gli amministratori
+ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914","Siviglia"]
+
+# --- NELLA DASHBOARD (SOTTO IL LOGOUT) ---
+else:
+    # Il controllo ora verifica se il nome della squadra loggata è nella lista admin
+    if st.session_state.squadra in ADMIN_SQUADRE:
         mostra_monitoraggio_admin(df_leghe)
 
     st.title(f"🛡️ Terminale: {st.session_state.squadra}")
