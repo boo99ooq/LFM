@@ -106,30 +106,57 @@ if not st.session_state.loggato:
                 st.rerun()
             else: st.error("PIN errato.")
 else:
-    # --- AREA ADMIN ---
+   # --- AREA ADMIN: GESTIONE ---
     if st.session_state.squadra in ADMIN_SQUADRE:
         with st.sidebar:
             st.subheader("🕵️ Pannello Admin")
-            if st.checkbox("Gestisci Scippi Pendenti"):
+            if st.checkbox("Gestisci Clausole Rescisorie"):
                 df_sc = carica_csv("richieste_scippo.csv")
-                if not df_sc.empty:
-                    pendenti = df_sc[df_sc['Stato'] == 'PENDENTE']
-                    for i, r in pendenti.iterrows():
-                        st.warning(f"{r['Orario']} - {r['Acquirente']} su {r['Nome']} ({r['Costo']} cr)")
-                        if st.button(f"APPROVA SCIPPO #{i}"):
-                            # Update Crediti
-                            df_l = carica_csv("leghe.csv")
-                            df_l.loc[df_l['Squadra'] == r['Acquirente'], 'Crediti'] -= r['Costo']
-                            df_l.loc[df_l['Squadra'] == r['Proprietario'], 'Crediti'] += r['Costo']
-                            salva_file_github("leghe.csv", df_l, "Update Crediti")
-                            # Update Roster
-                            df_ros = carica_csv("fantamanager-2021-rosters.csv")
-                            df_ros.loc[df_ros['Id'].astype(str) == str(r['Id']), 'Squadra_LFM'] = r['Acquirente']
-                            salva_file_github("fantamanager-2021-rosters.csv", df_ros, "Update Roster")
-                            # Segna Approva
-                            df_sc.at[i, 'Stato'] = 'APPROVATO'
-                            salva_file_github("richieste_scippo.csv", df_sc, "Scippo OK")
-                            st.rerun()
+                
+                if df_sc.empty:
+                    st.info("Nessuna operazione sulle clausole pendente.")
+                else:
+                    # Filtriamo solo quelle con stato PENDENTE
+                    pendenti = df_sc[df_sc['Stato'].astype(str).str.contains('PENDENTE', na=False)]
+                    
+                    if pendenti.empty:
+                        st.success("Tutte le operazioni sono state elaborate!")
+                    else:
+                        st.write(f"Richieste pendenti: {len(pendenti)}")
+                        for i, r in pendenti.iterrows():
+                            with st.expander(f"🕒 {r['Orario']} - {r['Nome']}"):
+                                st.write(f"**Acquirente:** {r['Acquirente']}")
+                                st.write(f"**Dal Team:** {r['Proprietario']}")
+                                st.write(f"**Costo:** {r['Costo']} cr")
+                                
+                                c_adm1, c_adm2 = st.columns(2)
+                                if c_adm1.button(f"APPROVA ✅", key=f"ok_{i}"):
+                                    # 1. Carica file freschi
+                                    df_l = carica_csv("leghe.csv")
+                                    df_ros = carica_csv("fantamanager-2021-rosters.csv")
+                                    
+                                    # 2. Aggiorna Crediti
+                                    df_l.loc[df_l['Squadra'] == r['Acquirente'], 'Crediti'] -= int(r['Costo'])
+                                    df_l.loc[df_l['Squadra'] == r['Proprietario'], 'Crediti'] += int(r['Costo'])
+                                    salva_file_github("leghe.csv", df_l, f"Pagata clausola {r['Nome']}")
+                                    
+                                    # 3. Sposta Giocatore nel Roster
+                                    df_ros.loc[df_ros['Id'].astype(str) == str(r['Id']), 'Squadra_LFM'] = r['Acquirente']
+                                    salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {r['Nome']}")
+                                    
+                                    # 4. Chiudi richiesta
+                                    df_sc.at[i, 'Stato'] = 'APPROVATO'
+                                    salva_file_github("richieste_scippo.csv", df_sc, "Clausola Approvata")
+                                    st.success("Operazione confermata!")
+                                    st.rerun()
+
+                                if c_adm2.button(f"RIFIUTA ❌", key=f"no_{i}"):
+                                    # Segna come RIFIUTATO per toglierlo dalla lista
+                                    df_sc.at[i, 'Stato'] = 'RIFIUTATO'
+                                    salva_file_github("richieste_scippo.csv", df_sc, "Richiesta Rifiutata")
+                                    st.warning("Richiesta annullata.")
+                                    st.rerun()
+                            st.divider()
 
     # --- 5. LOGICA MERCATO (POST SCADENZA) ---
     if PORTALE_APERTO:
