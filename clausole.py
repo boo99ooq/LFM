@@ -1,77 +1,83 @@
 import streamlit as st
 import pandas as pd
 from github import Github
-import base64
-from datetime import datetime
+import math
 
-# --- CONFIGURAZIONE GITHUB (Prende i dati dai Secrets di Streamlit) ---
-try:
-    TOKEN = st.secrets["GITHUB_TOKEN"]
-    REPO_NAME = st.secrets["REPO_NAME"]
-    g = Github(TOKEN)
-    repo = g.get_repo(REPO_NAME)
-except:
-    st.error("Configura i Secrets GITHUB_TOKEN e REPO_NAME su Streamlit Cloud.")
+# --- FUNZIONI TECNICHE ---
+def calcola_commissione(valore):
+    """Calcola la tassa a scaglioni: 10% fino a 200, 15% fino a 300, 20% oltre."""
+    tassa = 0
+    if valore <= 200:
+        tassa = valore * 0.10
+    elif valore <= 300:
+        tassa = (200 * 0.10) + (valore - 200) * 0.15
+    else:
+        tassa = (200 * 0.10) + (100 * 0.15) + (valore - 300) * 0.20
+    return math.ceil(tassa)
 
-# --- FUNZIONI DI SERVIZIO ---
-def carica_csv_da_github(file_name):
-    content = repo.get_contents(file_name)
-    return pd.read_csv(content.download_url)
+# --- CARICAMENTO DATI (Simulato dai tuoi CSV) ---
+# In produzione useremo la funzione carica_csv_da_github() definita prima
+df_leghe = pd.read_csv("leghe.csv")
+df_rosters = pd.read_csv("fantamanager-2021-rosters.csv")
+df_quot = pd.read_csv("quot.csv")
 
-def salva_clausola_blindata(squadra, dati_clausole):
-    file_path = "clausole_segrete.csv"
-    messaggio = f"Update clausole segrete: {squadra}"
+st.title("🛡️ LFM - Gestione Blindaggio Top Player")
+
+# --- LOGIN STEP 1: SCELTA LEGA E SQUADRA ---
+col1, col2 = st.columns(2)
+with col1:
+    lega_scelta = st.selectbox("Seleziona la tua Lega", df_leghe['Lega'].unique())
+with col2:
+    squadre_filtrate = df_leghe[df_leghe['Lega'] == lega_scelta]['Squadra'].unique()
+    squadra_scelta = st.selectbox("Seleziona la tua Squadra", squadre_filtrate)
+
+pin = st.text_input("Inserisci PIN Squadra", type="password")
+
+if pin == "1234": # Esempio di PIN
+    st.success(f"Accesso autorizzato: {squadra_scelta}")
     
-    # Crea il contenuto CSV (append o update)
-    # Nota: In una versione pro, qui criptiamo i valori
-    nuova_riga = f"{squadra},{dati_clausole}\n"
+    # --- LOGICA INCROCIO FILE ---
+    # 1. Trovo gli ID dei giocatori della squadra dal roster
+    ids_squadra = df_rosters[df_rosters['Squadra_LFM'] == squadra_scelta]['Id'].tolist()
     
-    try:
-        contents = repo.get_contents(file_path)
-        # Qui servirebbe una logica per non duplicare le righe della stessa squadra
-        # Per ora facciamo un update semplice del file
-        old_data = base64.b64decode(contents.content).decode("utf-8")
-        updated_data = old_data + nuova_riga
-        repo.update_file(contents.path, messaggio, updated_data, contents.sha)
-    except:
-        # Se il file non esiste, lo crea
-        repo.create_file(file_path, "Inizializzazione file clausole", nuova_riga)
-
-# --- INTERFACCIA APP ---
-st.title("🛡️ LFM - Portale Clausole Blindato")
-
-# 1. Identificazione Manager (Leggendo dalle tue leghe.csv)
-df_leghe = carica_csv_da_github("leghe.csv")
-lista_squadre = df_leghe['Squadra'].unique() # Adatta il nome colonna se diverso
-
-squadra_scelta = st.selectbox("Seleziona la tua Squadra", lista_squadre)
-pin = st.text_input("Inserisci il tuo PIN Squadra", type="password")
-
-if pin: # Aggiungeremo controllo PIN reale nel database
-    st.divider()
+    # 2. Prendo i dettagli di questi giocatori da quot.csv
+    giocatori_squadra = df_quot[df_quot['Id'].isin(ids_squadra)].copy()
     
-    # 2. Selezione dei 3 Top Player (Filtrando fantamanager-2021-rosters.csv)
-    df_rose = carica_csv_da_github("fantamanager-2021-rosters.csv")
-    rosa_squadra = df_rose[df_rose['Squadra'] == squadra_scelta]
+    # 3. Identifico i 3 Top Player per FVM (come da regolamento)
+    top_3_default = giocatori_squadra.nlargest(3, 'FVM')
     
-    st.subheader(f"Configura i 3 Top Player di {squadra_scelta}")
-    st.info("I dati inseriti rimarranno segreti fino al 31 Luglio.")
+    st.subheader("I tuoi 3 Top Player (per FVM)")
+    st.write("Puoi confermare questi o sceglierne altri tra i tuoi migliori 10.")
 
-    # Qui l'app dovrebbe proporre i 3 con FVM più alto o farli scegliere
-    # Per ora facciamo scelta libera tra i propri giocatori
-    scelti = st.multiselect("Seleziona i 3 giocatori da sottoporre a clausola", 
-                            rosa_squadra['Giocatore'].tolist(), max_selections=3)
+    scelti = st.multiselect("Seleziona i 3 da blindare:", 
+                            giocatori_squadra.nlargest(10, 'FVM')['Nome'].tolist(), 
+                            default=top_3_default['Nome'].tolist(),
+                            max_selections=3)
 
     if len(scelti) == 3:
-        clausole_dict = {}
-        for g in scelti:
-            # Recupera FVM da lfm.csv o quot.csv
-            fvm_min = 100 # Esempio, qui andrà la logica di look-up
-            val = st.number_input(f"Clausola per {g} (Min FVM: {fvm_min})", min_value=fvm_min)
-            clausole_dict[g] = val
+        totale_commissioni = 0
+        clausole_finali = {}
+
+        for nome in scelti:
+            fvm_player = giocatori_squadra[giocatori_squadra['Nome'] == nome]['FVM'].values[0]
+            clausola = st.number_input(f"Clausola per {nome} (FVM: {fvm_player})", 
+                                       min_value=int(fvm_player), 
+                                       value=int(fvm_player * 2))
+            
+            tassa = calcola_commissione(clausola)
+            totale_commissioni += tassa
+            clausole_finali[nome] = clausola
+            st.caption(f"Costo blindaggio per {nome}: {tassa} cr")
+
+        # --- CALCOLO BONUS 60 ---
+        spesa_reale = max(0, totale_commissioni - 60)
         
-        if st.button("Invia Clausole (Consegna al Buio)"):
-            stringa_dati = ";".join([f"{k}:{v}" for k,v in clausole_dict.items()])
-            salva_clausola_blindata(squadra_scelta, stringa_dati)
-            st.success("Consegna effettuata con successo su GitHub!")
+        st.divider()
+        st.metric("Totale Tasse Blindaggio", f"{totale_commissioni} cr")
+        st.metric("Costo netto su Budget Asta (Bonus 60cr applicato)", f"{spesa_reale} cr")
+
+        if st.button("Consegna e Cripta su GitHub"):
+            # Qui inseriremo la funzione save_to_github() con il tuo TOKEN
+            st.warning("Salvataggio in corso nel database segreto...")
+            # save_to_github(...)
             st.balloons()
