@@ -48,8 +48,6 @@ df_quot = pd.read_csv("quot.csv", encoding='latin1')
 df_leghe = pd.read_csv("leghe.csv", encoding='latin1')
 df_rosters = pd.read_csv("fantamanager-2021-rosters.csv", encoding='latin1')
 
-st.title("🛡️ LFM - Gestione Blindaggio Top Player")
-
 # --- LOGIN STEP 1: SCELTA LEGA E SQUADRA ---
 col1, col2 = st.columns(2)
 with col1:
