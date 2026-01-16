@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 
 # --- 1. CONFIGURAZIONE TEMPORALE E ADMIN ---
-SCADENZA = datetime(2025, 8, 1) 
+SCADENZA = datetime(2026, 8, 1) 
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
