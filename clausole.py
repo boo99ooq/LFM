@@ -161,7 +161,7 @@ else:
         budget_residuo = crediti_totali - eccedenza
 
         if tot_tasse <= 60:
-            st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
+            st.success(f"✅ Il Bonus Lega copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
         else:
             st.warning(f"⚠️ Il Bonus Lega di 60cr copre le tue tasse fino a 60cr. Eccedi il bonus di **{eccedenza} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
 
