@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 
 # --- 1. CONFIGURAZIONE TEMPORALE E ADMIN ---
-SCADENZA = datetime(2025, 8, 1) 
+SCADENZA = datetime(2026, 8, 1) 
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
@@ -85,7 +85,7 @@ if not st.session_state.loggato:
     if not df_leghe.empty:
         lega = st.selectbox("Lega", df_leghe['Lega'].unique())
         squadra = st.selectbox("Squadra", df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique())
-        pin = st.text_input("PIN", type="password")
+        pin = st.text_input("PIN Segreto", type="password")
         if st.button("ACCEDI"):
             pin_r = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
             if str(pin) == str(pin_r):
@@ -93,7 +93,6 @@ if not st.session_state.loggato:
                 st.session_state.squadra = squadra
                 st.rerun()
             else: st.error("PIN errato.")
-
 else:
     # --- AREA ADMIN: GESTIONE ---
     if st.session_state.squadra in ADMIN_SQUADRE:
@@ -110,11 +109,11 @@ else:
                             df_l = carica_csv("leghe.csv")
                             df_l.loc[df_l['Squadra'] == row['Acquirente'], 'Crediti'] -= row['Costo']
                             df_l.loc[df_l['Squadra'] == row['Proprietario'], 'Crediti'] += row['Costo']
-                            salva_file_github("leghe.csv", df_l, "Update Crediti Scippo")
+                            salva_file_github("leghe.csv", df_l, "Update Crediti post-scippo")
                             # Update Roster
                             df_r = carica_csv("fantamanager-2021-rosters.csv")
                             df_r.loc[df_r['Id'].astype(str) == str(row['Id']), 'Squadra_LFM'] = row['Acquirente']
-                            salva_file_github("fantamanager-2021-rosters.csv", df_r, "Update Roster Scippo")
+                            salva_file_github("fantamanager-2021-rosters.csv", df_r, "Update Roster post-scippo")
                             # Chiudi richiesta
                             df_scippi.at[idx, 'Stato'] = 'APPROVATO'
                             salva_file_github("richieste_scippo.csv", df_scippi, "Scippo Approvato")
@@ -127,7 +126,7 @@ else:
         my_credits = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         st.sidebar.metric("Il tuo Budget", f"{my_credits} cr")
 
-        # Recupero salvataggi e auto-fill
+        # Recupero salvataggi
         salvati = {}
         try:
             f = repo.get_contents("clausole_segrete.csv")
@@ -147,28 +146,32 @@ else:
         for sq in squadre_lega:
             with st.expander(f"🏟️ {sq.upper()}"):
                 if sq in salvati:
+                    # CASO A: Clausole salvate manualmente
                     for p in salvati[sq].split(";"):
                         p_id, p_nome, p_val = p.split(":")
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{p_nome}**"); c2.write(f"{p_val} cr")
-                        if sq != st.session_state.squadra and c3.button(f"SCIPPA", key=f"pay_{p_id}"):
-                            if my_credits >= int(p_val):
-                                registra_richiesta_scippo(st.session_state.squadra, sq, p_id, p_nome, p_val)
-                                st.success("Richiesta inviata!")
-                            else: st.error("Budget insufficiente")
+                        if sq != st.session_state.squadra:
+                            if c3.button(f"PAGA LA CLAUSOLA", key=f"pay_{p_id}"):
+                                if my_credits >= int(p_val):
+                                    registra_richiesta_scippo(st.session_state.squadra, sq, p_id, p_nome, p_val)
+                                    st.success("Richiesta inviata!")
+                                else: st.error("Budget insufficiente")
                 else:
-                    st.caption("⚠️ Clausole d'ufficio (FVM x 2)")
+                    # CASO B: Clausole d'ufficio (FVM ESATTA)
+                    st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
                     ids_sq = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
                     giocatori_sq = df_q[df_q['Id'].isin(ids_sq)].copy()
                     giocatori_sq['FVM'] = pd.to_numeric(giocatori_sq['FVM'], errors='coerce').fillna(0)
                     for _, row in giocatori_sq.nlargest(3, 'FVM').iterrows():
-                        p_id, p_nome, p_val_auto = row['Id'], row['Nome'], int(row['FVM']) * 2
+                        p_id, p_nome, p_val_auto = row['Id'], row['Nome'], int(row['FVM'])
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{p_nome}**"); c2.write(f"{p_val_auto} cr")
-                        if sq != st.session_state.squadra and c3.button(f"SCIPPA", key=f"auto_{p_id}"):
-                            if my_credits >= p_val_auto:
-                                registra_richiesta_scippo(st.session_state.squadra, sq, p_id, p_nome, p_val_auto)
-                                st.success("Richiesta d'ufficio!")
+                        if sq != st.session_state.squadra:
+                            if c3.button(f"PAGA LA CLAUSOLA", key=f"auto_{p_id}"):
+                                if my_credits >= p_val_auto:
+                                    registra_richiesta_scippo(st.session_state.squadra, sq, p_id, p_nome, p_val_auto)
+                                    st.success("Richiesta d'ufficio!")
 
     # --- 7. LOGICA BLINDAGGIO (PRIMA DELLA SCADENZA) ---
     else:
@@ -195,7 +198,6 @@ else:
 
         tot_tasse = 0
         dati_invio = []
-        salvati_attuali = {} # Per eventuale ripopolamento se già salvato
 
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
@@ -204,7 +206,8 @@ else:
             
             col_cl, col_stats = st.columns([1.8, 1.5])
             with col_cl:
-                val = st.number_input(f"INSERISCI CLAUSOLA", min_value=fvm, value=fvm*2, key=f"c_{p_id}")
+                # DEFAULT = FVM (più sicuro per il budget)
+                val = st.number_input(f"INSERISCI CLAUSOLA", min_value=fvm, value=fvm, key=f"c_{p_id}")
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
             with col_stats:
                 st.write("") 
