@@ -5,7 +5,7 @@ from io import StringIO
 import math
 from datetime import datetime
 
-# --- 1. CONFIGURAZIONE TEMPORALE E ADMIN ---
+# --- 1. CONFIGURAZIONE ---
 SCADENZA = datetime(2026, 8, 1) 
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
@@ -16,11 +16,11 @@ try:
     REPO_NAME = st.secrets["REPO_NAME"]
     g = Github(TOKEN)
     repo = g.get_repo(REPO_NAME)
-except Exception as e:
-    st.error(f"Errore configurazione GitHub Secrets: {e}")
+except:
+    st.error("Errore configurazione GitHub nei Secrets.")
     st.stop()
 
-# --- 2. FUNZIONI DI SUPPORTO ---
+# --- 2. FUNZIONI TECNICHE ---
 def carica_csv(file_name):
     try:
         content = repo.get_contents(file_name)
@@ -51,7 +51,7 @@ def registra_richiesta_scippo(acquirente, proprietario, player_id, nome, costo):
     try:
         f = repo.get_contents(path)
         contenuto = f.decoded_content.decode("utf-8") + nuova_riga
-        repo.update_file(path, f"Richiesta Scippo: {nome} alle {orario}", contenuto, f.sha)
+        repo.update_file(path, f"Clausola Rescisoria: {nome} alle {orario}", contenuto, f.sha)
     except:
         header = "Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario\n"
         repo.create_file(path, "Init Scippi", header + nuova_riga)
@@ -62,28 +62,15 @@ def calcola_tassa(valore):
     else: tassa = 20 + 15 + (valore - 300) * 0.20
     return math.ceil(tassa)
 
-def recupera_precedenti(squadra):
-    try:
-        f = repo.get_contents("clausole_segrete.csv")
-        testo = f.decoded_content.decode("utf-8")
-        for riga in testo.splitlines():
-            if riga.startswith(f"{squadra},"):
-                dati = riga.split(",")[1]
-                return {item.split(":")[0]: int(item.split(":")[1]) for item in dati.split(";")}
-    except: return {}
-    return {}
-
 # --- 3. UI E CSS ---
 st.set_page_config(page_title="LFM - Portale Clausole", layout="wide")
-st.markdown("""
-    <style>
-    .player-name { color: #1E3A8A; font-size: 2.8rem !important; font-weight: 900 !important; margin-bottom: -10px; text-transform: uppercase; }
+st.markdown("""<style>
+    .player-name { color: #1E3A8A; font-size: 2.8rem !important; font-weight: 900 !important; text-transform: uppercase; margin-bottom: -10px; }
     .fvm-sub { color: #6B7280; font-size: 1.2rem; margin-bottom: 25px; }
     div[data-baseweb="input"] { border: 3px solid #1E3A8A !important; border-radius: 15px !important; }
     input[type="number"] { font-size: 3rem !important; font-weight: 900 !important; color: #1E3A8A !important; text-align: center !important; }
     .budget-box { background-color: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E3A8A; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 if 'loggato' not in st.session_state:
     st.session_state.loggato = False
@@ -91,7 +78,6 @@ if 'loggato' not in st.session_state:
 
 df_leghe = carica_csv("leghe.csv")
 
-# --- 4. ACCESSO ---
 if not st.session_state.loggato:
     st.title("🛡️ LFM - Accesso Portale")
     if not df_leghe.empty:
@@ -106,61 +92,51 @@ if not st.session_state.loggato:
                 st.rerun()
             else: st.error("PIN errato.")
 else:
-   # --- AREA ADMIN: GESTIONE ---
+    # --- AREA ADMIN ---
     if st.session_state.squadra in ADMIN_SQUADRE:
         with st.sidebar:
-            st.subheader("🕵️ Pannello Admin")
-            if st.checkbox("Gestisci Clausole Rescisorie"):
+            st.subheader("🕵️ PANNELLO ADMIN")
+            st.markdown("### 📝 Stato Blindaggi")
+            try:
+                f_segrete = repo.get_contents("clausole_segrete.csv")
+                consegnate = [r.split(",")[0] for r in f_segrete.decoded_content.decode("utf-8").splitlines() if r.strip()]
+            except: consegnate = []
+            
+            tutte_squadre = df_leghe['Squadra'].unique()
+            mancanti = [s for s in tutte_squadre if s not in consegnate]
+            st.write(f"Consegnate: **{len(consegnate)} / {len(tutte_squadre)}**")
+            if st.checkbox("VEDI CHI MANCA"):
+                for m in mancanti: st.text(f"❌ {m}")
+
+            st.divider()
+            st.markdown("### 💸 Gestione Pagamenti")
+            if st.checkbox("MOSTRA RICHIESTE PENDENTI"):
                 df_sc = carica_csv("richieste_scippo.csv")
-                
-                if df_sc.empty:
-                    st.info("Nessuna operazione sulle clausole pendente.")
-                else:
-                    # Filtriamo solo quelle con stato PENDENTE
+                if not df_sc.empty:
                     pendenti = df_sc[df_sc['Stato'].astype(str).str.contains('PENDENTE', na=False)]
-                    
-                    if pendenti.empty:
-                        st.success("Tutte le operazioni sono state elaborate!")
-                    else:
-                        st.write(f"Richieste pendenti: {len(pendenti)}")
-                        for i, r in pendenti.iterrows():
-                            with st.expander(f"🕒 {r['Orario']} - {r['Nome']}"):
-                                st.write(f"**Acquirente:** {r['Acquirente']}")
-                                st.write(f"**Dal Team:** {r['Proprietario']}")
-                                st.write(f"**Costo:** {r['Costo']} cr")
-                                
-                                c_adm1, c_adm2 = st.columns(2)
-                                if c_adm1.button(f"APPROVA ✅", key=f"ok_{i}"):
-                                    # 1. Carica file freschi
-                                    df_l = carica_csv("leghe.csv")
-                                    df_ros = carica_csv("fantamanager-2021-rosters.csv")
-                                    
-                                    # 2. Aggiorna Crediti
-                                    df_l.loc[df_l['Squadra'] == r['Acquirente'], 'Crediti'] -= int(r['Costo'])
-                                    df_l.loc[df_l['Squadra'] == r['Proprietario'], 'Crediti'] += int(r['Costo'])
-                                    salva_file_github("leghe.csv", df_l, f"Pagata clausola {r['Nome']}")
-                                    
-                                    # 3. Sposta Giocatore nel Roster
-                                    df_ros.loc[df_ros['Id'].astype(str) == str(r['Id']), 'Squadra_LFM'] = r['Acquirente']
-                                    salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {r['Nome']}")
-                                    
-                                    # 4. Chiudi richiesta
-                                    df_sc.at[i, 'Stato'] = 'APPROVATO'
-                                    salva_file_github("richieste_scippo.csv", df_sc, "Clausola Approvata")
-                                    st.success("Operazione confermata!")
-                                    st.rerun()
+                    for i, r in pendenti.iterrows():
+                        with st.expander(f"🕒 {r['Orario']} - {r['Nome']}"):
+                            st.write(f"**Acquirente:** {r['Acquirente']} | **Costo:** {r['Costo']} cr")
+                            c_adm1, c_adm2 = st.columns(2)
+                            if c_adm1.button("APPROVA ✅", key=f"ok_{i}"):
+                                df_l = carica_csv("leghe.csv")
+                                df_l.loc[df_l['Squadra'] == r['Acquirente'], 'Crediti'] -= int(r['Costo'])
+                                df_l.loc[df_l['Squadra'] == r['Proprietario'], 'Crediti'] += int(r['Costo'])
+                                salva_file_github("leghe.csv", df_l, f"Approvata clausola {r['Nome']}")
+                                df_ros = carica_csv("fantamanager-2021-rosters.csv")
+                                df_ros.loc[df_ros['Id'].astype(str) == str(r['Id']), 'Squadra_LFM'] = r['Acquirente']
+                                salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Cambio team {r['Nome']}")
+                                df_sc.at[i, 'Stato'] = 'APPROVATO'
+                                salva_file_github("richieste_scippo.csv", df_sc, "Stato aggiornato")
+                                st.rerun()
+                            if c_adm2.button("RIFIUTA ❌", key=f"no_{i}"):
+                                df_sc.at[i, 'Stato'] = 'RIFIUTATO'
+                                salva_file_github("richieste_scippo.csv", df_sc, "Richiesta rifiutata")
+                                st.rerun()
 
-                                if c_adm2.button(f"RIFIUTA ❌", key=f"no_{i}"):
-                                    # Segna come RIFIUTATO per toglierlo dalla lista
-                                    df_sc.at[i, 'Stato'] = 'RIFIUTATO'
-                                    salva_file_github("richieste_scippo.csv", df_sc, "Richiesta Rifiutata")
-                                    st.warning("Richiesta annullata.")
-                                    st.rerun()
-                            st.divider()
-
-    # --- 5. LOGICA MERCATO (POST SCADENZA) ---
+    # --- 4. LOGICA VISUALIZZAZIONE PRINCIPALE ---
     if PORTALE_APERTO:
-        st.title("🔓 LFM - Mercato Clausole Aperto")
+        st.title("🔓 Mercato Clausole Aperto")
         lega_view = st.selectbox("Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         st.sidebar.metric("Il tuo Budget", f"{my_cred} cr")
@@ -187,12 +163,11 @@ else:
                         pid, pnm, pvl = p.split(":")
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
-                        if sq != st.session_state.squadra:
-                            if c3.button(f"PAGA LA CLAUSOLA", key=f"p_{pid}"):
-                                if my_cred >= int(pvl):
-                                    registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
-                                    st.success("Richiesta inviata!")
-                                else: st.error("Budget insufficiente!")
+                        if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"p_{pid}"):
+                            if my_cred >= int(pvl):
+                                registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
+                                st.success("Richiesta inviata!")
+                            else: st.error("Budget insufficiente!")
                 else:
                     st.caption("⚠️ Clausole d'ufficio applicate (FVM)")
                     ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
@@ -200,15 +175,14 @@ else:
                         pid, pnm, pvl = row['Id'], row['Nome'], int(row['FVM'])
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
-                        if sq != st.session_state.squadra:
-                            if c3.button(f"PAGA LA CLAUSOLA", key=f"a_{pid}"):
-                                if my_cred >= pvl:
-                                    registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
-                                    st.success("Richiesta inviata!")
-                                else: st.error("Budget insufficiente!")
+                        if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"a_{pid}"):
+                            if my_cred >= pvl:
+                                registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
+                                st.success("Richiesta inviata!")
+                            else: st.error("Budget insufficiente!")
 
-    # --- 6. LOGICA BLINDAGGIO (PRIMA DELLA SCADENZA) ---
     else:
+        # --- LOGICA BLINDAGGIO ---
         st.title(f"🛡️ Terminale: {st.session_state.squadra}")
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
@@ -226,7 +200,6 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
         
-        salvati_prev = recupera_precedenti(st.session_state.squadra)
         ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
         top_3 = df_q[df_q['Id'].isin(ids_miei)].copy()
         top_3['FVM'] = pd.to_numeric(top_3['FVM'], errors='coerce').fillna(0)
@@ -237,18 +210,14 @@ else:
 
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
-            # Default è FVM o il valore già salvato in precedenza
-            def_val = salvati_prev.get(p_id, fvm) # Default a FVM come chiesto
-            
             st.markdown(f"<div class='player-name'>{nome}</div>", unsafe_allow_html=True)
             st.markdown(f"<div class='fvm-sub'>Valore di Mercato: {fvm} cr</div>", unsafe_allow_html=True)
-            
-            col_cl, col_stats = st.columns([1.8, 1.5])
-            with col_cl:
-                val = st.number_input(f"INSERISCI CLAUSOLA", min_value=fvm, value=int(def_val), key=f"c_{p_id}")
+            col1, col2 = st.columns([1.8, 1.5])
+            with col1:
+                val = st.number_input(f"CLAUSOLA", min_value=fvm, value=fvm, key=f"c_{p_id}")
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
-            with col_stats:
-                st.write("") 
+            with col2:
+                st.write("")
                 t = calcola_tassa(val); tot_tasse += t
                 c_t, c_s = st.columns(2)
                 c_t.metric("Tassa", f"{t} cr")
