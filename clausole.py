@@ -1,7 +1,31 @@
 import streamlit as st
 import pandas as pd
 from github import Github
+from io import StringIO
 import math
+
+# 1. CONFIGURAZIONE GITHUB
+TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO_NAME = st.secrets["REPO_NAME"]
+g = Github(TOKEN)
+repo = g.get_repo(REPO_NAME)
+
+# 2. INSERISCI QUI LA FUNZIONE
+def carica_csv_da_github(file_name):
+    content = repo.get_contents(file_name)
+    # decode("latin1") risolve l'errore Unicode che hai ricevuto
+    decoded_content = content.decoded_content.decode("latin1") 
+    return pd.read_csv(StringIO(decoded_content))
+
+# 3. IL RESTO DEL CODICE CHE USA LA FUNZIONE
+st.title("🛡️ LFM - Portale Clausole")
+
+# Esempio di utilizzo:
+df_quot = carica_csv_da_github("quot.csv")
+df_leghe = carica_csv_da_github("leghe.csv")
+df_rosters = carica_csv_da_github("fantamanager-2021-rosters.csv")
+
+# ... continua il codice ...
 
 # --- FUNZIONI TECNICHE ---
 def calcola_commissione(valore):
