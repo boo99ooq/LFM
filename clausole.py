@@ -51,10 +51,10 @@ def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo
     try:
         f = repo.get_contents(path)
         contenuto = f.decoded_content.decode("utf-8") + nuova_riga
-        repo.update_file(path, f"Clausola Rescisoria: {nome} alle {orario}", contenuto, f.sha)
+        repo.update_file(path, f"Clausola Rescissoria: {nome} alle {orario}", contenuto, f.sha)
     except:
         header = "Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario\n"
-        repo.create_file(path, "Init Scippi", header + nuova_riga)
+        repo.create_file(path, "Init Richieste", header + nuova_riga)
 
 def calcola_tassa(valore):
     if valore <= 200: tassa = valore * 0.10
@@ -102,14 +102,13 @@ else:
                 consegnate = [r.split(",")[0] for r in f_segrete.decoded_content.decode("utf-8").splitlines() if r.strip()]
             except: consegnate = []
             
-            tutte_squadre = df_leghe['Squadra'].unique()
-            mancanti = [s for s in tutte_squadre if s not in consegnate]
-            st.write(f"Consegnate: **{len(consegnate)} / {len(tutte_squadre)}**")
+            mancanti = [s for s in df_leghe['Squadra'].unique() if s not in consegnate]
+            st.write(f"Consegnate: **{len(consegnate)} / {len(df_leghe['Squadra'].unique())}**")
             if st.checkbox("VEDI CHI MANCA"):
                 for m in mancanti: st.text(f"❌ {m}")
 
             st.divider()
-            st.markdown("### 💸 Clausole Rescisorie")
+            st.markdown("### 💸 Clausole Rescissorie")
             if st.checkbox("GESTISCI RICHIESTE"):
                 df_sc = carica_csv("richieste_scippo.csv")
                 if not df_sc.empty:
@@ -122,12 +121,12 @@ else:
                                 df_l = carica_csv("leghe.csv")
                                 df_l.loc[df_l['Squadra'] == r['Acquirente'], 'Crediti'] -= int(r['Costo'])
                                 df_l.loc[df_l['Squadra'] == r['Proprietario'], 'Crediti'] += int(r['Costo'])
-                                salva_file_github("leghe.csv", df_l, f"Approvata clausola {r['Nome']}")
+                                salva_file_github("leghe.csv", df_l, f"Pagata clausola rescissoria {r['Nome']}")
                                 df_ros = carica_csv("fantamanager-2021-rosters.csv")
                                 df_ros.loc[df_ros['Id'].astype(str) == str(r['Id']), 'Squadra_LFM'] = r['Acquirente']
-                                salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Cambio team {r['Nome']}")
+                                salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {r['Nome']}")
                                 df_sc.at[i, 'Stato'] = 'APPROVATO'
-                                salva_file_github("richieste_scippo.csv", df_sc, "Stato aggiornato")
+                                salva_file_github("richieste_scippo.csv", df_sc, "Richiesta approvata")
                                 st.rerun()
                             if c_adm2.button("RIFIUTA ❌", key=f"no_{i}"):
                                 df_sc.at[i, 'Stato'] = 'RIFIUTATO'
@@ -136,7 +135,7 @@ else:
 
     # --- 4. LOGICA VISUALIZZAZIONE PRINCIPALE ---
     if PORTALE_APERTO:
-        st.title("🔓 Mercato Clausole Aperto")
+        st.title("🔓 Mercato Clausole Rescissorie")
         lega_view = st.selectbox("Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         st.sidebar.metric("Il tuo Budget", f"{my_cred} cr")
@@ -163,26 +162,27 @@ else:
                         pid, pnm, pvl = p.split(":")
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
-                        if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"p_{pid}"):
-                            if my_cred >= int(pvl):
-                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
-                                st.success("Richiesta inviata!")
-                            else: st.error("Budget insufficiente!")
+                        if sq != st.session_state.squadra:
+                            if c3.button("PAGA LA CLAUSOLA", key=f"p_{pid}"):
+                                if my_cred >= int(pvl):
+                                    registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                    st.success("Richiesta inviata!")
+                                else: st.error("Budget insufficiente!")
                 else:
-                    st.caption("⚠️ Clausole d'ufficio applicate (FVM)")
+                    st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
                     ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
                     for _, row in df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM').iterrows():
                         pid, pnm, pvl = row['Id'], row['Nome'], int(row['FVM'])
                         c1, c2, c3 = st.columns([3,1,2])
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
-                        if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"a_{pid}"):
-                            if my_cred >= pvl:
-                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
-                                st.success("Richiesta inviata!")
-                            else: st.error("Budget insufficiente!")
+                        if sq != st.session_state.squadra:
+                            if c3.button("PAGA LA CLAUSOLA", key=f"a_{pid}"):
+                                if my_cred >= pvl:
+                                    registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                    st.success("Richiesta inviata!")
+                                else: st.error("Budget insufficiente!")
 
     else:
-        # --- LOGICA BLINDAGGIO ---
         st.title(f"🛡️ Terminale: {st.session_state.squadra}")
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
@@ -199,7 +199,6 @@ else:
         df_q = carica_csv("quot.csv")
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
-        
         ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
         top_3 = df_q[df_q['Id'].isin(ids_miei)].copy()
         top_3['FVM'] = pd.to_numeric(top_3['FVM'], errors='coerce').fillna(0)
@@ -214,7 +213,6 @@ else:
             st.markdown(f"<div class='fvm-sub'>Valore di Mercato (FVM): {fvm} cr</div>", unsafe_allow_html=True)
             col1, col2 = st.columns([1.8, 1.5])
             with col1:
-                # RIMOSSO MIN_VALUE=FVM: Ora l'utente può scendere sotto la FVM
                 val = st.number_input(f"CLAUSOLA", min_value=1, value=fvm, key=f"c_{p_id}")
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
             with col2:
@@ -228,7 +226,7 @@ else:
 
         st.write("---")
         eccedenza = max(0, tot_tasse - 60)
-        budget_residuo = crediti_totali - eccedenza
+        budget_residuo = crediti_totali - extra if (extra := max(0, tot_tasse - 60)) else crediti_totali
 
         if tot_tasse <= 60:
             st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
