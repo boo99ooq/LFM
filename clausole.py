@@ -106,3 +106,42 @@ if pin == "1234": # Esempio di PIN
             st.warning("Salvataggio in corso nel database segreto...")
             # save_to_github(...)
             st.balloons()
+# --- LOGICA DI AUTENTICAZIONE ---
+def check_login(squadra_scelta, pin_inserito):
+    # In una versione avanzata, leggiamo da un file 'credenziali.csv'
+    # Per ora facciamo un esempio: ogni squadra ha come PIN 'LFM' + le ultime 3 lettere del nome
+    pin_corretto = "LFM2026" # Esempio di PIN universale per il primo test
+    return pin_inserito == pin_corretto
+
+# --- INTERFACCIA DI LOGIN ---
+if 'loggato' not in st.session_state:
+    st.session_state.loggato = False
+    st.session_state.squadra = None
+
+if not st.session_state.loggato:
+    st.subheader("🔑 Accesso Area Riservata")
+    
+    # 1. Scelta Lega e Squadra
+    lega = st.selectbox("Seleziona la tua Lega", df_leghe['Lega'].unique())
+    squadre = df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique()
+    squadra = st.selectbox("Seleziona la tua Squadra", squadre)
+    
+    # 2. Inserimento PIN
+    pin = st.text_input("Inserisci il PIN della tua Squadra", type="password")
+    
+    if st.button("Entra"):
+        if check_login(squadra, pin):
+            st.session_state.loggato = True
+            st.session_state.squadra = squadra
+            st.rerun() # Ricarica l'app in stato 'loggato'
+        else:
+            st.error("PIN errato. Contatta l'admin se l'hai dimenticato.")
+else:
+    # --- COSA VEDE IL MANAGER UNA VOLTA LOGGATO ---
+    st.sidebar.success(f"Loggato: {st.session_state.squadra}")
+    if st.sidebar.button("Logout"):
+        st.session_state.loggato = False
+        st.rerun()
+        
+    # Qui inserisci tutto il resto del codice (Scelta Top 3, Inserimento Clausole, ecc.)
+    mostra_dashboard_clausole(st.session_state.squadra)
