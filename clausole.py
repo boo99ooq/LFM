@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 
 # --- 1. CONFIGURAZIONE TEMPORALE ---
-SCADENZA = datetime(2026, 8, 1)
+SCADENZA = datetime(2026, 8, 1) # Apertura tabellone il 1° Agosto 2026
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
 
@@ -79,12 +79,12 @@ st.set_page_config(page_title="LFM - Blindaggio", layout="wide")
 st.markdown("""<style>
     .player-title { color: #0e1117; font-weight: 850; text-transform: uppercase; margin-top: 25px; border-bottom: 2px solid #e0e0e0; }
     .budget-box { background-color: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E3A8A; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+    small { font-size: 0.5em; color: #666; }
 </style>""", unsafe_allow_html=True)
 
 # --- 4. LOGICA VISUALIZZAZIONE ---
 if PORTALE_APERTO:
     st.title("🔓 LFM - Tabellone Pubblico")
-    # Logica per mostrare i risultati dopo la scadenza
     try:
         f = repo.get_contents("clausole_segrete.csv")
         testo = f.decoded_content.decode("utf-8")
@@ -154,21 +154,26 @@ else:
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm = row['Nome'], int(row['FVM'])
             def_val = max(salvati.get(nome, fvm * 2), fvm)
-            st.markdown(f"<h1 class='player-title'>{nome}</h1>", unsafe_allow_html=True)
-            col1, col2, col3 = st.columns([2, 1, 1])
+            
+            # Intestazione con Nome e FVM
+            st.markdown(f"<h1 class='player-title'>{nome} <small>(FVM: {fvm} cr)</small></h1>", unsafe_allow_html=True)
+            
+            col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
             with col1:
-                val = st.number_input(f"Clausola", min_value=fvm, value=def_val, key=f"c_{nome}")
+                val = st.number_input(f"Imposta Clausola", min_value=fvm, value=def_val, key=f"c_{nome}")
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
             with col2:
+                st.metric("Riferimento FVM", f"{fvm} cr")
+            with col3:
                 t = calcola_tassa(val)
                 tot_tasse += t
                 st.metric("Tassa", f"{t} cr")
-            with col3:
+            with col4:
                 if val <= max_rivale: st.error("🟠 VULNERABILE")
                 else: st.success("🟢 BLINDATO")
             dati_invio.append(f"{nome}:{val}")
 
-        # --- CALCOLO FINALE CON TUA MODIFICA ---
+        # --- CALCOLO FINALE ---
         st.write("---")
         eccedenza = max(0, tot_tasse - 60)
         budget_residuo = crediti_totali - eccedenza
