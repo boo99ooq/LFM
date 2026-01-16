@@ -67,7 +67,7 @@ def salva_su_github(squadra, dati_stringa):
     except:
         repo.create_file(path, "Inizializzazione", nuova_riga)
 
-# --- 4. AREA ADMIN (VISIBILE SOLO A TE) ---
+# --- 4. AREA ADMIN ---
 def mostra_monitoraggio_admin(df_leghe):
     st.sidebar.markdown("---")
     st.sidebar.subheader("🕵️ Area Admin LFM")
@@ -92,36 +92,32 @@ def mostra_monitoraggio_admin(df_leghe):
             st.code(lista_txt, language="text")
             st.caption("Copia la lista qui sopra per WhatsApp")
 
-# --- 5. LOGIN ---
+# --- 5. LOGICA DI ACCESSO ---
 if 'loggato' not in st.session_state:
     st.session_state.loggato = False
     st.session_state.squadra = None
 
 df_leghe = carica_csv("leghe.csv")
 
-# ... (codice precedente)
-
 if not st.session_state.loggato:
     st.title("🛡️ LFM - Blindaggio")
-    # ... (tutto il blocco del login deve essere indentato qui)
-    if st.button("ACCEDI", use_container_width=True, type="primary"):
-        # ... eccetera
+    if not df_leghe.empty:
+        lega = st.selectbox("Lega", df_leghe['Lega'].unique())
+        squadra = st.selectbox("Squadra", df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique())
+        pin = st.text_input("PIN", type="password")
+        if st.button("ACCEDI", use_container_width=True, type="primary"):
+            pin_reale = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
+            if str(pin) == str(pin_reale):
+                st.session_state.loggato = True
+                st.session_state.squadra = squadra
+                st.rerun()
+            else:
+                st.error("PIN errato.")
 else:
-    # --- QUESTA È LA PARTE DA CORREGGERE ---
-    # Tutto ciò che segue deve avere lo stesso rientro (allineato verticalmente)
-    
+    # --- LISTA ADMIN ---
     ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
     # Mostra admin se l'utente è nella lista
-    if st.session_state.squadra in ADMIN_SQUADRE:
-        mostra_monitoraggio_admin(df_leghe)
-
-    st.title(f"🛡️ Terminale: {st.session_state.squadra}")
-    
-    # ... (tutto il resto della dashboard deve continuare con questo rientro)
-# --- NELLA DASHBOARD (SOTTO IL LOGOUT) ---
-else:
-    # Il controllo ora verifica se il nome della squadra loggata è nella lista admin
     if st.session_state.squadra in ADMIN_SQUADRE:
         mostra_monitoraggio_admin(df_leghe)
 
@@ -146,6 +142,7 @@ else:
     top_3 = miei_giocatori.nlargest(3, 'FVM')
 
     max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
+    
     st.markdown(f"""> 💰 **Analisi Strategica:** La squadra più ricca della lega possiede **{max_rivale} cr**. 
     > Impostando per un tuo giocatore una soglia oltre questi crediti, nessuno potrà comprarlo.""")
 
@@ -175,7 +172,7 @@ else:
     if tot_tasse <= 60:
         st.success(f"✅ Il Bonus Lega copre interamente le tue tasse. Spesa netta: 0 cr.")
     else:
-        st.warning(f"⚠️ Il Bonus Lega copre fino a 60 cr. Eccedi il bonus di **{eccedenza} crediti**, che verranno scalati dal tuo budget.")
+        st.warning(f"⚠️ Il Bonus Lega copre fino a 60 cr. Eccedi il bonus di **{eccedenza} crediti**, che verranno scalati dal tuo budget asta.")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Totale Tasse", f"{tot_tasse} cr")
