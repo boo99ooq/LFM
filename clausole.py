@@ -17,9 +17,12 @@ def calcola_commissione(valore):
 
 # --- CARICAMENTO DATI (Simulato dai tuoi CSV) ---
 # In produzione useremo la funzione carica_csv_da_github() definita prima
-df_leghe = pd.read_csv("leghe.csv")
-df_rosters = pd.read_csv("fantamanager-2021-rosters.csv")
-df_quot = pd.read_csv("quot.csv")
+# Prova prima con latin1, che risolve il 90% dei casi con nomi accentati
+df_quot = pd.read_csv("quot.csv", encoding='latin1')
+
+# Se hai lo stesso errore anche sugli altri file, aggiungilo anche lì:
+df_leghe = pd.read_csv("leghe.csv", encoding='latin1')
+df_rosters = pd.read_csv("fantamanager-2021-rosters.csv", encoding='latin1')
 
 st.title("🛡️ LFM - Gestione Blindaggio Top Player")
 
