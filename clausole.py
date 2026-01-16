@@ -44,7 +44,7 @@ def salva_clausola_singola(squadra, dati_stringa):
     except:
         repo.create_file(path, "Inizializzazione", nuova_riga)
 
-def registra_richiesta_scippo(acquirente, proprietario, player_id, nome, costo):
+def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     path = "richieste_scippo.csv"
     orario = datetime.now().strftime("%H:%M:%S")
     nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},PENDENTE,{orario}\n"
@@ -109,8 +109,8 @@ else:
                 for m in mancanti: st.text(f"❌ {m}")
 
             st.divider()
-            st.markdown("### 💸 Gestione Pagamenti")
-            if st.checkbox("MOSTRA RICHIESTE PENDENTI"):
+            st.markdown("### 💸 Clausole Rescisorie")
+            if st.checkbox("GESTISCI RICHIESTE"):
                 df_sc = carica_csv("richieste_scippo.csv")
                 if not df_sc.empty:
                     pendenti = df_sc[df_sc['Stato'].astype(str).str.contains('PENDENTE', na=False)]
@@ -165,7 +165,7 @@ else:
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
                         if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"p_{pid}"):
                             if my_cred >= int(pvl):
-                                registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
+                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
                                 st.success("Richiesta inviata!")
                             else: st.error("Budget insufficiente!")
                 else:
@@ -177,7 +177,7 @@ else:
                         c1.write(f"**{pnm}**"); c2.write(f"{pvl} cr")
                         if sq != st.session_state.squadra and c3.button("PAGA LA CLAUSOLA", key=f"a_{pid}"):
                             if my_cred >= pvl:
-                                registra_richiesta_scippo(st.session_state.squadra, sq, pid, pnm, pvl)
+                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
                                 st.success("Richiesta inviata!")
                             else: st.error("Budget insufficiente!")
 
@@ -211,10 +211,11 @@ else:
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
             st.markdown(f"<div class='player-name'>{nome}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='fvm-sub'>Valore di Mercato: {fvm} cr</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='fvm-sub'>Valore di Mercato (FVM): {fvm} cr</div>", unsafe_allow_html=True)
             col1, col2 = st.columns([1.8, 1.5])
             with col1:
-                val = st.number_input(f"CLAUSOLA", min_value=fvm, value=fvm, key=f"c_{p_id}")
+                # RIMOSSO MIN_VALUE=FVM: Ora l'utente può scendere sotto la FVM
+                val = st.number_input(f"CLAUSOLA", min_value=1, value=fvm, key=f"c_{p_id}")
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
             with col2:
                 st.write("")
