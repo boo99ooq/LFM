@@ -5,7 +5,7 @@ from io import StringIO
 import math
 from datetime import datetime
 
-# --- 1. CONFIGURAZIONE ---
+# --- 1. CONFIGURAZIONE TEMPORALE ---
 SCADENZA = datetime(2026, 8, 1)
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
@@ -16,7 +16,7 @@ try:
     g = Github(TOKEN)
     repo = g.get_repo(REPO_NAME)
 except:
-    st.error("Errore configurazione GitHub.")
+    st.error("Errore configurazione GitHub nei Secrets.")
     st.stop()
 
 # --- 2. FUNZIONI TECNICHE ---
@@ -84,7 +84,19 @@ st.markdown("""<style>
 # --- 4. LOGICA VISUALIZZAZIONE ---
 if PORTALE_APERTO:
     st.title("🔓 LFM - Tabellone Pubblico")
-    # (Logica tabellone...)
+    # Logica per mostrare i risultati dopo la scadenza
+    try:
+        f = repo.get_contents("clausole_segrete.csv")
+        testo = f.decoded_content.decode("utf-8")
+        rows = []
+        for riga in testo.splitlines():
+            if riga.strip():
+                squadra, dati = riga.split(",")
+                rows.append({"Squadra": squadra, "Clausole": dati.replace(";", " | ")})
+        df_f = pd.DataFrame(rows)
+        st.dataframe(df_f, use_container_width=True, hide_index=True)
+    except:
+        st.warning("Nessuna clausola depositata.")
 else:
     if 'loggato' not in st.session_state:
         st.session_state.loggato = False
@@ -94,16 +106,17 @@ else:
 
     if not st.session_state.loggato:
         st.title("🛡️ LFM - Portale Blindaggio")
-        lega = st.selectbox("Lega", df_leghe['Lega'].unique())
-        squadra = st.selectbox("Squadra", df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique())
-        pin = st.text_input("PIN", type="password")
-        if st.button("ACCEDI"):
-            pin_reale = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
-            if str(pin) == str(pin_reale):
-                st.session_state.loggato = True
-                st.session_state.squadra = squadra
-                st.rerun()
-            else: st.error("PIN errato.")
+        if not df_leghe.empty:
+            lega = st.selectbox("Seleziona Lega", df_leghe['Lega'].unique())
+            squadra = st.selectbox("Squadra", df_leghe[df_leghe['Lega'] == lega]['Squadra'].unique())
+            pin = st.text_input("PIN Segreto", type="password")
+            if st.button("ACCEDI"):
+                pin_reale = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
+                if str(pin) == str(pin_reale):
+                    st.session_state.loggato = True
+                    st.session_state.squadra = squadra
+                    st.rerun()
+                else: st.error("PIN errato.")
     else:
         # AREA ADMIN
         ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
@@ -120,7 +133,7 @@ else:
             c1, c2, c3 = st.columns(3)
             c1.metric("💰 Il tuo Budget", f"{crediti_totali} cr")
             c2.metric("🔝 Rivale più ricco", f"{max_rivale} cr")
-            c3.info(f"Soglia di sicurezza: ** > {max_rivale} cr**")
+            c3.info(f"Soglia sicurezza: ** > {max_rivale} cr**")
             st.markdown("</div>", unsafe_allow_html=True)
 
         df_rosters = carica_csv("fantamanager-2021-rosters.csv")
@@ -155,22 +168,22 @@ else:
                 else: st.success("🟢 BLINDATO")
             dati_invio.append(f"{nome}:{val}")
 
-        # --- CALCOLO FINALE DETTAGLIATO (RIPRISTINATO) ---
+        # --- CALCOLO FINALE CON TUA MODIFICA ---
         st.write("---")
         eccedenza = max(0, tot_tasse - 60)
         budget_residuo = crediti_totali - eccedenza
 
         if tot_tasse <= 60:
-            st.success(f"✅ Il Bonus Lega copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
+            st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
         else:
-            st.warning(f"⚠️ Il Bonus Lega di 60cr copre le tue tasse fino a 60cr. Eccedi il bonus di **{eccedenza} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
+            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{eccedenza} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
 
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("Totale Tasse", f"{tot_tasse} cr")
-        c_fin2.metric("Bonus franchigia", "- 60 cr")
+        c_fin2.metric("Franchigia Bonus", "- 60 cr")
         c_fin3.metric("Budget Rimanente", f"{budget_residuo} cr", delta=-eccedenza if eccedenza > 0 else 0)
 
         if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_su_github(st.session_state.squadra, ";".join(dati_invio))
-            st.success("✅ Salvataggio completato! Dati criptati fino al 1° Agosto.")
+            st.success("✅ Salvataggio completato! Puoi rientrare per modifiche fino alla scadenza.")
             st.balloons()
