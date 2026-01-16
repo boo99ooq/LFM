@@ -5,7 +5,7 @@ from io import StringIO
 import math
 from datetime import datetime
 
-# --- 1. CONFIGURAZIONE TEMPORALE ---
+# --- 1. CONFIGURAZIONE ---
 SCADENZA = datetime(2026, 8, 1)
 OGGI = datetime.now()
 PORTALE_APERTO = OGGI >= SCADENZA
@@ -56,6 +56,24 @@ def recupera_precedenti(squadra):
     except: return {}
     return {}
 
+def mostra_monitoraggio_admin(df_leghe):
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🕵️ Area Admin LFM")
+    if st.sidebar.checkbox("Stato Consegne"):
+        try:
+            f = repo.get_contents("clausole_segrete.csv")
+            testo = f.decoded_content.decode("utf-8")
+            consegnate = [r.split(",")[0] for r in testo.splitlines() if r.strip()]
+        except: consegnate = []
+        tutte = df_leghe['Squadra'].unique()
+        mancanti = [s for s in tutte if s not in consegnate]
+        st.write("### 📊 Monitoraggio")
+        c1, c2 = st.columns(2)
+        c1.metric("OK", len(consegnate))
+        c2.metric("Mancano", len(mancanti), delta=-len(mancanti), delta_color="inverse")
+        if mancanti:
+            st.code("\n".join([f"- {s}" for s in mancanti]), language="text")
+
 # --- 3. UI E CSS ---
 st.set_page_config(page_title="LFM - Blindaggio", layout="wide")
 st.markdown("""<style>
@@ -63,12 +81,11 @@ st.markdown("""<style>
     .budget-box { background-color: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E3A8A; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
 </style>""", unsafe_allow_html=True)
 
+# --- 4. LOGICA VISUALIZZAZIONE ---
 if PORTALE_APERTO:
-    # --- MODALITÀ TABELLONE PUBBLICO ---
     st.title("🔓 LFM - Tabellone Pubblico")
-    # (Logica tabellone già vista...)
+    # (Logica tabellone...)
 else:
-    # --- MODALITÀ INSERIMENTO ---
     if 'loggato' not in st.session_state:
         st.session_state.loggato = False
         st.session_state.squadra = None
@@ -91,25 +108,21 @@ else:
         # AREA ADMIN
         ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
         if st.session_state.squadra in ADMIN_SQUADRE:
-            # (Codice admin qui...)
-            pass
+            mostra_monitoraggio_admin(df_leghe)
 
-        # RECUPERO DATI BUDGET UTENTE
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
 
         st.title(f"🛡️ Terminale: {st.session_state.squadra}")
         
-        # --- CRUSCOTTO FINANZIARIO ---
         with st.container():
             st.markdown("<div class='budget-box'>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             c1.metric("💰 Il tuo Budget", f"{crediti_totali} cr")
             c2.metric("🔝 Rivale più ricco", f"{max_rivale} cr")
-            c3.info(f"Devi superare i **{max_rivale} cr** per rendere un giocatore inattaccabile.")
+            c3.info(f"Soglia di sicurezza: ** > {max_rivale} cr**")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Logica Giocatori
         df_rosters = carica_csv("fantamanager-2021-rosters.csv")
         df_quot = carica_csv("quot.csv")
         df_rosters['Squadra_LFM'] = df_rosters['Squadra_LFM'].astype(str).str.strip()
@@ -128,7 +141,6 @@ else:
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm = row['Nome'], int(row['FVM'])
             def_val = max(salvati.get(nome, fvm * 2), fvm)
-            
             st.markdown(f"<h1 class='player-title'>{nome}</h1>", unsafe_allow_html=True)
             col1, col2, col3 = st.columns([2, 1, 1])
             with col1:
@@ -143,22 +155,22 @@ else:
                 else: st.success("🟢 BLINDATO")
             dati_invio.append(f"{nome}:{val}")
 
-        # --- CALCOLO FINALE E BUDGET RESIDUO ---
+        # --- CALCOLO FINALE DETTAGLIATO (RIPRISTINATO) ---
         st.write("---")
         eccedenza = max(0, tot_tasse - 60)
         budget_residuo = crediti_totali - eccedenza
 
-        col_fin1, col_fin2 = st.columns([2, 1])
-        with col_fin1:
-            if tot_tasse <= 60:
-                st.success("✅ Spesa coperta dal Bonus. Il tuo budget resta intatto.")
-            else:
-                st.warning(f"⚠️ Eccedi il bonus di {eccedenza} cr. Questa somma verrà scalata dal tuo budget.")
-        
-        with col_fin2:
-            st.metric("Budget Rimanente", f"{budget_residuo} cr", delta=-eccedenza if eccedenza > 0 else 0)
+        if tot_tasse <= 60:
+            st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
+        else:
+            st.warning(f"⚠️ Il Bonus Lega di 60cr copre le tue tasse fino a 60cr. Eccedi il bonus di **{eccedenza} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
 
-        if st.button("📥 REGISTRA CLAUSOLE", type="primary", use_container_width=True):
+        c_fin1, c_fin2, c_fin3 = st.columns(3)
+        c_fin1.metric("Totale Tasse", f"{tot_tasse} cr")
+        c_fin2.metric("Bonus franchigia", "- 60 cr")
+        c_fin3.metric("Budget Rimanente", f"{budget_residuo} cr", delta=-eccedenza if eccedenza > 0 else 0)
+
+        if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_su_github(st.session_state.squadra, ";".join(dati_invio))
-            st.success("Salvataggio completato!")
+            st.success("✅ Salvataggio completato! Dati criptati fino al 1° Agosto.")
             st.balloons()
