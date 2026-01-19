@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Draft LFM Agosto", layout="wide")
+st.set_page_config(page_title="Draft LFM Agosto (FVM Edition)", layout="wide")
 
 def read_csv_safe(file_name, delimiter=','):
     try:
@@ -17,13 +17,18 @@ def load_data():
         
         # Carichiamo il file degli esclusi (separatore TAB)
         esclusi = read_csv_safe('esclusi.csv', delimiter='\t')
-        # Assegniamo nomi colonne se mancano
+        
+        # Assegniamo nomi colonne agli esclusi
         if len(esclusi.columns) >= 5:
             esclusi.columns = ['Id', 'R', 'Nome', 'Qt.I', 'FVM']
         
-        # Pulizia ID
+        # Pulizia e Conversione Numerica (Fondamentale per FVM e Id)
         for df in [rosters, quot, esclusi]:
             df['Id'] = pd.to_numeric(df['Id'], errors='coerce')
+            if 'FVM' in df.columns:
+                df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
+            if 'Qt.I' in df.columns:
+                df['Qt.I'] = pd.to_numeric(df['Qt.I'], errors='coerce').fillna(0)
             df.dropna(subset=['Id'], inplace=True)
             df['Id'] = df['Id'].astype(int)
             
@@ -38,48 +43,54 @@ if df_rosters is not None:
     st.sidebar.header("Filtri Draft")
     campionato = st.sidebar.selectbox("Seleziona Campionato", ['Serie A', 'Premier League', 'Liga BBVA', 'Bundesliga'])
     
+    # Unione Rose e Leghe
     df_full = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra')
     df_lega = df_full[df_full['Lega'] == campionato]
     
     st.title(f"🏆 Draft Temporaneo: {campionato}")
+    st.info("💡 L'ordine di scelta e i sostituti sono basati sul valore **FVM**.")
 
-    # 1. IDENTIFICAZIONE ASTERISCATI (Chi è nelle rose AND nel file esclusi)
+    # 1. IDENTIFICAZIONE ASTERISCATI
     ids_esclusi = set(df_esclusi['Id'])
     asteriscati_base = df_lega[df_lega['Id'].isin(ids_esclusi)]
-    asteriscati = pd.merge(asteriscati_base, df_esclusi[['Id', 'Nome', 'R', 'Qt.I']], on='Id', how='left')
-
-    # 2. SVINCOLATI REALI (In quot.csv AND NON nelle rose AND NON negli esclusi)
-    ids_occupati_lega = set(df_lega['Id'])
     
-    # FILTRO CRUCIALE: Escludiamo chi non è più listato dalle proposte
+    # Recuperiamo i dati (Nome, Ruolo, FVM) dal file esclusi
+    asteriscati = pd.merge(asteriscati_base, df_esclusi[['Id', 'Nome', 'R', 'FVM', 'Qt.I']], on='Id', how='left')
+
+    # 2. SVINCOLATI REALI (Non in rosa AND Non esclusi)
+    ids_occupati_lega = set(df_lega['Id'])
     svincolati = df_quot[
         (~df_quot['Id'].isin(ids_occupati_lega)) & 
         (~df_quot['Id'].isin(ids_esclusi))
     ]
 
     if asteriscati.empty:
-        st.info(f"✅ Nessun giocatore di {campionato} da sostituire.")
+        st.success(f"✅ Nessun giocatore da sostituire in {campionato}.")
     else:
-        st.subheader("📋 Ordine di Scelta (Priorità per Quotazione)")
-        asteriscati_ordinati = asteriscati.sort_values(by='Qt.I', ascending=False)
+        st.subheader("📋 Graduatoria Draft (Priorità per FVM)")
+        
+        # NUOVA LOGICA: Ordiniamo per FVM decrescente
+        asteriscati_ordinati = asteriscati.sort_values(by='FVM', ascending=False)
         
         for index, row in asteriscati_ordinati.iterrows():
-            with st.expander(f"🔴 {row['Squadra_LFM']}: sostituisce {row['Nome']} (Quota {row['Qt.I']})"):
+            with st.expander(f"🔴 {row['Squadra_LFM']}: {row['Nome']} (FVM {row['FVM']})"):
                 col1, col2 = st.columns([1, 2])
                 with col1:
-                    st.metric("Budget Quota", f"<= {row['Qt.I']}")
+                    st.metric("FVM da rispettare", f"<= {row['FVM']}")
                     st.write(f"**Ruolo:** {row['R']}")
+                    st.write(f"**Ex-Quota:** {row['Qt.I']}")
                 
                 with col2:
-                    st.write("**Opzioni valide (Solo giocatori listati):**")
-                    # Filtro: stesso ruolo e quota <=
-                    possibili = svincolati[(svincolati['R'] == row['R']) & (svincolati['Qt.I'] <= row['Qt.I'])]
+                    st.write("**Sostituti Suggeriti (Stesso Ruolo & FVM <=):**")
+                    # NUOVA LOGICA: Filtro basato su FVM
+                    filtro_sost = (svincolati['R'] == row['R']) & (svincolati['FVM'] <= row['FVM'])
+                    possibili = svincolati[filtro_sost].sort_values(by='FVM', ascending=False)
                     
                     if possibili.empty:
-                        st.warning("Nessun sostituto valido trovato con questa quota.")
+                        st.warning("Nessun sostituto con FVM compatibile.")
                     else:
-                        st.dataframe(possibili.sort_values(by='Qt.I', ascending=False)[['Nome', 'Qt.I', 'FVM']], height=200)
+                        st.dataframe(possibili[['Nome', 'FVM', 'Qt.I']].head(15), height=250)
 
     st.divider()
-    st.subheader("💰 Situazione Crediti")
+    st.subheader("💰 Situazione Crediti Residui")
     st.dataframe(df_leghe[df_leghe['Lega'] == campionato][['Squadra', 'Crediti']], use_container_width=True)
