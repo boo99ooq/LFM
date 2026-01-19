@@ -57,8 +57,12 @@ def load_data():
     df_merged = pd.merge(df_r, df_l, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_merged = fix_league_names(df_merged)
 
-    # Merge con Quotazioni per info giocatori
-    df_final = pd.merge(df_merged, df_q[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
+        # 1. Convertiamo Qt.I in numeri, forzando gli errori a NaN (Not a Number)
+    df_final['Qt.I'] = pd.to_numeric(df_final['Qt.I'], errors='coerce').fillna(0)
+    
+    # 2. Eseguiamo il calcolo usando la funzione di arrotondamento di numpy (più veloce e sicura)
+    import numpy as np
+    df_final['Rimborso_Taglio'] = np.ceil(df_final['Qt.I'] / 2).astype(int)
     
     # Chiavi e rimborsi (Arrotondati per eccesso come da regolamento)
     df_final['Taglio_Key'] = df_final['Id'].astype(str) + "_" + df_final['Squadra_LFM'].astype(str)
