@@ -7,7 +7,24 @@ import time
 
 # --- CONFIGURAZIONE ---
 st.set_page_config(page_title="LFM - Registro Dettagliato", layout="wide", page_icon="⚖️")
-ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
+ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}# --- COSTANTI E UTILITY DALLA VECCHIA DASHBOARD ---
+MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier League": "#3d195b", "Liga BBVA": "#ee8707"}
+ORDINE_LEGHE = ["Serie A", "Bundesliga", "Premier League", "Liga BBVA"]
+
+def format_num(num):
+    """Rimuove il .0 se presente per pulizia visiva"""
+    if num == int(num):
+        return str(int(num))
+    return str(round(num, 1))
+
+# Caricamento dati stadi (necessario per la dashboard)
+try:
+    df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
+    df_stadi['Squadra'] = df_stadi['Squadra'].str.strip()
+    df_stadi['Stadio'] = pd.to_numeric(df_stadi['Stadio'], errors='coerce').fillna(0)
+except: 
+    df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
+
 
 # --- CONNESSIONE GITHUB ---
 try:
@@ -75,39 +92,68 @@ def load_all_data():
 df_base, df_leghe_upd, df_rosters_upd = load_all_data()
 
 # --- NAVBAR ---
-menu = st.sidebar.radio("Scegli Pagina:", ["1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
+# Modifica la barra di navigazione
+menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
 
-if menu == "1. Svincoli (*)":
-    st.title("✈️ Svincoli (*) Automatici")
-    df_star = df_base[df_base['Is_Escluso']].copy()
-    if df_star.empty:
-        st.success("Tutti i rimborsi (*) sono stati completati.")
-    else:
-        scelta = st.selectbox("Seleziona Giocatore:", [""] + sorted(df_star['Nome'].unique().tolist()))
-        if scelta:
-            targets = df_star[df_star['Nome'] == scelta]
-            info = targets.iloc[0]
-            st.warning(f"Svincolo di {scelta} ({info['R']}). Rimborso: FVM {info['FVM']} + 50% Quot ({info['Meta_Qt']}) = {info['R_Star']} cr.")
-            
-            if st.button("CONFERMA SVINCOLO GLOBALE"):
-                for _, row in targets.iterrows():
-                    df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
+if menu == "🏠 Dashboard":
+    st.title("🏠 Dashboard Riepilogo Globale")
+    
+    # Recupero log per calcolare rimborsi e statistiche in tempo reale
+    df_s = get_df_from_github('svincolati_gennaio.csv')
+    df_t = get_df_from_github('tagli_volontari.csv')
+    mov = pd.concat([df_s, df_t], ignore_index=True)
+    
+    leghe_eff = [l for l in ORDINE_LEGHE if l in df_base['Lega'].dropna().unique()]
+    
+    for lega_nome in leghe_eff:
+        st.markdown(f"#### 🏆 {lega_nome}")
+        df_l = df_base[df_base['Lega'] == lega_nome]
+        
+        # Logica per identificare chi è attivo in rosa e chi è uscito
+        # (Adattato per funzionare con la tua nuova struttura basata sui log di GitHub)
+        bonus_sq = mov.groupby('Squadra')['Totale'].sum() if not mov.empty else pd.Series()
+        uscite_nomi = mov.groupby('Squadra')['Giocatore'].apply(lambda x: ", ".join(x)) if not mov.empty else pd.Series()
+        
+        # Calcolo numero giocatori attivi e valori totali
+        # Nota: assumiamo che df_base contenga solo i giocatori attualmente in rosa
+        stats = df_base[df_base['Lega'] == lega_nome].groupby('Squadra_LFM').agg({
+            'Nome': 'count', 
+            'FVM': 'sum', 
+            'Qt.I': 'sum'
+        }).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
+
+        cols = st.columns(3) # Visualizzazione a 3 colonne per densità
+        for idx, (_, sq) in enumerate(stats.sort_values(by='Squadra_LFM').iterrows()):
+            with cols[idx % 3]:
+                # Recupero stadio e crediti attuali
+                cap = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == sq['Squadra_LFM'].strip().upper()]['Stadio'].values
+                cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
                 
-                id_target = info['Id']
-                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
+                crediti_attuali = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].values[0]
+                bonus_recuperato = bonus_sq.get(sq['Squadra_LFM'], 0)
+                giocatori_usciti = uscite_nomi.get(sq['Squadra_LFM'], "-")
                 
-                log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-                log['Tipo'] = "STAR (*)"
+                color_ng = "#00ff00" if 25 <= sq['NG'] <= 35 else "#ff4b4b"
                 
-                save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
-                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
-                
-                old_log = get_df_from_github('svincolati_gennaio.csv')
-                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
-                
-                st.cache_data.clear()
-                st.rerun()
+                st.markdown(f"""
+                    <div style="background-color: {MAPPATURA_COLORI.get(lega_nome)}; padding: 12px; border-radius: 10px; margin-bottom: 12px; color: white; border: 1px solid rgba(255,255,255,0.1); line-height: 1.2;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 8px;">
+                            <b style="font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{sq['Squadra_LFM']}</b>
+                            <span style="font-size: 10px; background: rgba(0,0,0,0.2); padding: 2px 4px; border-radius: 4px;">🏟️ {cap_txt}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div style="font-size: 22px; font-weight: 900;">{format_num(crediti_attuali)} <small style="font-size: 12px; font-weight: normal;">cr</small></div>
+                            <div style="font-size: 14px; font-weight: bold; color: {color_ng};">{int(sq['NG'])} <small style="font-size: 10px; color: white;">gioc.</small></div>
+                        </div>
+                        <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; text-align: center;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 4px; border-radius: 4px;">FVM: <b>{format_num(sq['FVM_Tot'])}</b></div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 4px; border-radius: 4px;">Qt: <b>{format_num(sq['Quot_Tot'])}</b></div>
+                        </div>
+                        <div style="font-size: 9px; margin-top: 8px; color: rgba(255,255,255,0.8); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ❌ {giocatori_usciti}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
 elif menu == "2. Tagli":
     st.title("✂️ Tagli Volontari")
