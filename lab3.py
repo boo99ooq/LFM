@@ -34,27 +34,35 @@ def fix_league_names(df):
 
 # --- 1. CARICAMENTO DATI ---
 @st.cache_data
-def load_static_data():
-    for enc in ['latin1', 'cp1252', 'utf-8']:
-        try:
-            df_rose = pd.read_csv('fantamanager-2021-rosters.csv', header=None, skiprows=1, encoding=enc)
-            df_rose.columns = ['Squadra_LFM', 'Id', 'Prezzo_Asta']
-            df_quot = pd.read_csv('quot.csv', encoding=enc)
-            df_rose['Id'] = pd.to_numeric(df_rose['Id'], errors='coerce')
-            df_quot['Id'] = pd.to_numeric(df_quot['Id'], errors='coerce')
-            df_rose = df_rose.dropna(subset=['Id'])
-            df_owned = pd.merge(df_rose, df_quot, on='Id', how='left')
-            df_owned['Nome'] = df_owned['Nome'].fillna("ID: " + df_owned['Id'].astype(int, errors='ignore').astype(str))
-            df_owned['Qt.I'] = pd.to_numeric(df_owned['Qt.I'], errors='coerce').fillna(0)
-            df_owned['FVM'] = pd.to_numeric(df_owned['FVM'], errors='coerce').fillna(0)
-            df_owned['Squadra_LFM'] = df_owned['Squadra_LFM'].str.strip()
+def load_data():
+    try:
+        # Caricamento standard (virgola)
+        rosters = pd.read_csv('fantamanager-2021-rosters.csv', encoding='latin1')
+        leghe = pd.read_csv('leghe.csv', encoding='latin1')
+        quot = pd.read_csv('quot.csv', encoding='latin1')
+        
+        # Caricamento speciale per ESCLUSI (Tabulazione)
+        # header=0 significa che la prima riga contiene i nomi Id, R, Nome...
+        esclusi = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1', header=0)
+        
+        # Uniformiamo i nomi delle colonne per sicurezza
+        esclusi.columns = ['Id', 'R', 'Nome', 'Qt.I', 'FVM']
+        
+        # Pulizia fondamentale per evitare KeyError: 'Id'
+        for df in [rosters, quot, esclusi]:
+            # Rimuove righe dove l'Id non è un numero (come quelle col $)
+            df['Id'] = pd.to_numeric(df['Id'], errors='coerce')
+            df.dropna(subset=['Id'], inplace=True)
+            df['Id'] = df['Id'].astype(int)
             
-            df_owned['Rimborso_Star'] = df_owned['FVM'] + (df_owned['Qt.I'] / 2)
-            df_owned['Rimborso_Taglio'] = (df_owned['FVM'] + df_owned['Qt.I']) / 2
-            
-            return df_owned, df_quot
-        except: continue
-    return None, None
+            # Se esiste la colonna FVM, puliamola
+            if 'FVM' in df.columns:
+                df['FVM'] = pd.to_numeric(df['FVM'], errors='coerce').fillna(0)
+
+        return rosters, leghe, quot, esclusi
+    except Exception as e:
+        st.error(f"Errore tecnico durante la lettura dei CSV: {e}")
+        return None, None, None, None
 
 # --- 2. GESTIONE STATO E DATABASE ---
 if 'refunded_ids' not in st.session_state:
