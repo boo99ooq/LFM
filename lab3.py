@@ -271,12 +271,14 @@ if df_base is not None:
             c = st.text_input("Cerca giocatore per svincolo (*):")
             if c:
                 df_f = df_base[df_base['Nome'].str.contains(c, case=False, na=False)].drop_duplicates('Id')
-                ed = st.data_editor(df_f[['Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Star']], hide_index=True)
-                if st.button("Conferma Svincoli"):
-                    for _, r in ed.iterrows():
-                        if r['Rimborsato_Star']: st.session_state.refunded_ids.add(r['Id'])
-                        else: st.session_state.refunded_ids.discard(r['Id'])
-                    st.rerun()
+                # Aggiungiamo 'Id' e lo nascondiamo con column_config
+                ed = st.data_editor(
+                    df_f[['Id', 'Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Star']], 
+                    hide_index=True,
+                    column_config={
+                        "Id": st.column_config.Column(hidden=True),  # Nasconde la colonna Id
+                    }
+                )
             st.dataframe(df_base[df_base['Rimborsato_Star']][['Nome', 'Qt.I', 'FVM', 'Rimborso_Star']].drop_duplicates('Nome'), hide_index=True)
         with t2:
             c2 = st.text_input("Cerca per taglio:")
