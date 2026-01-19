@@ -6,7 +6,7 @@ import io
 import time
 
 # --- CONFIGURAZIONE ---
-st.set_page_config(page_title="LFM - Registro Mercato Dettagliato", layout="wide", page_icon="⚖️")
+st.set_page_config(page_title="LFM - Registro Dettagliato", layout="wide", page_icon="⚖️")
 ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
 # --- CONNESSIONE GITHUB ---
@@ -16,13 +16,17 @@ try:
     g = Github(token)
     repo = g.get_repo(repo_name)
 except:
-    st.error("Errore Secrets! Controlla GITHUB_TOKEN e REPO_NAME su Streamlit Cloud.")
+    st.error("Errore Secrets! Controlla GITHUB_TOKEN e REPO_NAME.")
 
-# --- FUNZIONI DI LETTURA/SCRITTURA DIRETTA API ---
+# --- FUNZIONI API ---
 def get_df_from_github(file_path):
     try:
         content = repo.get_contents(file_path)
-        return pd.read_csv(io.StringIO(content.decoded_content.decode('utf-8')))
+        df = pd.read_csv(io.StringIO(content.decoded_content.decode('utf-8')))
+        # FIX per KeyError: se esiste 'Rimborso' ma non 'Totale', rinomina
+        if 'Rimborso' in df.columns and 'Totale' not in df.columns:
+            df = df.rename(columns={'Rimborso': 'Totale'})
+        return df
     except:
         return pd.DataFrame()
 
@@ -57,11 +61,9 @@ def load_all_data():
     for c in ['Qt.I', 'FVM']:
         df_base[c] = pd.to_numeric(df_base[c], errors='coerce').fillna(0).astype(int)
     
-    # CALCOLO COMPONENTI RIMBORSO
+    # CALCOLO COMPONENTI
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'] + df_base['Meta_Qt']).astype(int)
-    
-    # Per il taglio volontario il dettaglio è la metà di entrambi
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
@@ -75,7 +77,6 @@ df_base, df_leghe_upd, df_rosters_upd = load_all_data()
 # --- NAVBAR ---
 menu = st.sidebar.radio("Scegli Pagina:", ["1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
 
-# --- 1. SVINCOLI (*) ---
 if menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
     df_star = df_base[df_base['Is_Escluso']].copy()
@@ -95,7 +96,6 @@ if menu == "1. Svincoli (*)":
                 id_target = info['Id']
                 df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
                 
-                # LOG STAR: FVM intero + Metà Quotazione
                 log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
                 log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
                 log['Tipo'] = "STAR (*)"
@@ -109,7 +109,6 @@ if menu == "1. Svincoli (*)":
                 st.cache_data.clear()
                 st.rerun()
 
-# --- 2. TAGLI ---
 elif menu == "2. Tagli":
     st.title("✂️ Tagli Volontari")
     sq = st.selectbox("Squadra:", sorted(df_base['Squadra_LFM'].unique().tolist()))
@@ -120,7 +119,6 @@ elif menu == "2. Tagli":
         df_leghe_upd.loc[df_leghe_upd['Squadra'] == sq, 'Crediti'] += info['R_Taglio']
         df_rosters_upd = df_rosters_upd[~((df_rosters_upd['Squadra_LFM'] == sq) & (df_rosters_upd['Id'] == info['Id']))]
         
-        # LOG TAGLIO: Dettaglio metà e metà
         log_t = pd.DataFrame([{
             'Giocatore': gioc, 'Squadra': sq, 'Lega': info['Lega'], 'Ruolo': info['R'],
             'Quota_FVM': info['Meta_FVM'], 'Quota_Qt': info['Meta_Qt'], 
@@ -136,15 +134,19 @@ elif menu == "2. Tagli":
         st.cache_data.clear()
         st.rerun()
 
-# --- 3. BILANCIO ---
 elif menu == "3. Bilancio":
     st.title("💰 Bilancio")
     lega_sel = st.selectbox("Lega:", sorted(df_base['Lega'].unique().tolist()))
     
     df_s = get_df_from_github('svincolati_gennaio.csv')
     df_t = get_df_from_github('tagli_volontari.csv')
-    mov = pd.concat([df_s, df_t])
-    bonus = mov.groupby('Squadra')['Totale'].sum() if not mov.empty else pd.Series()
+    mov = pd.concat([df_s, df_t], ignore_index=True)
+    
+    # Calcolo bonus sicuro
+    if not mov.empty and 'Totale' in mov.columns:
+        bonus = mov.groupby('Squadra')['Totale'].sum()
+    else:
+        bonus = pd.Series()
 
     bil = df_leghe_upd[df_leghe_upd['Lega'] == lega_sel].copy()
     bil['Bonus'] = bil['Squadra'].map(bonus).fillna(0).astype(int)
@@ -152,9 +154,8 @@ elif menu == "3. Bilancio":
     
     st.table(bil[['Squadra', 'Iniziale', 'Bonus', 'Crediti']].rename(columns={'Crediti': 'Attuali'}))
 
-# --- 4. ROSE ---
 elif menu == "4. Rose":
-    st.title("📋 Rose e Registro Uscite")
+    st.title("📋 Rose e Registro")
     lega_sel = st.selectbox("Lega:", sorted(df_base['Lega'].unique().tolist()))
     
     df_v = df_base[df_base['Lega'] == lega_sel].sort_values('Squadra_LFM')
@@ -165,16 +166,15 @@ elif menu == "4. Rose":
             st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
     
     st.divider()
-    st.subheader("❌ Registro Uscite Dettagliato")
+    st.subheader("❌ Registro Uscite")
     df_s = get_df_from_github('svincolati_gennaio.csv')
     df_t = get_df_from_github('tagli_volontari.csv')
-    res = pd.concat([df_s, df_t])
+    res = pd.concat([df_s, df_t], ignore_index=True)
     
     if not res.empty:
-        # Visualizzazione con la nuova colonna Ruolo
-        view_cols = ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-        # Filtro per lega
-        res_view = res[res['Lega'] == lega_sel].sort_values(['Squadra', 'Ruolo', 'Giocatore'])
-        st.dataframe(res_view[view_cols], use_container_width=True, hide_index=True)
+        # Mostra colonne esistenti per evitare crash se il file è vecchio
+        available_cols = [c for c in ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Quota_FVM', 'Quota_Qt', 'Totale'] if c in res.columns]
+        res_view = res[res['Lega'] == lega_sel].sort_values(['Squadra', 'Giocatore'])
+        st.dataframe(res_view[available_cols], use_container_width=True, hide_index=True)
     else:
-        st.info("Nessun giocatore rimosso per questa lega.")
+        st.info("Nessun registro disponibile.")
