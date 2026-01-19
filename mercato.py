@@ -14,9 +14,12 @@ ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
 def format_num(num):
     """Rimuove il .0 per pulizia visiva"""
-    if num == int(num):
-        return str(int(num))
-    return str(round(num, 1))
+    try:
+        if float(num) == int(float(num)):
+            return str(int(float(num)))
+        return str(round(float(num), 1))
+    except:
+        return str(num)
 
 # --- 2. CONNESSIONE GITHUB ---
 try:
@@ -32,7 +35,6 @@ def get_df_from_github(file_path):
     try:
         content = repo.get_contents(file_path)
         df = pd.read_csv(io.StringIO(content.decoded_content.decode('utf-8')))
-        # Fix compatibilità vecchi log
         if 'Rimborso' in df.columns and 'Totale' not in df.columns:
             df = df.rename(columns={'Rimborso': 'Totale'})
         return df
@@ -47,7 +49,7 @@ def save_to_github_direct(file_path, df, message):
     except:
         repo.create_file(file_path, message, csv_content)
 
-# --- 4. CARICAMENTO DATI ---
+# --- 4. CARICAMENTO DATI (FIXED) ---
 @st.cache_data(ttl=2)
 def load_all_data():
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
@@ -61,7 +63,7 @@ def load_all_data():
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # Pulizia ID e Crediti
+    # Pulizia ID e Crediti - Gestione NaN
     for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
         if 'Id' in df.columns:
             df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
@@ -72,9 +74,14 @@ def load_all_data():
     df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
     
-    # Calcolo Rimborsi
+    # --- FIX FONDAMENTALE PER IntCastingNaNError ---
+    # Puliamo Qt.I e FVM trasformando ogni valore non numerico in 0 prima dei calcoli
+    df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
+    df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
+    
+    # Ora i calcoli sono sicuri
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
-    df_base['R_Star'] = (df_base['FVM'] + df_base['Meta_Qt']).astype(int)
+    df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
@@ -109,19 +116,21 @@ if menu == "🏠 Dashboard":
         st.markdown(f"#### 🏆 {lega_nome}")
         df_l = df_base[df_base['Lega'] == lega_nome]
         
-        # Statistiche per squadra
         uscite_nomi = mov.groupby('Squadra')['Giocatore'].apply(lambda x: ", ".join(x)) if not mov.empty else pd.Series()
         stats = df_l.groupby('Squadra_LFM').agg({'Nome': 'count', 'FVM': 'sum', 'Qt.I': 'sum'}).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
 
         cols = st.columns(3)
         for idx, (_, sq) in enumerate(stats.sort_values(by='Squadra_LFM').iterrows()):
             with cols[idx % 3]:
-                # Stadio
                 cap = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == sq['Squadra_LFM'].strip().upper()]['Stadio'].values
                 cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
                 
-                # Crediti
-                crediti_att = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].values[0]
+                # Try/Except per evitare crash se la squadra manca in leghe.csv
+                try:
+                    crediti_att = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].values[0]
+                except:
+                    crediti_att = 0
+
                 gioc_usciti = uscite_nomi.get(sq['Squadra_LFM'], "-")
                 color_ng = "#00ff00" if 25 <= sq['NG'] <= 35 else "#ff4b4b"
                 
