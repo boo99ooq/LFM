@@ -271,27 +271,25 @@ if df_base is not None:
             c = st.text_input("Cerca giocatore per svincolo (*):")
             if c:
                 df_f = df_base[df_base['Nome'].str.contains(c, case=False, na=False)].drop_duplicates('Id')
-                # Aggiungiamo 'Id' e lo nascondiamo con column_config
+                
+                # 1. Creiamo il data_editor con l'Id incluso ma nascosto
                 ed = st.data_editor(
                     df_f[['Id', 'Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Star']], 
                     hide_index=True,
                     column_config={
-                        "Id": st.column_config.Column(hidden=True),  # Nasconde la colonna Id
-                    }
+                        "Id": st.column_config.Column(hidden=True),
+                    },
+                    key="editor_svincoli" # Aggiungi una chiave univoca
                 )
-            st.dataframe(df_base[df_base['Rimborsato_Star']][['Nome', 'Qt.I', 'FVM', 'Rimborso_Star']].drop_duplicates('Nome'), hide_index=True)
-        with t2:
-            c2 = st.text_input("Cerca per taglio:")
-            if c2:
-                df_t = df_base[df_base['Nome'].str.contains(c2, case=False, na=False) | df_base['Squadra_LFM'].str.contains(c2, case=False, na=False)]
-                ed_t = st.data_editor(df_t[['Rimborsato_Taglio', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Taglio']], hide_index=True)
-                if st.button("Conferma Tagli"):
-                    for _, r in ed_t.iterrows():
-                        if r['Rimborsato_Taglio']: st.session_state.tagli_map.add(r['Taglio_Key'])
-                        else: st.session_state.tagli_map.discard(r['Taglio_Key'])
-                    st.rerun()
-            st.dataframe(df_base[df_base['Rimborsato_Taglio']][['Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Taglio']], hide_index=True)
-
+                
+                # 2. AGGIUNGI QUESTO: Il pulsante per confermare le modifiche
+                if st.button("Conferma Svincoli (*)"):
+                    for _, r in ed.iterrows():
+                        if r['Rimborsato_Star']:
+                            st.session_state.refunded_ids.add(r['Id']) # Qui l'Id ora esiste!
+                        else:
+                            st.session_state.refunded_ids.discard(r['Id'])
+                    st.rerun() # Ricarica per aggiornare i calcoli
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM Internazionale")
         c1, c2 = st.columns(2)
