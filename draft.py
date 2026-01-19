@@ -53,10 +53,8 @@ st.sidebar.subheader("Area Riservata Admin")
 admin_selezionato = st.sidebar.selectbox("Seleziona Squadra Admin", ["---"] + ADMIN_SQUADRE)
 input_pin = st.sidebar.text_input("Inserisci PIN per sbloccare", type="password")
 
-# Verifica credenziali
 is_admin = False
 if admin_selezionato != "---":
-    # Cerchiamo il PIN nel file leghe.csv
     squadra_info = st.session_state.leghe[st.session_state.leghe['Squadra'] == admin_selezionato]
     if not squadra_info.empty:
         pin_reale = str(squadra_info['PIN'].values[0])
@@ -66,100 +64,51 @@ if admin_selezionato != "---":
         elif input_pin != "":
             st.sidebar.error("PIN non valido")
 
+# --- PULSANTE RESET (Visibile solo se loggati come Admin) ---
+if is_admin:
+    st.sidebar.divider()
+    if st.sidebar.button("🚨 RESET TOTALE DRAFT"):
+        st.session_state.draft_log = []
+        r, l, q, e = load_data()
+        st.session_state.df_rosters = r
+        st.rerun()
+
 # --- ELABORAZIONE DATI ---
 df_full = pd.merge(st.session_state.df_rosters, st.session_state.leghe, left_on='Squadra_LFM', right_on='Squadra')
 df_lega = df_full[df_full['Lega'] == campionato]
 ids_esclusi = set(st.session_state.esclusi['Id'])
 asteriscati_base = df_lega[df_lega['Id'].isin(ids_esclusi)]
 asteriscati = pd.merge(asteriscati_base, st.session_state.esclusi[['Id', 'Nome', 'R', 'FVM']], on='Id', how='left')
-
 ids_occupati_lega = set(df_lega['Id'])
-# Svincolati REALI (Non in rosa e non esclusi)
 svincolati = st.session_state.quot[(~st.session_state.quot['Id'].isin(ids_occupati_lega)) & (~st.session_state.quot['Id'].isin(ids_esclusi))]
 
 # --- DASHBOARD PRINCIPALE ---
 st.title(f"🏆 Sessione Draft: {campionato}")
 
 if is_admin:
-    st.warning(f"**MODALITÀ SCRITTURA ATTIVA** - Stai operando come admin della lega.")
+    st.warning("**MODALITÀ ADMIN**: Puoi registrare i cambi.")
 else:
-    st.info("📊 **MODALITÀ CONSULTAZIONE** - Seleziona la tua squadra admin nella sidebar per registrare i cambi.")
+    st.info("**MODALITÀ VISUALIZZATORE**: Consulta i turni e gli svincolati.")
 
 ruoli_nomi = {'P': 'Portieri', 'D': 'Difensori', 'C': 'Centrocampisti', 'A': 'Attaccanti'}
-tabs = st.tabs([ruoli_nomi[r] for r in ['P', 'D', 'C', 'A']] + ["📜 Registro Movimenti"])
+tabs = st.tabs([ruoli_nomi[r] for r in ['P', 'D', 'C', 'A']] + ["📜 Registro"])
 
 for i, r_code in enumerate(['P', 'D', 'C', 'A']):
     with tabs[i]:
         lista_ruolo = asteriscati[asteriscati['R'] == r_code].sort_values(by='FVM', ascending=False)
         if lista_ruolo.empty:
-            st.write(f"Nessuna sostituzione necessaria per i {ruoli_nomi[r_code]}.")
+            st.write(f"Nessuna sostituzione per i {ruoli_nomi[r_code]}.")
         else:
             for _, row in lista_ruolo.iterrows():
-                # Se già processato (acquisto o salto), non mostrarlo
                 if any(d['Id_Perso'] == row['Id'] for d in st.session_state.draft_log):
                     continue
 
-                with st.expander(f"📍 Turno: {row['Squadra_LFM']} | Sostituisce {row['Nome']} (FVM {row['FVM']})"):
+                with st.expander(f"📍 {row['Squadra_LFM']} -> Sostituisce {row['Nome']} (FVM {row['FVM']})"):
                     col1, col2 = st.columns([1, 2])
-                    
                     options = svincolati[(svincolati['R'] == r_code) & (svincolati['FVM'] <= row['FVM'])]
                     
                     with col1:
-                        st.write(f"**Target:** {row['Nome']}")
-                        st.write(f"**Max FVM:** {row['FVM']}")
+                        st.write(f"**Target:** {row['Nome']} | **FVM:** {row['FVM']}")
                         if is_admin:
-                            if st.button(f"Salta Turno", key=f"skip_{row['Id']}"):
-                                st.session_state.draft_log.append({
-                                    "Squadra": row['Squadra_LFM'], "Perso": row['Nome'], "Id_Perso": row['Id'],
-                                    "Preso": "DRAFT SALTATO", "Tipo": "SKIP"
-                                })
-                                st.rerun()
-                    
-                    with col2:
-                        if is_admin:
-                            scelta_nome = st.selectbox("Scegli il nuovo giocatore:", options['Nome'].tolist(), key=f"sel_{row['Id']}")
-                            if st.button("Registra Acquisto", key=f"btn_{row['Id']}"):
-                                player_info = options[options['Nome'] == scelta_nome].iloc[0]
-                                # Aggiorna la rosa in memoria
-                                st.session_state.df_rosters.loc[st.session_state.df_rosters['Id'] == row['Id'], 'Id'] = player_info['Id']
-                                # Registra nel log
-                                st.session_state.draft_log.append({
-                                    "Squadra": row['Squadra_LFM'], "Perso": row['Nome'], "Id_Perso": row['Id'],
-                                    "Preso": player_info['Nome'], "Tipo": "ACQUISTO"
-                                })
-                                st.rerun()
-                        else:
-                            st.write("**Migliori alternative svincolate:**")
-                            st.dataframe(options.sort_values(by='FVM', ascending=False)[['Nome', 'FVM']].head(10), use_container_width=True)
-                                if is_admin:
-    st.sidebar.divider()
-    st.sidebar.subheader("🆘 Azioni di Emergenza")
-    
-    # PULSANTE RESET TOTALE
-    if st.sidebar.button("RESET TOTALE DRAFT", help="Cancella tutti i progressi e ricarica i file"):
-        st.session_state.draft_log = []
-        # Ricarichiamo i dati originali dai file
-        r, l, q, e = load_data()
-        st.session_state.df_rosters = r
-        st.rerun()
-
-    # PULSANTE ANNULLA ULTIMA AZIONE (UNDO)
-    if st.sidebar.button("Annulla Ultima Scelta"):
-        if st.session_state.draft_log:
-            # Recuperiamo l'ultimo movimento
-            ultimo_cambio = st.session_state.draft_log.pop()
-            
-            # Se era un acquisto, dobbiamo rimettere il giocatore vecchio nella rosa
-            if ultimo_cambio["Tipo"] == "ACQUISTO":
-                id_perso = ultimo_cambio["Id_Perso"]
-                # In questo caso, per semplicità, un reset parziale ricarica la rosa 
-                # o dovremmo tenere traccia dell'ID del giocatore 'Preso' per toglierlo.
-                # La soluzione più sicura è ricaricare e ri-applicare il log tolto l'ultimo.
-                st.warning("Ultima azione rimossa dal registro. Ricarica per aggiornare la tabella.")
-            st.rerun()
-with tabs[4]:
-    if st.session_state.draft_log:
-        df_log = pd.DataFrame(st.session_state.draft_log)
-        st.table(df_log[['Squadra', 'Perso', 'Preso', 'Tipo']])
-    else:
-        st.write("Ancora nessun movimento registrato.")
+                            if st.button("Salta Turno", key=f"sk_{row['Id']}"):
+                                st.session_state.draft_log.append({"Squadra": row
