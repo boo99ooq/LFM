@@ -111,4 +111,23 @@ for i, r_code in enumerate(['P', 'D', 'C', 'A']):
                         st.write(f"**Target:** {row['Nome']} | **FVM:** {row['FVM']}")
                         if is_admin:
                             if st.button("Salta Turno", key=f"sk_{row['Id']}"):
-                                st.session_state.draft_log.append({"Squadra": row
+                                st.session_state.draft_log.append({"Squadra": row['Squadra_LFM'], "Perso": row['Nome'], "Id_Perso": row['Id'], "Preso": "SALTATO", "Tipo": "SKIP"})
+                                st.rerun()
+                    
+                    with col2:
+                        if is_admin:
+                            scelta = st.selectbox("Scegli:", options['Nome'].tolist(), key=f"sel_{row['Id']}")
+                            if st.button("Conferma", key=f"btn_{row['Id']}"):
+                                player_info = options[options['Nome'] == scelta].iloc[0]
+                                st.session_state.df_rosters.loc[st.session_state.df_rosters['Id'] == row['Id'], 'Id'] = player_info['Id']
+                                st.session_state.draft_log.append({"Squadra": row['Squadra_LFM'], "Perso": row['Nome'], "Id_Perso": row['Id'], "Preso": player_info['Nome'], "Tipo": "ACQUISTO"})
+                                st.rerun()
+                        else:
+                            st.write("**Alternative:**")
+                            st.dataframe(options.sort_values(by='FVM', ascending=False)[['Nome', 'FVM']].head(5))
+
+with tabs[4]:
+    if st.session_state.draft_log:
+        st.table(pd.DataFrame(st.session_state.draft_log)[['Squadra', 'Perso', 'Preso', 'Tipo']])
+    else:
+        st.write("Nessun movimento.")
