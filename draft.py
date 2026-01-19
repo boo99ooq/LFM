@@ -86,9 +86,9 @@ svincolati = st.session_state.quot[(~st.session_state.quot['Id'].isin(ids_occupa
 st.title(f"🏆 Sessione Draft: {campionato}")
 
 if is_admin:
-    st.warning("**MODALITÀ ADMIN**: Puoi registrare i cambi.")
+    st.warning("**MODALITÀ ADMIN**: Puoi registrare i cambi e vedere tutto il mercato.")
 else:
-    st.info("**MODALITÀ VISUALIZZATORE**: Consulta i turni e gli svincolati.")
+    st.info("**MODALITÀ VISUALIZZATORE**: Consulta i turni e le migliori 20 alternative.")
 
 ruoli_nomi = {'P': 'Portieri', 'D': 'Difensori', 'C': 'Centrocampisti', 'A': 'Attaccanti'}
 tabs = st.tabs([ruoli_nomi[r] for r in ['P', 'D', 'C', 'A']] + ["📜 Registro"])
@@ -116,18 +116,20 @@ for i, r_code in enumerate(['P', 'D', 'C', 'A']):
                     
                     with col2:
                         if is_admin:
-                            scelta = st.selectbox("Scegli:", options['Nome'].tolist(), key=f"sel_{row['Id']}")
-                            if st.button("Conferma", key=f"btn_{row['Id']}"):
+                            # L'admin vede tutta la lista possibile nel menu a tendina
+                            scelta = st.selectbox("Scegli il giocatore:", options['Nome'].tolist(), key=f"sel_{row['Id']}")
+                            if st.button("Conferma Acquisto", key=f"btn_{row['Id']}"):
                                 player_info = options[options['Nome'] == scelta].iloc[0]
                                 st.session_state.df_rosters.loc[st.session_state.df_rosters['Id'] == row['Id'], 'Id'] = player_info['Id']
                                 st.session_state.draft_log.append({"Squadra": row['Squadra_LFM'], "Perso": row['Nome'], "Id_Perso": row['Id'], "Preso": player_info['Nome'], "Tipo": "ACQUISTO"})
                                 st.rerun()
                         else:
-                            st.write("**Alternative:**")
-                            st.dataframe(options.sort_values(by='FVM', ascending=False)[['Nome', 'FVM']].head(5))
+                            # Visualizzatore: vede la tabella con le migliori 20 opzioni per FVM
+                            st.write("**Top 20 alternative svincolate:**")
+                            st.dataframe(options.sort_values(by='FVM', ascending=False)[['Nome', 'FVM']].head(20), use_container_width=True)
 
 with tabs[4]:
     if st.session_state.draft_log:
         st.table(pd.DataFrame(st.session_state.draft_log)[['Squadra', 'Perso', 'Preso', 'Tipo']])
     else:
-        st.write("Nessun movimento.")
+        st.write("Nessun movimento registrato in questa sessione.")
