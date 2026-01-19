@@ -267,29 +267,52 @@ if df_base is not None:
     elif menu == "🏃 Gestione Mercato":
         st.title("🏃 Gestione Mercato")
         t1, t2 = st.tabs(["✈️ Svincoli (*)", "✂️ Tagli"])
-        with t1:
+       with t1:
             c = st.text_input("Cerca giocatore per svincolo (*):")
             if c:
                 df_f = df_base[df_base['Nome'].str.contains(c, case=False, na=False)].drop_duplicates('Id')
                 
-                # 1. Creiamo il data_editor con l'Id incluso ma nascosto
+                # ABBIAMO AGGIUNTO 'Id' QUI SOTTO
                 ed = st.data_editor(
                     df_f[['Id', 'Rimborsato_Star', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Star']], 
                     hide_index=True,
                     column_config={
-                        "Id": st.column_config.Column(hidden=True),
+                        "Id": st.column_config.Column(hidden=True),  # Rende Id invisibile ma presente
                     },
-                    key="editor_svincoli" # Aggiungi una chiave univoca
+                    key="editor_svincoli"
                 )
                 
-                # 2. AGGIUNGI QUESTO: Il pulsante per confermare le modifiche
                 if st.button("Conferma Svincoli (*)"):
                     for _, r in ed.iterrows():
-                        if r['Rimborsato_Star']:
-                            st.session_state.refunded_ids.add(r['Id']) # Qui l'Id ora esiste!
-                        else:
+                        # Ora r['Id'] non darà più errore perché la colonna esiste nell'editor
+                        if r['Rimborsato_Star']: 
+                            st.session_state.refunded_ids.add(r['Id'])
+                        else: 
                             st.session_state.refunded_ids.discard(r['Id'])
-                    st.rerun() # Ricarica per aggiornare i calcoli
+                    st.rerun()
+        with t2:
+            c2 = st.text_input("Cerca per taglio:")
+            if c2:
+                df_t = df_base[df_base['Nome'].str.contains(c2, case=False, na=False) | df_base['Squadra_LFM'].str.contains(c2, case=False, na=False)]
+                
+                # ABBIAMO AGGIUNTO 'Taglio_Key' QUI SOTTO
+                ed_t = st.data_editor(
+                    df_t[['Taglio_Key', 'Rimborsato_Taglio', 'Nome', 'Squadra_LFM', 'Qt.I', 'FVM', 'Rimborso_Taglio']], 
+                    hide_index=True,
+                    column_config={
+                        "Taglio_Key": st.column_config.Column(hidden=True),
+                    },
+                    key="editor_tagli"
+                )
+                
+                if st.button("Conferma Tagli"):
+                    for _, r in ed_t.iterrows():
+                        # Ora r['Taglio_Key'] è accessibile
+                        if r['Rimborsato_Taglio']: 
+                            st.session_state.tagli_map.add(r['Taglio_Key'])
+                        else: 
+                            st.session_state.tagli_map.discard(r['Taglio_Key'])
+                    st.rerun()
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM Internazionale")
         c1, c2 = st.columns(2)
