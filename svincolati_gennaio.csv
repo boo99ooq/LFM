@@ -1,1 +1,2 @@
-Giocatore,Squadra,Lega,Rimborso,Data,Tipo
+Giocatore,Squadra,Lega,Totale,Data,Tipo,Ruolo,Quota_FVM,Quota_Qt
+Balogh,Sampdoria,Serie A,9,,STAR (*),D,7.0,2.0
