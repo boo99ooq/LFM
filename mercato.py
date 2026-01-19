@@ -13,14 +13,11 @@ MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier Leag
 ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
 def format_num(num):
-    """Rimuove il .0 per pulizia visiva"""
     try:
         val = float(num)
-        if val == int(val):
-            return str(int(val))
-        return str(round(val, 1))
+        return str(int(val)) if val == int(val) else str(round(val, 1))
     except:
-        return str(num)
+        return "0"
 
 # --- 2. CONNESSIONE GITHUB ---
 try:
@@ -50,7 +47,7 @@ def save_to_github_direct(file_path, df, message):
     except:
         repo.create_file(file_path, message, csv_content)
 
-# --- 4. CARICAMENTO E PULIZIA PROFONDA DATI ---
+# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
 @st.cache_data(ttl=2)
 def load_all_data():
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
@@ -64,33 +61,32 @@ def load_all_data():
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # --- PULIZIA DRINANTE PER EVITARE TYPEERROR ---
+    # PULIZIA TOTALE: Trasformiamo tutto in stringa ed eliminiamo i nulli
     for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
         if 'Id' in df.columns:
             df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
         if 'Lega' in df.columns:
-            df['Lega'] = df['Lega'].astype(str).replace(['nan', 'None', ''], 'N/A').str.strip()
+            df['Lega'] = df['Lega'].astype(str).replace(['nan', 'None', '', 'NaN'], 'N/A').str.strip()
         if 'Squadra_LFM' in df.columns:
             df['Squadra_LFM'] = df['Squadra_LFM'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
         if 'Squadra' in df.columns:
             df['Squadra'] = df['Squadra'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
 
-    # Merge
+    # Merge Rose + Leghe + Quotazioni
     df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
     
-    # Pulizia Numerica (NaN -> 0)
+    # Pulizia Valori Numerici per calcoli
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
     df_base['Crediti'] = pd.to_numeric(df_base['Crediti'], errors='coerce').fillna(0)
     
-    # Calcoli Rimborsi
+    # Calcoli Rimborsi (Arrotondamento eccesso)
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
-    # Esclusi
     esclusi_ids = set(df_esclusi['Id'])
     df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
     
@@ -108,25 +104,21 @@ if menu == "🏠 Dashboard":
     df_t = get_df_from_github('tagli_volontari.csv')
     mov = pd.concat([df_s, df_t], ignore_index=True)
     
-    # Filtriamo solo leghe reali per l'ordinamento
     leghe_per_dash = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     
     for lega_nome in leghe_per_dash:
         st.markdown(f"#### 🏆 {lega_nome}")
         df_l = df_base[df_base['Lega'] == lega_nome]
+        if df_l.empty: continue
         
-        # Statistiche Squadra
         uscite_nomi = mov.groupby('Squadra')['Giocatore'].apply(lambda x: ", ".join(x)) if not mov.empty else pd.Series()
         stats = df_l.groupby('Squadra_LFM').agg({'Nome': 'count', 'FVM': 'sum', 'Qt.I': 'sum'}).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
 
         cols = st.columns(3)
         for idx, (_, sq) in enumerate(stats.sort_values(by='Squadra_LFM').iterrows()):
             with cols[idx % 3]:
-                # Stadio
                 cap = df_stadi[df_stadi['Squadra'].str.upper() == sq['Squadra_LFM'].upper()]['Stadio'].values
                 cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
-                
-                # Crediti e Logica Colori
                 cred_val = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].sum()
                 gioc_usciti = uscite_nomi.get(sq['Squadra_LFM'], "-")
                 color_ng = "#00ff00" if 25 <= sq['NG'] <= 35 else "#ff4b4b"
@@ -134,7 +126,7 @@ if menu == "🏠 Dashboard":
                 st.markdown(f"""
                     <div style="background-color: {MAPPATURA_COLORI.get(lega_nome, '#333')}; padding: 12px; border-radius: 10px; margin-bottom: 12px; color: white; border: 1px solid rgba(255,255,255,0.1); line-height: 1.2;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px; margin-bottom: 8px;">
-                            <b style="font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{sq['Squadra_LFM']}</b>
+                            <b style="font-size: 15px;">{sq['Squadra_LFM']}</b>
                             <span style="font-size: 10px; background: rgba(0,0,0,0.2); padding: 2px 4px; border-radius: 4px;">🏟️ {cap_txt}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: baseline;">
@@ -145,20 +137,18 @@ if menu == "🏠 Dashboard":
                             <div style="background: rgba(255,255,255,0.1); padding: 4px; border-radius: 4px;">FVM: {format_num(sq['FVM_Tot'])}</div>
                             <div style="background: rgba(255,255,255,0.1); padding: 4px; border-radius: 4px;">Qt: {format_num(sq['Quot_Tot'])}</div>
                         </div>
-                        <div style="font-size: 9px; margin-top: 8px; color: rgba(255,255,255,0.8); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ❌ {gioc_usciti}
-                        </div>
+                        <div style="font-size: 9px; margin-top: 8px; color: rgba(255,255,255,0.8); font-style: italic;">❌ {gioc_usciti}</div>
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 1. SVINCOLI (*) ---
+# --- 1. SVINCOLI ---
 elif menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
     df_star = df_base[df_base['Is_Escluso']]
     if df_star.empty:
         st.success("Tutti i rimborsi asteriscati sono stati processati.")
     else:
-        nomi_gioc = sorted([n for n in df_star['Nome'].unique() if n != 'Sconosciuto'])
+        nomi_gioc = sorted([str(n) for n in df_star['Nome'].unique() if n != 'Sconosciuto'])
         scelta = st.selectbox("Seleziona Giocatore Asteriscato:", [""] + nomi_gioc)
         if scelta:
             targets = df_star[df_star['Nome'] == scelta]
@@ -167,11 +157,8 @@ elif menu == "1. Svincoli (*)":
                 for _, row in targets.iterrows():
                     df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
                 df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != targets.iloc[0]['Id']]
-                
                 log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-                log['Tipo'] = "STAR (*)"
-                
+                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']; log['Tipo'] = "STAR (*)"
                 save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
                 save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {scelta}")
                 old_l = get_df_from_github('svincolati_gennaio.csv')
@@ -181,30 +168,28 @@ elif menu == "1. Svincoli (*)":
 # --- 2. TAGLI ---
 elif menu == "2. Tagli":
     st.title("✂️ Tagli Volontari")
-    sq_list = sorted([s for s in df_base['Squadra_LFM'].unique() if s not in ['N/A', 'Sconosciuta']])
+    sq_list = sorted([str(s) for s in df_base['Squadra_LFM'].unique() if s not in ['N/A', 'Sconosciuta']])
     sq = st.selectbox("Squadra:", sq_list, index=None, placeholder="Scegli squadra...")
     if sq:
-        gioc_list = sorted(df_base[df_base['Squadra_LFM'] == sq]['Nome'].tolist())
+        gioc_list = sorted([str(n) for n in df_base[df_base['Squadra_LFM'] == sq]['Nome'].tolist()])
         gioc = st.selectbox("Giocatore:", gioc_list, index=None, placeholder="Scegli giocatore...")
         if gioc:
             info = df_base[(df_base['Squadra_LFM'] == sq) & (df_base['Nome'] == gioc)].iloc[0]
-            st.info(f"Rimborso: {info['R_Taglio']} cr.")
             if st.button("ESEGUI TAGLIO"):
                 df_leghe_upd.loc[df_leghe_upd['Squadra'] == sq, 'Crediti'] += info['R_Taglio']
                 df_rosters_upd = df_rosters_upd[~((df_rosters_upd['Squadra_LFM'] == sq) & (df_rosters_upd['Id'] == info['Id']))]
-                
                 log_t = pd.DataFrame([{'Giocatore': gioc, 'Squadra': sq, 'Lega': info['Lega'], 'Ruolo': info['R'], 'Quota_FVM': info['Meta_FVM'], 'Quota_Qt': info['Meta_Qt'], 'Totale': info['R_Taglio'], 'Tipo': 'TAGLIO'}])
-                
                 save_to_github_direct('leghe.csv', df_leghe_upd, f"Taglio {gioc}")
                 save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {gioc}")
                 old_t = get_df_from_github('tagli_volontari.csv')
                 save_to_github_direct('tagli_volontari.csv', pd.concat([old_t, log_t], ignore_index=True), "Log Taglio")
                 st.cache_data.clear(); st.rerun()
 
-# --- 3. BILANCIO ---
+# --- 3. BILANCIO (PROTEZIONE TYPEERROR) ---
 elif menu == "3. Bilancio":
     st.title("💰 Bilancio Finanziario")
-    leghe_l = sorted([l for l in df_base['Lega'].unique() if l != 'N/A'])
+    # Usiamo ORDINE_LEGHE come riferimento sicuro
+    leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     lega_s = st.selectbox("Filtra Lega:", leghe_l)
     
     df_s = get_df_from_github('svincolati_gennaio.csv')
@@ -217,10 +202,10 @@ elif menu == "3. Bilancio":
     bil['Iniziale'] = bil['Crediti'] - bil['Bonus']
     st.table(bil[['Squadra', 'Iniziale', 'Bonus', 'Crediti']].rename(columns={'Crediti': 'Attuali'}))
 
-# --- 4. ROSE ---
+# --- 4. ROSE (PROTEZIONE TYPEERROR) ---
 elif menu == "4. Rose":
     st.title("📋 Rose Aggiornate")
-    leghe_l = sorted([l for l in df_base['Lega'].unique() if l != 'N/A'])
+    leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     lega_s = st.selectbox("Lega:", leghe_l)
     df_v = df_base[df_base['Lega'] == lega_s].sort_values(['Squadra_LFM', 'R'])
     for s in df_v['Squadra_LFM'].unique():
