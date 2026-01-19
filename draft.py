@@ -6,15 +6,23 @@ st.set_page_config(page_title="Draft Agosto LFM", layout="wide")
 st.title("⚽ Dashboard Draft di Agosto")
 st.write("Caricamento dati in corso...")
 
-# Funzione per caricare i dati in sicurezza
 def load_data():
+    # Definiamo una piccola funzione interna per leggere i CSV con la codifica corretta
+    def read_csv_safe(file_name):
+        try:
+            # Prova prima lo standard UTF-8
+            return pd.read_csv(file_name, encoding='utf-8')
+        except UnicodeDecodeError:
+            # Se fallisce, prova la codifica tipica di Excel/Windows
+            return pd.read_csv(file_name, encoding='ISO-8859-1')
+
     try:
-        rosters = pd.read_csv('fantamanager-2021-rosters.csv')
-        leghe = pd.read_csv('leghe.csv')
-        quot = pd.read_csv('quot.csv')
+        rosters = read_csv_safe('fantamanager-2021-rosters.csv')
+        leghe = read_csv_safe('leghe.csv')
+        quot = read_csv_safe('quot.csv')
         return rosters, leghe, quot
     except Exception as e:
-        st.error(f"Errore nel caricamento dei file: {e}")
+        st.error(f"Errore critico: {e}")
         return None, None, None
 
 df_rosters, df_leghe, df_quot = load_data()
