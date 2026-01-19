@@ -3,124 +3,143 @@ import pandas as pd
 import math
 import numpy as np
 import os
+import re
 
-st.set_page_config(page_title="LFM - Gestione Mercato", layout="wide", page_icon="🏃")
+st.set_page_config(page_title="LFM Mercato - Fix Ufficiale", layout="wide", page_icon="⚖️")
 
-# --- FUNZIONE CARICAMENTO DATI (LOGICA ORIGINALE RIGOROSA) ---
+# --- FUNZIONI UTILITY ---
+def fix_league_names(df):
+    if 'Lega' in df.columns:
+        df['Lega'] = df['Lega'].replace(['Lega A', 'nan', 'Da Assegnare', None, 0], 'Serie A')
+    return df
+
+# --- CARICAMENTO DATI (LOGICA BLINDATA) ---
 @st.cache_data
 def load_data():
     try:
-        # Caricamento file come nel tuo script originale
+        # Caricamento file CSV
         df_r = pd.read_csv('fantamanager-2021-rosters.csv', encoding='latin1')
         df_l = pd.read_csv('leghe.csv', encoding='latin1')
         df_q = pd.read_csv('quot.csv', encoding='latin1')
-        # esclusi.csv usa il separatore TAB (\t)
-        df_e = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1')
         
-        # 1. PULIZIA PREVENTIVA (Risolve NameError e TypeError)
-        # Assicuriamoci che gli ID siano numeri interi ovunque
-        for df in [df_r, df_q, df_e]:
-            df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
+        # Pulizia ID iniziali
+        df_r['Id'] = pd.to_numeric(df_r['Id'], errors='coerce').fillna(0).astype(int)
+        df_q['Id'] = pd.to_numeric(df_q['Id'], errors='coerce').fillna(0).astype(int)
         
-        # Pulizia Quotazioni (Qt.I e FVM devono essere numeri per il calcolo rimborsi)
-        df_q['Qt.I'] = pd.to_numeric(df_q['Qt.I'], errors='coerce').fillna(0)
-        df_q['FVM'] = pd.to_numeric(df_q['FVM'], errors='coerce').fillna(0)
+        # Caricamento file esclusi (TAB separated)
+        try:
+            df_e = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1')
+            id_col = 'Id' if 'Id' in df_e.columns else df_e.columns[0]
+            ids_esclusi = set(pd.to_numeric(df_e[id_col], errors='coerce').dropna().astype(int))
+        except:
+            ids_esclusi = set()
 
-        # 2. CREAZIONE DATABASE ROSE (Merge Rose + Leghe + Quotazioni)
+        # Unione Rose + Leghe
         df_merged = pd.merge(df_r, df_l, left_on='Squadra_LFM', right_on='Squadra', how='left')
+        df_merged = fix_league_names(df_merged)
+
+        # Unione con Quotazioni (per Nome, R, Qt.I, FVM)
         df_final = pd.merge(df_merged, df_q[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
         
-        # Identificazione Asteriscati (*) - Presenti nel file esclusi
-        ids_esclusi = set(df_e['Id'])
+        # --- SOLUZIONE AL VALUENERROR (NA or inf) ---
+        # Forza Qt.I e FVM a essere numerici e sostituisce i NaN con 0
+        df_final['Qt.I'] = pd.to_numeric(df_final['Qt.I'], errors='coerce').fillna(0)
+        df_final['FVM'] = pd.to_numeric(df_final['FVM'], errors='coerce').fillna(0)
+        
+        # Identificazione Asteriscati (*)
         df_final['In_Esclusi'] = df_final['Id'].isin(ids_esclusi)
         
-        # 3. LE TUE FORMULE ORIGINALI (Righe 52-53 del tuo file lab3(3).py)
-        # Svincoli (*): FVM totale + metà Quotazione Iniziale
+        # --- LE TUE FORMULE ORIGINALI (lab3(3).py Righe 52-53) ---
+        # Svincoli (*): FVM + (Qt.I / 2) -> Arrotondato per eccesso
         df_final['Rimborso_Star'] = np.ceil(df_final['FVM'] + (df_final['Qt.I'] / 2)).astype(int)
         
-        # Tagli: (FVM + Quotazione Iniziale) / 2
+        # Tagli Volontari: (FVM + Qt.I) / 2 -> Arrotondato per eccesso
         df_final['Rimborso_Taglio'] = np.ceil((df_final['FVM'] + df_final['Qt.I']) / 2).astype(int)
         
-        # Chiave tecnica per i tagli
+        # Chiave univoca per i tagli
         df_final['Taglio_Key'] = df_final['Id'].astype(str) + "_" + df_final['Squadra_LFM'].astype(str)
         
-        return df_final, df_l
+        return df_final, df_l, df_q
     except Exception as e:
-        st.error(f"Errore nel caricamento dei dati: {e}")
-        return None, None
+        st.error(f"Errore nel caricamento: {e}")
+        return None, None, None
 
 # --- INIZIALIZZAZIONE ---
-if 'refunded_star_ids' not in st.session_state:
-    st.session_state.refunded_star_ids = set()
-if 'tagli_keys' not in st.session_state:
-    st.session_state.tagli_keys = set()
+if 'refunded_ids' not in st.session_state: st.session_state.refunded_ids = set()
+if 'tagli_map' not in st.session_state: st.session_state.tagli_map = set()
 
 data = load_data()
 
-if data[0] is not None:
-    df_base, df_leghe_orig = data
+if data and data[0] is not None:
+    df_base, df_leghe_orig, df_all_quot = data
     
-    # Applichiamo lo stato della sessione ai dati
-    df_base['Rimborsato_Star'] = df_base['Id'].isin(st.session_state.refunded_star_ids)
-    df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_keys)
+    # Sincronizza stato rimborsi
+    df_base['Rimborsato_Star'] = df_base['Id'].isin(st.session_state.refunded_ids)
+    df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
 
     st.title("🏃 Gestione Mercato LFM")
-    tab1, tab2, tab3 = st.tabs(["✈️ Svincoli (*)", "✂️ Tagli Volontari", "💰 Situazione Crediti"])
+    t1, t2, t3 = st.tabs(["✈️ Svincoli (*)", "✂️ Tagli Volontari", "💰 Situazione Crediti"])
 
-    # --- TAB 1: SVINCOLI (*) ---
-    with tab1:
+    # --- TAB 1: SVINCOLI ASTERISCATI ---
+    with t1:
         st.subheader("Giocatori Esclusi dal Listone (*)")
-        st.info("Formula originale: FVM + (Qt.I / 2)")
-        df_star = df_base[df_base['In_Esclusi']].copy()
+        st.info("Formula originale: FVM + 50% Quotazione Iniziale")
         
+        df_star = df_base[df_base['In_Esclusi']].copy()
         if df_star.empty:
-            st.write("Nessun giocatore della tua rosa è tra gli esclusi.")
+            st.write("Nessun giocatore asteriscato trovato in rosa.")
         else:
-            # Id incluso e nascosto per stabilità totale (evita KeyError)
+            # Id incluso ma nascosto per evitare KeyError
             ed_star = st.data_editor(
-                df_star[['Id', 'Rimborsato_Star', 'Nome', 'Squadra_LFM', 'FVM', 'Qt.I', 'Rimborso_Star']],
+                df_star[['Id', 'Rimborsato_Star', 'Nome', 'Squadra_LFM', 'FVM', 'Qt.I', 'Rimborso_Star']], 
                 hide_index=True,
                 column_config={"Id": st.column_config.Column(hidden=True)},
-                key="ed_star"
+                key="ed_svincoli"
             )
-            
-            if st.button("Salva Svincoli (*)"):
+            if st.button("Conferma Svincoli (*)"):
                 for row in ed_star.to_dict('records'):
                     p_id = int(row['Id'])
-                    if row['Rimborsato_Star']: st.session_state.refunded_star_ids.add(p_id)
-                    else: st.session_state.refunded_star_ids.discard(p_id)
+                    if row['Rimborsato_Star']: st.session_state.refunded_ids.add(p_id)
+                    else: st.session_state.refunded_ids.discard(p_id)
                 st.rerun()
 
     # --- TAB 2: TAGLI VOLONTARI ---
-    with tab2:
-        st.subheader("Tagli Volontari")
-        st.info("Formula originale: (FVM + Qt.I) / 2")
-        cerca = st.text_input("Cerca giocatore da tagliare:")
-        if cerca:
-            df_t = df_base[df_base['Nome'].str.contains(cerca, case=False, na=False)].copy()
+    with t2:
+        st.subheader("Tagli Volontari della Rosa")
+        st.info("Formula originale: (FVM + Quotazione Iniziale) / 2")
+        c = st.text_input("Cerca giocatore da tagliare:")
+        if c:
+            df_t_list = df_base[df_base['Nome'].str.contains(c, case=False, na=False)].copy()
             ed_taglio = st.data_editor(
-                df_t[['Taglio_Key', 'Rimborsato_Taglio', 'Nome', 'Squadra_LFM', 'FVM', 'Qt.I', 'Rimborso_Taglio']],
+                df_t_list[['Taglio_Key', 'Rimborsato_Taglio', 'Nome', 'Squadra_LFM', 'FVM', 'Qt.I', 'Rimborso_Taglio']], 
                 hide_index=True,
                 column_config={"Taglio_Key": st.column_config.Column(hidden=True)},
-                key="ed_taglio"
+                key="ed_tagli"
             )
-            if st.button("Salva Tagli"):
+            if st.button("Conferma Tagli"):
                 for row in ed_taglio.to_dict('records'):
                     t_k = row['Taglio_Key']
-                    if row['Rimborsato_Taglio']: st.session_state.tagli_keys.add(t_k)
+                    if row['Rimborsato_Taglio']: st.session_state.tagli_map.add(t_k)
                     else: st.session_state.tagli_map.discard(t_k)
                 st.rerun()
 
-    # --- TAB 3: BILANCIO ---
-    with tab3:
-        st.subheader("Bilancio Crediti Residui")
-        # Calcolo rimborsi (Logica originale righe 120-125)
+    # --- TAB 3: BILANCIO CREDITI ---
+    with t3:
+        st.subheader("Bilancio Crediti Residui Aggiornato")
         bonus_star = df_base[df_base['Rimborsato_Star']].groupby('Squadra_LFM')['Rimborso_Star'].sum()
         bonus_taglio = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_LFM')['Rimborso_Taglio'].sum()
         
-        res = df_leghe_orig.copy().set_index('Squadra')
-        res['Bonus_Star'] = bonus_star.reindex(res.index, fill_value=0)
-        res['Bonus_Taglio'] = bonus_taglio.reindex(res.index, fill_value=0)
-        res['Crediti_Aggiornati'] = res['Crediti'] + res['Bonus_Star'] + res['Bonus_Taglio']
+        stats = df_leghe_orig.copy().set_index('Squadra')
+        stats['Base'] = stats['Crediti']
+        stats['Recupero_Star'] = bonus_star.reindex(stats.index, fill_value=0)
+        stats['Recupero_Tagli'] = bonus_taglio.reindex(stats.index, fill_value=0)
+        stats['Tot_Disponibile'] = stats['Base'] + stats['Recupero_Star'] + stats['Recupero_Tagli']
         
-        st.table(res.reset_index()[['Squadra', 'Lega', 'Crediti', 'Bonus_Star', 'Bonus_Taglio', 'Crediti_Aggiornati']])
+        st.table(stats.reset_index()[['Squadra', 'Lega', 'Base', 'Recupero_Star', 'Recupero_Tagli', 'Tot_Disponibile']])
+
+# --- BACKUP ---
+st.sidebar.divider()
+if st.sidebar.button("Reset Totale Sessione"):
+    st.session_state.refunded_ids = set()
+    st.session_state.tagli_map = set()
+    st.rerun()
