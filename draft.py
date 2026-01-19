@@ -1,4 +1,4 @@
-iimport pandas as pd
+import pandas as pd
 
 def genera_draft_per_lega(file_roster, file_leghe, file_quot_nuovo, file_quot_vecchio):
     # 1. Caricamento Dati
