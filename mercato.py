@@ -259,17 +259,60 @@ elif menu == "3. Bilancio":
 
 # --- 4. ROSE ---
 elif menu == "4. Rose":
-    st.title("📋 Rose Aggiornate")
-    leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
-    lega_s = st.selectbox("Lega:", leghe_l)
-    df_v = df_base[df_base['Lega'] == lega_s].sort_values(['Squadra_LFM', 'R'])
+    st.title("📋 Rose e Registro")
     
+    # Selezione della Lega
+    leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
+    lega_sel = st.selectbox("Lega:", leghe_l)
+    
+    # Visualizzazione delle Rose
+    df_v = df_base[df_base['Lega'] == lega_sel].sort_values('Squadra_LFM')
     for s in df_v['Squadra_LFM'].unique():
         with st.expander(f"Rosa {s}"):
-            d_sq = df_v[df_v['Squadra_LFM'] == s][['R', 'Nome', 'Qt.I', 'FVM']].copy()
+            d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
+            d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
             
-            # --- APPLICA FORMAT_NUM PER TOGLIERE IL .0 ---
+            # Pulizia decimali .0 per Qt.I e FVM
             d_sq['Qt.I'] = d_sq['Qt.I'].apply(format_num)
             d_sq['FVM'] = d_sq['FVM'].apply(format_num)
             
-            st.table(d_sq)
+            st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
+    
+    # --- REGISTRO USCITE (Tagli e Svincoli) ---
+    st.divider()
+    st.subheader(f"❌ Registro Uscite - {lega_sel}")
+    
+    # Carichiamo i due file dei movimenti
+    df_s = get_df_from_github('svincolati_gennaio.csv')
+    df_t = get_df_from_github('tagli_volontari.csv')
+    
+    # Uniamo i movimenti
+    res = pd.concat([df_s, df_t], ignore_index=True)
+    
+    if not res.empty:
+        # Pulizia nomi colonne e dati
+        res.columns = res.columns.str.strip()
+        
+        # Filtriamo solo per la lega selezionata
+        res_view = res[res['Lega'] == lega_sel].copy()
+        
+        if not res_view.empty:
+            # Definiamo le colonne da mostrare
+            cols_to_show = ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Totale']
+            # Verifichiamo quali esistono effettivamente nel file
+            cols_final = [c for c in cols_to_show if c in res_view.columns]
+            
+            # Pulizia decimale .0 sulla colonna Totale (il rimborso)
+            if 'Totale' in res_view.columns:
+                res_view['Totale'] = res_view['Totale'].apply(format_num)
+            
+            # Visualizzazione tabella registro
+            st.dataframe(
+                res_view[cols_final].sort_values(['Squadra', 'Giocatore']),
+                use_container_width=True, 
+                hide_index=True
+            )
+        else:
+            st.info(f"Nessuna uscita registrata per la {lega_sel}.")
+    else:
+        st.info("Registro movimenti ancora vuoto.")
