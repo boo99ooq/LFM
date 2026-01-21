@@ -52,50 +52,48 @@ def save_to_github_direct(file_path, df, message):
 # --- 4. CARICAMENTO E PULIZIA PROFONDA DATI ---
 @st.cache_data(ttl=2)
 def load_all_data():
-    # 1. Caricamento file da GitHub e Locali
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
     df_leghe = get_df_from_github('leghe.csv')
     df_quot = pd.read_csv('quot.csv', encoding='latin1')
-    df_esclusi = get_df_from_github('esclusi.csv')
+    df_esclusi = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1')
     
-    # 2. Creazione del database principale (df_base)
-    # Uniamo le quotazioni con i rosters per legare giocatori e squadre
-    df_base = pd.merge(df_rosters, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
-    
-    # Inizializzazione della colonna Is_Escluso
-    df_base['Is_Escluso'] = False
-
-    # 3. Logica ESCLUSI (da esclusi.csv)
-    if not df_esclusi.empty:
-        # Pulizia nomi colonne
-        df_esclusi.columns = df_esclusi.columns.str.strip()
-        
-        # Ricerca flessibile della colonna ID (Id, ID, # o la prima disponibile)
-        col_id_esc = next((c for c in ['Id', 'ID', '#', 'Codice'] if c in df_esclusi.columns), df_esclusi.columns[0])
-        ids_esclusi = set(df_esclusi[col_id_esc].astype(str).str.strip())
-        
-        # Marcatura nel database principale forzando il confronto tra stringhe
-        df_base['Is_Escluso'] = df_base['Id'].astype(str).str.strip().isin(ids_esclusi)
-    
-    # 4. Caricamento Stadi e Svincolati Gennaio
     try:
         df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
         df_stadi['Squadra'] = df_stadi['Squadra'].astype(str).str.strip()
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # 5. CALCOLO COMPONENTI RIMBORSO (prezzi originali)
+    # PULIZIA TOTALE: Fondamentale per evitare TypeError nei menu sorted()
+    for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
+        if 'Id' in df.columns:
+            df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
+        if 'Lega' in df.columns:
+            df['Lega'] = df['Lega'].astype(str).replace(['nan', 'None', '', 'NaN'], 'N/A').str.strip()
+        if 'Squadra_LFM' in df.columns:
+            df['Squadra_LFM'] = df['Squadra_LFM'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
+        if 'Squadra' in df.columns:
+            df['Squadra'] = df['Squadra'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
+
+    # Merge Rose + Leghe + Quotazioni
+    df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
+    df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
+    
+    # Pulizia Valori Numerici
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
+    df_base['Crediti'] = pd.to_numeric(df_base['Crediti'], errors='coerce').fillna(0)
     
+    # CALCOLO COMPONENTI RIMBORSO
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
-
+    
+    esclusi_ids = set(df_esclusi['Id'])
+    df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
+    
     return df_base, df_leghe, df_rosters, df_stadi
 
-# Attivazione globale del caricamento
 df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 
 # --- 5. NAVIGAZIONE ---
@@ -158,43 +156,34 @@ if menu == "🏠 Dashboard":
 # --- 1. SVINCOLI (*) ---
 elif menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
-    
-    # Controllo di sicurezza: verifichiamo se la colonna esiste
-    if 'Is_Escluso' in df_base.columns:
-        df_star = df_base[df_base['Is_Escluso']].copy()
-    else:
-        # Se la colonna non esiste, creiamo un dataframe vuoto
-        df_star = pd.DataFrame(columns=df_base.columns)
-        st.warning("⚠️ Attenzione: Lista svincolati non caricata correttamente o colonna 'Is_Escluso' mancante.")
-
+    df_star = df_base[df_base['Is_Escluso']].copy()
     if df_star.empty:
         st.success("Tutti i rimborsi (*) sono stati completati.")
     else:
-        # Mostra la tabella (opzionale, se vuoi vedere chi manca)
-        st.write("Giocatori da svincolare:")
-        # Applichiamo anche qui la pulizia dello .0 per coerenza
-        df_star_show = df_star.copy()
-        if 'Qt.I' in df_star_show.columns:
-            df_star_show['Qt.I'] = df_star_show['Qt.I'].apply(format_num)
-        st.table(df_star_show[['R', 'Nome', 'Squadra_LFM', 'Qt.I']])          
-        if st.button("CONFERMA SVINCOLO GLOBALE"):
-            for _, row in targets.iterrows():
-                df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
+        scelta = st.selectbox("Seleziona Giocatore:", [""] + sorted([str(n) for n in df_star['Nome'].unique().tolist()]))
+        if scelta:
+            targets = df_star[df_star['Nome'] == scelta]
+            info = targets.iloc[0]
+            st.warning(f"Svincolo di {scelta} ({info['R']}). Rimborso: FVM {info['FVM']} + 50% Qt ({info['Meta_Qt']}) = {info['R_Star']} cr.")
             
-            id_target = info['Id']
-            df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
-            
-            log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-            log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-            log['Tipo'] = "STAR (*)"
-            
-            save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
-            save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
-            
-            old_log = get_df_from_github('svincolati_gennaio.csv')
-            save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
-            
-            st.cache_data.clear(); st.rerun()
+            if st.button("CONFERMA SVINCOLO GLOBALE"):
+                for _, row in targets.iterrows():
+                    df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
+                
+                id_target = info['Id']
+                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
+                
+                log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
+                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
+                log['Tipo'] = "STAR (*)"
+                
+                save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
+                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
+                
+                old_log = get_df_from_github('svincolati_gennaio.csv')
+                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
+                
+                st.cache_data.clear(); st.rerun()
 
 # --- 2. TAGLI ---
 elif menu == "2. Tagli":
