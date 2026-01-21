@@ -87,7 +87,62 @@ def load_all_data():
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
-    esclusi_ids = set(df_esclusi['Id'])
+    esclusi_ids = set(df_esclusi['Id'])# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
+@st.cache_data(ttl=2)
+def load_all_data():
+    # Caricamento file da GitHub
+    df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
+    df_leghe = get_df_from_github('leghe.csv')
+    
+    # Caricamento file locali (Quotazioni ed Esclusi) con rilevamento automatico separatore
+    try:
+        df_quot = pd.read_csv('quot.csv', sep=None, engine='python', encoding='latin1')
+        df_esclusi = pd.read_csv('esclusi.csv', sep=None, engine='python', encoding='latin1')
+    except:
+        df_quot = pd.DataFrame(columns=['Id', 'Nome', 'R', 'Qt.I', 'FVM'])
+        df_esclusi = pd.DataFrame(columns=['Id'])
+
+    try:
+        df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
+    except:
+        df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
+
+    # --- PULIZIA FONDAMENTALE ---
+    for d in [df_rosters, df_quot, df_esclusi, df_leghe]:
+        if not d.empty:
+            # 1. Rimuove spazi dai nomi delle colonne (es. "Id " -> "Id")
+            d.columns = d.columns.str.strip()
+            # 2. Rimuove spazi dai dati testuali
+            cols_obj = d.select_dtypes(['object']).columns
+            d[cols_obj] = d[cols_obj].apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+
+    # TRATTAMENTO ID: Forza ID come interi per il merge
+    for d in [df_rosters, df_quot, df_esclusi]:
+        if 'Id' in d.columns:
+            d['Id'] = pd.to_numeric(d['Id'], errors='coerce').fillna(0).astype(int)
+
+    # Merge Rose + Leghe + Quotazioni
+    df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
+    df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
+    
+    # Pulizia Valori Numerici per calcoli
+    df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
+    df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
+    
+    # Calcoli Rimborsi
+    df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
+    df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
+    df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
+    
+    # PROTEZIONE PER IS_ESCLUSO
+    if 'Id' in df_esclusi.columns:
+        esclusi_ids = set(df_esclusi['Id'].unique())
+        df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
+    else:
+        df_base['Is_Escluso'] = False
+        st.warning("⚠️ Colonna 'Id' non trovata in esclusi.csv")
+    
+    return df_base, df_leghe, df_rosters, df_stadi
     df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
     
     return df_base, df_leghe, df_rosters, df_stadi
