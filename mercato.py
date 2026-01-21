@@ -242,25 +242,25 @@ elif menu == "4. Rose":
     lega_sel = st.selectbox("Lega:", leghe_l)
     
     df_v = df_base[df_base['Lega'] == lega_sel].sort_values('Squadra_LFM')
-    for s in df_v['Squadra_LFM'].unique():
+for s in df_v['Squadra_LFM'].unique():
        with st.expander(f"Rosa {s}"):
-    d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
-    d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
-    
-    # PULIZIA DEI DECIMALI PRIMA DI MOSTRARE LA TABELLA
-    d_sq['Qt.I'] = d_sq['Qt.I'].apply(format_num)
-    d_sq['FVM'] = d_sq['FVM'].apply(format_num)
-    
-    st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
-    st.divider()
-    st.subheader("❌ Registro Uscite")
-    df_s = get_df_from_github('svincolati_gennaio.csv')
-    df_t = get_df_from_github('tagli_volontari.csv')
-    res = pd.concat([df_s, df_t], ignore_index=True)
-    
-    if not res.empty:
-        available_cols = [c for c in ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Quota_FVM', 'Quota_Qt', 'Totale'] if c in res.columns]
-        res_view = res[res['Lega'] == lega_sel].sort_values(['Squadra', 'Giocatore'])
-        st.dataframe(res_view[available_cols], use_container_width=True, hide_index=True)
-    else:
-        st.info("Nessun registro disponibile.")
+            d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
+            d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
+            
+            # PULIZIA DEI DECIMALI PRIMA DI MOSTRARE LA TABELLA
+            d_sq['Qt.I'] = d_sq['Qt.I'].apply(format_num)
+            d_sq['FVM'] = d_sq['FVM'].apply(format_num)
+            
+            st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
+            st.divider()
+            st.subheader("❌ Registro Uscite")
+            df_s = get_df_from_github('svincolati_gennaio.csv')
+            df_t = get_df_from_github('tagli_volontari.csv')
+            res = pd.concat([df_s, df_t], ignore_index=True)
+            
+            if not res.empty:
+                available_cols = [c for c in ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Quota_FVM', 'Quota_Qt', 'Totale'] if c in res.columns]
+                res_view = res[res['Lega'] == lega_sel].sort_values(['Squadra', 'Giocatore'])
+                st.dataframe(res_view[available_cols], use_container_width=True, hide_index=True)
+            else:
+                st.info("Nessun registro disponibile.")
