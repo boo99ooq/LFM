@@ -13,7 +13,6 @@ MAPPATURA_COLORI = {"Serie A": "#00529b", "Bundesliga": "#d3010c", "Premier Leag
 ORDINE_RUOLI = {'P': 0, 'D': 1, 'C': 2, 'A': 3}
 
 def format_num(num):
-    """Rimuove il .0 per pulizia visiva"""
     try:
         val = float(num)
         return str(int(val)) if val == int(val) else str(round(val, 1))
@@ -34,7 +33,6 @@ def get_df_from_github(file_path):
     try:
         content = repo.get_contents(file_path)
         df = pd.read_csv(io.StringIO(content.decoded_content.decode('utf-8')))
-        # Fix per KeyError: se esiste 'Rimborso' ma non 'Totale', rinomina
         if 'Rimborso' in df.columns and 'Totale' not in df.columns:
             df = df.rename(columns={'Rimborso': 'Totale'})
         return df
@@ -49,7 +47,7 @@ def save_to_github_direct(file_path, df, message):
     except:
         repo.create_file(file_path, message, csv_content)
 
-# --- 4. CARICAMENTO E PULIZIA PROFONDA DATI ---
+# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
 @st.cache_data(ttl=2)
 def load_all_data():
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
@@ -63,7 +61,7 @@ def load_all_data():
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # PULIZIA TOTALE: Fondamentale per evitare TypeError nei menu sorted()
+    # PULIZIA TOTALE: Trasformiamo tutto in stringa ed eliminiamo i nulli
     for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
         if 'Id' in df.columns:
             df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
@@ -78,12 +76,12 @@ def load_all_data():
     df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
     
-    # Pulizia Valori Numerici
+    # Pulizia Valori Numerici per calcoli
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
     df_base['Crediti'] = pd.to_numeric(df_base['Crediti'], errors='coerce').fillna(0)
     
-    # CALCOLO COMPONENTI RIMBORSO
+    # Calcoli Rimborsi (Arrotondamento eccesso)
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
@@ -99,39 +97,29 @@ df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
 
-# --- 🏠 PAGINA: DASHBOARD ---
+# --- 🏠 DASHBOARD GOLDEN EDITION ---
 if menu == "🏠 Dashboard":
-    st.title("🏠 Dashboard Riepilogo Globale")
-    
+    st.title("🏠 Riepilogo Globale")
     df_s = get_df_from_github('svincolati_gennaio.csv')
     df_t = get_df_from_github('tagli_volontari.csv')
     mov = pd.concat([df_s, df_t], ignore_index=True)
     
-    # Leghe ordinate come da costante
-    leghe_effettive = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
+    leghe_per_dash = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     
-    for lega_nome in leghe_effettive:
+    for lega_nome in leghe_per_dash:
         st.markdown(f"#### 🏆 {lega_nome}")
         df_l = df_base[df_base['Lega'] == lega_nome]
         if df_l.empty: continue
         
-        # Statistiche Squadra
         uscite_nomi = mov.groupby('Squadra')['Giocatore'].apply(lambda x: ", ".join(x)) if not mov.empty else pd.Series()
         stats = df_l.groupby('Squadra_LFM').agg({'Nome': 'count', 'FVM': 'sum', 'Qt.I': 'sum'}).rename(columns={'Nome': 'NG', 'FVM': 'FVM_Tot', 'Qt.I': 'Quot_Tot'}).reset_index()
 
         cols = st.columns(3)
         for idx, (_, sq) in enumerate(stats.sort_values(by='Squadra_LFM').iterrows()):
             with cols[idx % 3]:
-                # Recupero Stadio
                 cap = df_stadi[df_stadi['Squadra'].str.upper() == sq['Squadra_LFM'].upper()]['Stadio'].values
                 cap_txt = f"{int(cap[0])}k" if len(cap)>0 and cap[0] > 0 else "N.D."
-                
-                # Crediti Attuali
-                try:
-                    cred_val = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].values[0]
-                except:
-                    cred_val = 0
-                
+                cred_val = df_leghe_upd[df_leghe_upd['Squadra'] == sq['Squadra_LFM']]['Crediti'].sum()
                 gioc_usciti = uscite_nomi.get(sq['Squadra_LFM'], "-")
                 color_ng = "#00ff00" if 25 <= sq['NG'] <= 35 else "#ff4b4b"
                 
@@ -153,110 +141,73 @@ if menu == "🏠 Dashboard":
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 1. SVINCOLI (*) ---
+# --- 1. SVINCOLI ---
 elif menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
-    df_star = df_base[df_base['Is_Escluso']].copy()
+    df_star = df_base[df_base['Is_Escluso']]
     if df_star.empty:
-        st.success("Tutti i rimborsi (*) sono stati completati.")
+        st.success("Tutti i rimborsi asteriscati sono stati processati.")
     else:
-        scelta = st.selectbox("Seleziona Giocatore:", [""] + sorted([str(n) for n in df_star['Nome'].unique().tolist()]))
+        nomi_gioc = sorted([str(n) for n in df_star['Nome'].unique() if n != 'Sconosciuto'])
+        scelta = st.selectbox("Seleziona Giocatore Asteriscato:", [""] + nomi_gioc)
         if scelta:
             targets = df_star[df_star['Nome'] == scelta]
-            info = targets.iloc[0]
-            st.warning(f"Svincolo di {scelta} ({info['R']}). Rimborso: FVM {info['FVM']} + 50% Qt ({info['Meta_Qt']}) = {info['R_Star']} cr.")
-            
-            if st.button("CONFERMA SVINCOLO GLOBALE"):
+            st.warning(f"Svincolo di {scelta}. Rimborso: {targets.iloc[0]['R_Star']} cr.")
+            if st.button("ESEGUI SVINCOLO GLOBALE"):
                 for _, row in targets.iterrows():
                     df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
-                
-                id_target = info['Id']
-                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
-                
+                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != targets.iloc[0]['Id']]
                 log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-                log['Tipo'] = "STAR (*)"
-                
+                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']; log['Tipo'] = "STAR (*)"
                 save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
-                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
-                
-                old_log = get_df_from_github('svincolati_gennaio.csv')
-                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
-                
+                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {scelta}")
+                old_l = get_df_from_github('svincolati_gennaio.csv')
+                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_l, log], ignore_index=True), "Log Star")
                 st.cache_data.clear(); st.rerun()
 
 # --- 2. TAGLI ---
 elif menu == "2. Tagli":
     st.title("✂️ Tagli Volontari")
-    squadre_list = sorted([str(s) for s in df_base['Squadra_LFM'].unique() if s not in ['N/A', 'Sconosciuta']])
-    sq = st.selectbox("Squadra:", squadre_list, index=None, placeholder="Scegli squadra...")
-    
+    sq_list = sorted([str(s) for s in df_base['Squadra_LFM'].unique() if s not in ['N/A', 'Sconosciuta']])
+    sq = st.selectbox("Squadra:", sq_list, index=None, placeholder="Scegli squadra...")
     if sq:
-        giocatori_filtro = sorted([str(n) for n in df_base[df_base['Squadra_LFM'] == sq]['Nome'].tolist()])
-        gioc = st.selectbox("Giocatore:", giocatori_filtro, index=None, placeholder="Scegli giocatore...")
-        
+        gioc_list = sorted([str(n) for n in df_base[df_base['Squadra_LFM'] == sq]['Nome'].tolist()])
+        gioc = st.selectbox("Giocatore:", gioc_list, index=None, placeholder="Scegli giocatore...")
         if gioc:
             info = df_base[(df_base['Squadra_LFM'] == sq) & (df_base['Nome'] == gioc)].iloc[0]
-            st.info(f"Rimborso previsto: {info['R_Taglio']} crediti.")
-            
             if st.button("ESEGUI TAGLIO"):
                 df_leghe_upd.loc[df_leghe_upd['Squadra'] == sq, 'Crediti'] += info['R_Taglio']
                 df_rosters_upd = df_rosters_upd[~((df_rosters_upd['Squadra_LFM'] == sq) & (df_rosters_upd['Id'] == info['Id']))]
-                
-                log_t = pd.DataFrame([{
-                    'Giocatore': gioc, 'Squadra': sq, 'Lega': info['Lega'], 'Ruolo': info['R'],
-                    'Quota_FVM': info['Meta_FVM'], 'Quota_Qt': info['Meta_Qt'], 
-                    'Totale': info['R_Taglio'], 'Tipo': 'TAGLIO'
-                }])
-                
+                log_t = pd.DataFrame([{'Giocatore': gioc, 'Squadra': sq, 'Lega': info['Lega'], 'Ruolo': info['R'], 'Quota_FVM': info['Meta_FVM'], 'Quota_Qt': info['Meta_Qt'], 'Totale': info['R_Taglio'], 'Tipo': 'TAGLIO'}])
                 save_to_github_direct('leghe.csv', df_leghe_upd, f"Taglio {gioc}")
-                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {gioc}")
-                
-                old_log_t = get_df_from_github('tagli_volontari.csv')
-                save_to_github_direct('tagli_volontari.csv', pd.concat([old_log_t, log_t], ignore_index=True), f"Log {gioc}")
-                
+                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {gioc}")
+                old_t = get_df_from_github('tagli_volontari.csv')
+                save_to_github_direct('tagli_volontari.csv', pd.concat([old_t, log_t], ignore_index=True), "Log Taglio")
                 st.cache_data.clear(); st.rerun()
 
-# --- 3. BILANCIO ---
+# --- 3. BILANCIO (PROTEZIONE TYPEERROR) ---
 elif menu == "3. Bilancio":
-    st.title("💰 Bilancio")
-    # Filtro leghe sicuro
+    st.title("💰 Bilancio Finanziario")
+    # Usiamo ORDINE_LEGHE come riferimento sicuro
     leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
-    lega_sel = st.selectbox("Lega:", leghe_l)
+    lega_s = st.selectbox("Filtra Lega:", leghe_l)
     
     df_s = get_df_from_github('svincolati_gennaio.csv')
     df_t = get_df_from_github('tagli_volontari.csv')
     mov = pd.concat([df_s, df_t], ignore_index=True)
-    bonus = mov.groupby('Squadra')['Totale'].sum() if not mov.empty and 'Totale' in mov.columns else pd.Series()
-
-    bil = df_leghe_upd[df_leghe_upd['Lega'] == lega_sel].copy()
+    bonus = mov.groupby('Squadra')['Totale'].sum() if not mov.empty else pd.Series()
+    
+    bil = df_leghe_upd[df_leghe_upd['Lega'] == lega_s].copy()
     bil['Bonus'] = bil['Squadra'].map(bonus).fillna(0).astype(int)
     bil['Iniziale'] = bil['Crediti'] - bil['Bonus']
-    
     st.table(bil[['Squadra', 'Iniziale', 'Bonus', 'Crediti']].rename(columns={'Crediti': 'Attuali'}))
 
-# --- 4. ROSE ---
+# --- 4. ROSE (PROTEZIONE TYPEERROR) ---
 elif menu == "4. Rose":
-    st.title("📋 Rose e Registro")
+    st.title("📋 Rose Aggiornate")
     leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
-    lega_sel = st.selectbox("Lega:", leghe_l)
-    
-    df_v = df_base[df_base['Lega'] == lega_sel].sort_values('Squadra_LFM')
+    lega_s = st.selectbox("Lega:", leghe_l)
+    df_v = df_base[df_base['Lega'] == lega_s].sort_values(['Squadra_LFM', 'R'])
     for s in df_v['Squadra_LFM'].unique():
         with st.expander(f"Rosa {s}"):
-            d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
-            d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
-            st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
-    
-    st.divider()
-    st.subheader("❌ Registro Uscite")
-    df_s = get_df_from_github('svincolati_gennaio.csv')
-    df_t = get_df_from_github('tagli_volontari.csv')
-    res = pd.concat([df_s, df_t], ignore_index=True)
-    
-    if not res.empty:
-        available_cols = [c for c in ['Squadra', 'Ruolo', 'Giocatore', 'Tipo', 'Quota_FVM', 'Quota_Qt', 'Totale'] if c in res.columns]
-        res_view = res[res['Lega'] == lega_sel].sort_values(['Squadra', 'Giocatore'])
-        st.dataframe(res_view[available_cols], use_container_width=True, hide_index=True)
-    else:
-        st.info("Nessun registro disponibile.")
+            st.table(df_v[df_v['Squadra_LFM'] == s][['R', 'Nome', 'Qt.I', 'FVM']])
