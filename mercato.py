@@ -243,11 +243,15 @@ elif menu == "4. Rose":
     
     df_v = df_base[df_base['Lega'] == lega_sel].sort_values('Squadra_LFM')
     for s in df_v['Squadra_LFM'].unique():
-        with st.expander(f"Rosa {s}"):
-            d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
-            d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
-            st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
+       with st.expander(f"Rosa {s}"):
+    d_sq = df_v[df_v['Squadra_LFM'] == s].copy()
+    d_sq['Ord'] = d_sq['R'].map(ORDINE_RUOLI)
     
+    # PULIZIA DEI DECIMALI PRIMA DI MOSTRARE LA TABELLA
+    d_sq['Qt.I'] = d_sq['Qt.I'].apply(format_num)
+    d_sq['FVM'] = d_sq['FVM'].apply(format_num)
+    
+    st.table(d_sq.sort_values('Ord')[['R', 'Nome', 'Qt.I', 'FVM']])
     st.divider()
     st.subheader("❌ Registro Uscite")
     df_s = get_df_from_github('svincolati_gennaio.csv')
