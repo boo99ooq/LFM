@@ -260,3 +260,4 @@ elif menu == "4. Rose":
         st.dataframe(res_view[available_cols], use_container_width=True, hide_index=True)
     else:
         st.info("Nessun registro disponibile.")
+        
