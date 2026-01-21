@@ -89,32 +89,24 @@ def load_all_data():
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
-    # Caricamento file svincolati/esclusi
-    df_esclusi = get_df_from_github('svincolati_lfm.csv') 
+    # Caricamento file ESCLUSI
+    df_esclusi = get_df_from_github('esclusi.csv')
 
     if not df_esclusi.empty:
-        # Pulizia nomi colonne (toglie spazi vuoti invisibili)
+        # Pulizia nomi colonne
         df_esclusi.columns = df_esclusi.columns.str.strip()
         
-        # CERCA LA COLONNA ID (prova diverse varianti comuni)
-        col_id = None
-        for nome in ['Id', 'ID', 'id', '#', 'Codice', 'Cod.']:
-            if nome in df_esclusi.columns:
-                col_id = nome
-                break
+        # Cerchiamo la colonna ID (Id, ID, # o la prima colonna)
+        col_id_esc = next((c for c in ['Id', 'ID', '#', 'Codice'] if c in df_esclusi.columns), df_esclusi.columns[0])
+        esclusi_ids = set(df_esclusi[col_id_esc].astype(str).str.strip())
         
-        # Se trova la colonna bene, altrimenti usa la prima colonna a sinistra (posizione 0)
-        if col_id:
-            esclusi_ids = set(df_esclusi[col_id])
-        else:
-            # Fallback estremo: prende la prima colonna del CSV
-            esclusi_ids = set(df_esclusi.iloc[:, 0])
+        # Creiamo Is_Escluso confrontando con df_base
+        df_base['Is_Escluso'] = df_base['Id'].astype(str).str.strip().isin(esclusi_ids)
     else:
-        esclusi_ids = set()
-    
-    return df_base, df_leghe, df_rosters, df_stadi
+        df_base['Is_Escluso'] = False
 
-df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
+    # Caricamento SVINCOLATI GENNAIO (se ti serve in un'altra parte del codice)
+    df_gennaio = get_df_from_github('svincolati_gennaio.csv')
 
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
