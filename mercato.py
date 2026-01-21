@@ -195,24 +195,24 @@ elif menu == "1. Svincoli (*)":
         if 'Qt.I' in df_star_show.columns:
             df_star_show['Qt.I'] = df_star_show['Qt.I'].apply(format_num)
         st.table(df_star_show[['R', 'Nome', 'Squadra_LFM', 'Qt.I']])          
-            if st.button("CONFERMA SVINCOLO GLOBALE"):
-                for _, row in targets.iterrows():
-                    df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
-                
-                id_target = info['Id']
-                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
-                
-                log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
-                log['Tipo'] = "STAR (*)"
-                
-                save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
-                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
-                
-                old_log = get_df_from_github('svincolati_gennaio.csv')
-                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
-                
-                st.cache_data.clear(); st.rerun()
+        if st.button("CONFERMA SVINCOLO GLOBALE"):
+            for _, row in targets.iterrows():
+                df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
+            
+            id_target = info['Id']
+            df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != id_target]
+            
+            log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
+            log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
+            log['Tipo'] = "STAR (*)"
+            
+            save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
+            save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimosso {scelta}")
+            
+            old_log = get_df_from_github('svincolati_gennaio.csv')
+            save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_log, log], ignore_index=True), f"Log {scelta}")
+            
+            st.cache_data.clear(); st.rerun()
 
 # --- 2. TAGLI ---
 elif menu == "2. Tagli":
