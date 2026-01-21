@@ -52,61 +52,51 @@ def save_to_github_direct(file_path, df, message):
 # --- 4. CARICAMENTO E PULIZIA PROFONDA DATI ---
 @st.cache_data(ttl=2)
 def load_all_data():
+    # 1. Caricamento file da GitHub e Locali
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
     df_leghe = get_df_from_github('leghe.csv')
     df_quot = pd.read_csv('quot.csv', encoding='latin1')
-    df_esclusi = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1')
+    df_esclusi = get_df_from_github('esclusi.csv')
     
+    # 2. Creazione del database principale (df_base)
+    # Uniamo le quotazioni con i rosters per legare giocatori e squadre
+    df_base = pd.merge(df_rosters, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
+    
+    # Inizializzazione della colonna Is_Escluso
+    df_base['Is_Escluso'] = False
+
+    # 3. Logica ESCLUSI (da esclusi.csv)
+    if not df_esclusi.empty:
+        # Pulizia nomi colonne
+        df_esclusi.columns = df_esclusi.columns.str.strip()
+        
+        # Ricerca flessibile della colonna ID (Id, ID, # o la prima disponibile)
+        col_id_esc = next((c for c in ['Id', 'ID', '#', 'Codice'] if c in df_esclusi.columns), df_esclusi.columns[0])
+        ids_esclusi = set(df_esclusi[col_id_esc].astype(str).str.strip())
+        
+        # Marcatura nel database principale forzando il confronto tra stringhe
+        df_base['Is_Escluso'] = df_base['Id'].astype(str).str.strip().isin(ids_esclusi)
+    
+    # 4. Caricamento Stadi e Svincolati Gennaio
     try:
         df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
         df_stadi['Squadra'] = df_stadi['Squadra'].astype(str).str.strip()
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # PULIZIA TOTALE: Fondamentale per evitare TypeError nei menu sorted()
-    for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
-        if 'Id' in df.columns:
-            df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
-        if 'Lega' in df.columns:
-            df['Lega'] = df['Lega'].astype(str).replace(['nan', 'None', '', 'NaN'], 'N/A').str.strip()
-        if 'Squadra_LFM' in df.columns:
-            df['Squadra_LFM'] = df['Squadra_LFM'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
-        if 'Squadra' in df.columns:
-            df['Squadra'] = df['Squadra'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
-
-    # Merge Rose + Leghe + Quotazioni
-    df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
-    df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
-    
-    # Pulizia Valori Numerici
+    # 5. CALCOLO COMPONENTI RIMBORSO (prezzi originali)
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
-    df_base['Crediti'] = pd.to_numeric(df_base['Crediti'], errors='coerce').fillna(0)
     
-    # CALCOLO COMPONENTI RIMBORSO
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
-    
-    # Caricamento file ESCLUSI
-    df_esclusi = get_df_from_github('esclusi.csv')
 
-    if not df_esclusi.empty:
-        # Pulizia nomi colonne
-        df_esclusi.columns = df_esclusi.columns.str.strip()
-        
-        # Cerchiamo la colonna ID (Id, ID, # o la prima colonna)
-        col_id_esc = next((c for c in ['Id', 'ID', '#', 'Codice'] if c in df_esclusi.columns), df_esclusi.columns[0])
-        esclusi_ids = set(df_esclusi[col_id_esc].astype(str).str.strip())
-        
-        # Creiamo Is_Escluso confrontando con df_base
-        df_base['Is_Escluso'] = df_base['Id'].astype(str).str.strip().isin(esclusi_ids)
-    else:
-        df_base['Is_Escluso'] = False
+    return df_base, df_leghe, df_rosters, df_stadi
 
-    # Caricamento SVINCOLATI GENNAIO (se ti serve in un'altra parte del codice)
-    df_gennaio = get_df_from_github('svincolati_gennaio.csv')
+# Attivazione globale del caricamento
+df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
