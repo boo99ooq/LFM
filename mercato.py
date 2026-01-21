@@ -89,8 +89,28 @@ def load_all_data():
     df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
-    esclusi_ids = set(df_esclusi['Id'])
-    df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
+    # Caricamento file svincolati/esclusi
+    df_esclusi = get_df_from_github('svincolati_lfm.csv') 
+
+    if not df_esclusi.empty:
+        # Pulizia nomi colonne (toglie spazi vuoti invisibili)
+        df_esclusi.columns = df_esclusi.columns.str.strip()
+        
+        # CERCA LA COLONNA ID (prova diverse varianti comuni)
+        col_id = None
+        for nome in ['Id', 'ID', 'id', '#', 'Codice', 'Cod.']:
+            if nome in df_esclusi.columns:
+                col_id = nome
+                break
+        
+        # Se trova la colonna bene, altrimenti usa la prima colonna a sinistra (posizione 0)
+        if col_id:
+            esclusi_ids = set(df_esclusi[col_id])
+        else:
+            # Fallback estremo: prende la prima colonna del CSV
+            esclusi_ids = set(df_esclusi.iloc[:, 0])
+    else:
+        esclusi_ids = set()
     
     return df_base, df_leghe, df_rosters, df_stadi
 
