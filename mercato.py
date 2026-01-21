@@ -176,16 +176,25 @@ if menu == "🏠 Dashboard":
 # --- 1. SVINCOLI (*) ---
 elif menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
-    df_star = df_base[df_base['Is_Escluso']].copy()
+    
+    # Controllo di sicurezza: verifichiamo se la colonna esiste
+    if 'Is_Escluso' in df_base.columns:
+        df_star = df_base[df_base['Is_Escluso']].copy()
+    else:
+        # Se la colonna non esiste, creiamo un dataframe vuoto
+        df_star = pd.DataFrame(columns=df_base.columns)
+        st.warning("⚠️ Attenzione: Lista svincolati non caricata correttamente o colonna 'Is_Escluso' mancante.")
+
     if df_star.empty:
         st.success("Tutti i rimborsi (*) sono stati completati.")
     else:
-        scelta = st.selectbox("Seleziona Giocatore:", [""] + sorted([str(n) for n in df_star['Nome'].unique().tolist()]))
-        if scelta:
-            targets = df_star[df_star['Nome'] == scelta]
-            info = targets.iloc[0]
-            st.warning(f"Svincolo di {scelta} ({info['R']}). Rimborso: FVM {info['FVM']} + 50% Qt ({info['Meta_Qt']}) = {info['R_Star']} cr.")
-            
+        # Mostra la tabella (opzionale, se vuoi vedere chi manca)
+        st.write("Giocatori da svincolare:")
+        # Applichiamo anche qui la pulizia dello .0 per coerenza
+        df_star_show = df_star.copy()
+        if 'Qt.I' in df_star_show.columns:
+            df_star_show['Qt.I'] = df_star_show['Qt.I'].apply(format_num)
+        st.table(df_star_show[['R', 'Nome', 'Squadra_LFM', 'Qt.I']])          
             if st.button("CONFERMA SVINCOLO GLOBALE"):
                 for _, row in targets.iterrows():
                     df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
