@@ -257,12 +257,19 @@ elif menu == "3. Bilancio":
     bil['Iniziale'] = bil['Crediti'] - bil['Bonus']
     st.table(bil[['Squadra', 'Iniziale', 'Bonus', 'Crediti']].rename(columns={'Crediti': 'Attuali'}))
 
-# --- 4. ROSE (PROTEZIONE TYPEERROR) ---
+# --- 4. ROSE ---
 elif menu == "4. Rose":
     st.title("📋 Rose Aggiornate")
     leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     lega_s = st.selectbox("Lega:", leghe_l)
     df_v = df_base[df_base['Lega'] == lega_s].sort_values(['Squadra_LFM', 'R'])
+    
     for s in df_v['Squadra_LFM'].unique():
         with st.expander(f"Rosa {s}"):
-            st.table(df_v[df_v['Squadra_LFM'] == s][['R', 'Nome', 'Qt.I', 'FVM']])
+            d_sq = df_v[df_v['Squadra_LFM'] == s][['R', 'Nome', 'Qt.I', 'FVM']].copy()
+            
+            # --- APPLICA FORMAT_NUM PER TOGLIERE IL .0 ---
+            d_sq['Qt.I'] = d_sq['Qt.I'].apply(format_num)
+            d_sq['FVM'] = d_sq['FVM'].apply(format_num)
+            
+            st.table(d_sq)
