@@ -3,6 +3,8 @@ Id,R,Nome,Qt.A,FVM
 6184,P,Martinelli T.,1,1
 4518,P,Russo A.,1,1
 216,P,Donnarumma An.,1,1
+6210,P,Popa,1,1
+6066,D,Posch,9,7
 4177,D,Pavard,8,22
 6480,D,Tchatchoua,8,17
 6887,D,Leoni,7,13
@@ -48,6 +50,7 @@ Id,R,Nome,Qt.A,FVM
 4911,C,Douglas Luiz,3,6
 6676,C,Engelhardt,2,3
 5857,C,Pickel,2,3
+6804,C,Richardson,2,8
 4423,C,Hernani,2,10
 6656,C,Braunoder,1,1
 2553,C,Alli,1,1
@@ -74,6 +77,7 @@ Id,R,Nome,Qt.A,FVM
 6653,A,Bravo,4,12
 6459,A,Karlsson,3,7
 5512,A,De Luca,3,3
+647,A,Dzeko,3,10
 6213,A,Brenner,3,5
 6644,A,Rocha Livramento,3,8
 5845,A,Alvarez A.,2,4
