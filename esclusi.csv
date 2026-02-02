@@ -34,6 +34,7 @@ Id,R,Nome,Qt.I,FVM
 6189,D,Missori,2,5
 49,D,Masina,3,8
 6925,D,Palma,1,4
+6537,D,Goglichidze,4,7
 7336,D,Tchoca,2,5
 6551,D,Ilic M.,1,2
 6464,D,Wieteska,1,2
@@ -57,6 +58,7 @@ Id,R,Nome,Qt.I,FVM
 5393,C,Man,11,15
 2670,C,Bailey,16,10
 4662,C,Weah,7,5
+181,C,Vecino,6,13
 2842,C,Zanimacchia,5,5
 6106,C,Carboni V.,11,12
 4856,C,Chukwueze,4,11
@@ -107,6 +109,7 @@ Id,R,Nome,Qt.I,FVM
 7153,A,Lind,4,7
 6653,A,Bravo,6,12
 6459,A,Karlsson,3,7
+5297,A,Luvumbo,12,10
 5512,A,De Luca,8,3
 647,A,Dzeko,15,10
 6213,A,Brenner,3,5
