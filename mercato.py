@@ -87,9 +87,9 @@ def load_all_data():
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
     
-    # --- CALCOLI RIMBORSI (Assicurati che Meta_FVM sia presente!) ---
+    # Calcoli rimborsi
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
-    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int) # <--- QUESTA ERA MANCANTE
+    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
@@ -100,7 +100,11 @@ def load_all_data():
     else:
         df_base['Is_Escluso'] = False
     
-    return df_base, df_leghe_upd, df_rosters_upd, df_stadi 
+    # IMPORTANTE: I nomi qui devono essere quelli locali alla funzione
+    return df_base, df_leghe, df_rosters, df_stadi 
+
+# --- CHIAMATA ALLA FUNZIONE (Margine sinistro) ---
+# Qui "afferri" i dati e puoi usare i nomi che vuoi per il resto dell'app
 df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
