@@ -100,8 +100,8 @@ def load_all_data():
     else:
         df_base['Is_Escluso'] = False
     
-    return df_base, df_leghe, df_rosters, df_stadi
-
+    df_base, df_leghe_upd, df_rosters_upd, df_stadi 
+df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
 
