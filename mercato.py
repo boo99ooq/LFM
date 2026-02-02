@@ -47,53 +47,14 @@ def save_to_github_direct(file_path, df, message):
     except:
         repo.create_file(file_path, message, csv_content)
 
-# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
-@st.cache_data(ttl=2)
-def load_all_data():
-    df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
-    df_leghe = get_df_from_github('leghe.csv')
-    df_quot = pd.read_csv('quot.csv', encoding='latin1')
-    df_esclusi = pd.read_csv('esclusi.csv', sep='\t', encoding='latin1')
-    
-    try:
-        df_stadi = pd.read_csv('stadi.csv', encoding='latin1')
-        df_stadi['Squadra'] = df_stadi['Squadra'].astype(str).str.strip()
-    except:
-        df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
-
-    # PULIZIA TOTALE: Trasformiamo tutto in stringa ed eliminiamo i nulli
-    for df in [df_rosters, df_quot, df_esclusi, df_leghe]:
-        if 'Id' in df.columns:
-            df['Id'] = pd.to_numeric(df['Id'], errors='coerce').fillna(0).astype(int)
-        if 'Lega' in df.columns:
-            df['Lega'] = df['Lega'].astype(str).replace(['nan', 'None', '', 'NaN'], 'N/A').str.strip()
-        if 'Squadra_LFM' in df.columns:
-            df['Squadra_LFM'] = df['Squadra_LFM'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
-        if 'Squadra' in df.columns:
-            df['Squadra'] = df['Squadra'].astype(str).replace(['nan', 'None', ''], 'Sconosciuta').str.strip()
-
-    # Merge Rose + Leghe + Quotazioni
-    df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
-    df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
-    
-    # Pulizia Valori Numerici per calcoli
-    df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
-    df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
-    
-    # --- CALCOLI RIMBORSI (Assicurati che ci siano tutti!) ---
-    df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
-    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int) # <--- AGGIUNGI QUESTA RIGA
-    df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
-    df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
-    
-    esclusi_ids = set(df_esclusi['Id'])# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
+# --- 4. CARICAMENTO E PULIZIA PROFONDA (Versione Unificata) ---
 @st.cache_data(ttl=2)
 def load_all_data():
     # Caricamento file da GitHub
     df_rosters = get_df_from_github('fantamanager-2021-rosters.csv')
     df_leghe = get_df_from_github('leghe.csv')
     
-    # Caricamento file locali (Quotazioni ed Esclusi) con rilevamento automatico separatore
+    # Caricamento file locali con gestione errori
     try:
         df_quot = pd.read_csv('quot.csv', sep=None, engine='python', encoding='latin1')
         df_esclusi = pd.read_csv('esclusi.csv', sep=None, engine='python', encoding='latin1')
@@ -106,47 +67,40 @@ def load_all_data():
     except:
         df_stadi = pd.DataFrame(columns=['Squadra', 'Stadio'])
 
-    # --- PULIZIA FONDAMENTALE ---
+    # Pulizia nomi colonne e spazi
     for d in [df_rosters, df_quot, df_esclusi, df_leghe]:
         if not d.empty:
-            # 1. Rimuove spazi dai nomi delle colonne (es. "Id " -> "Id")
             d.columns = d.columns.str.strip()
-            # 2. Rimuove spazi dai dati testuali
             cols_obj = d.select_dtypes(['object']).columns
             d[cols_obj] = d[cols_obj].apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
-    # TRATTAMENTO ID: Forza ID come interi per il merge
+    # Forza ID come interi
     for d in [df_rosters, df_quot, df_esclusi]:
         if 'Id' in d.columns:
             d['Id'] = pd.to_numeric(d['Id'], errors='coerce').fillna(0).astype(int)
 
-    # Merge Rose + Leghe + Quotazioni
+    # Merge dei dati
     df_m = pd.merge(df_rosters, df_leghe, left_on='Squadra_LFM', right_on='Squadra', how='left')
     df_base = pd.merge(df_m, df_quot[['Id', 'Nome', 'R', 'Qt.I', 'FVM']], on='Id', how='left')
     
-    # Pulizia Valori Numerici per calcoli
+    # Pulizia Valori Numerici
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
     
-    # Calcoli Rimborsi
+    # --- CALCOLI RIMBORSI (Assicurati che Meta_FVM sia presente!) ---
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
+    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int) # <--- QUESTA ERA MANCANTE
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
-    # PROTEZIONE PER IS_ESCLUSO
+    # Identificazione Esclusi (Asteriscati)
     if 'Id' in df_esclusi.columns:
         esclusi_ids = set(df_esclusi['Id'].unique())
         df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
     else:
         df_base['Is_Escluso'] = False
-        st.warning("⚠️ Colonna 'Id' non trovata in esclusi.csv")
     
     return df_base, df_leghe, df_rosters, df_stadi
-    df_base['Is_Escluso'] = df_base['Id'].isin(esclusi_ids)
-    
-    return df_base, df_leghe, df_rosters, df_stadi
-
-df_base, df_leghe_upd, df_rosters_upd, df_stadi = load_all_data()
 
 # --- 5. NAVIGAZIONE ---
 menu = st.sidebar.radio("Scegli Pagina:", ["🏠 Dashboard", "1. Svincoli (*)", "2. Tagli", "3. Bilancio", "4. Rose"])
