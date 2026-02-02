@@ -79,12 +79,11 @@ def load_all_data():
     # Pulizia Valori Numerici per calcoli
     df_base['Qt.I'] = pd.to_numeric(df_base['Qt.I'], errors='coerce').fillna(0)
     df_base['FVM'] = pd.to_numeric(df_base['FVM'], errors='coerce').fillna(0)
-    df_base['Crediti'] = pd.to_numeric(df_base['Crediti'], errors='coerce').fillna(0)
     
-    # Calcoli Rimborsi (Arrotondamento eccesso)
+    # --- CALCOLI RIMBORSI (Assicurati che ci siano tutti!) ---
     df_base['Meta_Qt'] = np.ceil(df_base['Qt.I'] / 2).astype(int)
+    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int) # <--- AGGIUNGI QUESTA RIGA
     df_base['R_Star'] = (df_base['FVM'].astype(int) + df_base['Meta_Qt']).astype(int)
-    df_base['Meta_FVM'] = np.ceil(df_base['FVM'] / 2).astype(int)
     df_base['R_Taglio'] = np.ceil((df_base['FVM'] + df_base['Qt.I']) / 2).astype(int)
     
     esclusi_ids = set(df_esclusi['Id'])# --- 4. CARICAMENTO E PULIZIA PROFONDA ---
