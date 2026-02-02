@@ -89,7 +89,7 @@ Id,R,Nome,Qt.I,FVM
 6869,D,Ramon,4,27
 6766,D,Kelly L.,7,19
 5812,D,Terracciano F.,2,14
-5527,D,Zanoli,3,16
+5527,D,Zanoli,3,12
 2296,D,Mancini,11,37
 6642,D,Coco,8,13
 4665,D,Maripan,7,20
@@ -215,7 +215,6 @@ Id,R,Nome,Qt.I,FVM
 6809,D,Marianucci,3,8
 5481,D,Mazzocchi,3,3
 7140,D,Coppola F.,1,4
-6411,D,Mateus Lusuardi,4,5
 49,D,Masina,3,8
 252,D,Biraghi,8,5
 5994,D,Ebosse,4,7
@@ -228,6 +227,7 @@ Id,R,Nome,Qt.I,FVM
 7274,D,Zè Pedro,4,10
 7325,D,Bozhinov,2,5
 6149,D,Carboni F.,2,4
+7352,D,Edmundsson,2,5
 6230,D,Dossena,4,5
 418,D,Goldaniga,4,6
 2525,D,Darmian,4,7
@@ -236,10 +236,8 @@ Id,R,Nome,Qt.I,FVM
 140,D,Hysaj,3,4
 6883,D,Jean,3,3
 7164,D,Perez M.,1,2
-7136,D,Kouassi,4,4
 7154,D,Odenthal,3,7
 2279,D,Romagna,4,8
-6431,D,Paz Y.,1,3
 7156,D,Pieragnolo,2,3
 6041,D,Schuurs,3,5
 6826,D,Dembelè A.,1,2
@@ -252,6 +250,7 @@ Id,R,Nome,Qt.I,FVM
 7271,D,Odogu,2,5
 6665,D,Coulibaly W.,3,4
 7312,D,Arizala,1,1
+7346,D,Raterink,1,1
 2423,C,Pulisic,28,261
 6875,C,Paz N.,20,270
 2194,C,Calhanoglu,23,225
@@ -418,10 +417,8 @@ Id,R,Nome,Qt.I,FVM
 7345,C,Przyborek,2,6
 7165,C,Liteta,1,6
 6980,C,Venturino,3,11
-6633,C,Pierret,6,9
 6645,C,Marchwinski,1,2
 7147,C,Hojholt,1,2
-2117,C,Kastanos,4,8
 6486,C,Suslov,9,14
 7025,C,Cuenca H.,1,1
 7246,C,Sala A.,3,9
@@ -455,14 +452,14 @@ Id,R,Nome,Qt.I,FVM
 4463,A,Esposito Se.,7,52
 4728,A,Nkunku,20,27
 6669,A,Bonny,5,28
-4371,A,Raspadori,13,64
+4371,A,Raspadori,13,82
 6365,A,Ferguson E.,19,29
 6646,A,Adams C.,14,31
 7162,A,Giovane,1,23
 2531,A,Lukaku,31,62
 7316,A,Durosinmi,15,49
 5585,A,Malen,14,66
-4730,A,Lookman,29,81
+4730,A,Lookman,29,65
 4923,A,Colombo,12,45
 2841,A,Vlahovic,24,50
 5500,A,Cancellieri,3,22
@@ -505,9 +502,10 @@ Id,R,Nome,Qt.I,FVM
 608,A,Zapata D.,20,14
 6159,A,Sarr A.,8,9
 7347,A,Bowie,6,13
+2832,A,Boga,6,13
 6895,A,Dominguez B.,9,15
 5672,A,Dia,20,12
-785,A,Immobile,19,15
+7349,A,Kulenovic,5,12
 6967,A,Diao,17,14
 6519,A,Camarda,12,10
 7344,A,Stojilkovic,4,11
@@ -519,7 +517,6 @@ Id,R,Nome,Qt.I,FVM
 5471,A,Djuric,9,10
 1842,A,Pierini,5,8
 7158,A,Moro L.,1,1
-7264,A,Ambrosino,1,1
 6555,A,Moumbagna,6,9
 7272,A,Gueye,1,1
 7309,A,Isaac,1,1
