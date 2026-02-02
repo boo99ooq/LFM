@@ -157,25 +157,47 @@ if menu == "🏠 Dashboard":
 elif menu == "1. Svincoli (*)":
     st.title("✈️ Svincoli (*) Automatici")
     df_star = df_base[df_base['Is_Escluso']]
+    
     if df_star.empty:
         st.success("Tutti i rimborsi asteriscati sono stati processati.")
     else:
         nomi_gioc = sorted([str(n) for n in df_star['Nome'].unique() if n != 'Sconosciuto'])
         scelta = st.selectbox("Seleziona Giocatore Asteriscato:", [""] + nomi_gioc)
+        
         if scelta:
             targets = df_star[df_star['Nome'] == scelta]
-            st.warning(f"Svincolo di {scelta}. Rimborso: {targets.iloc[0]['R_Star']} cr.")
-            if st.button("ESEGUI SVINCOLO GLOBALE"):
-                for _, row in targets.iterrows():
-                    df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
-                df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != targets.iloc[0]['Id']]
-                log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
-                log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']; log['Tipo'] = "STAR (*)"
-                save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
-                save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {scelta}")
-                old_l = get_df_from_github('svincolati_gennaio.csv')
-                save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_l, log], ignore_index=True), "Log Star")
-                st.cache_data.clear(); st.rerun()
+            
+            if not targets.empty:
+                st.warning(f"Svincolo di {scelta}. Rimborso: {targets.iloc[0]['R_Star']} cr.")
+                
+                # Tutto il codice sotto è dentro il BUTTON
+                if st.button("ESEGUI SVINCOLO GLOBALE"):
+                    # 1. Aggiorna i crediti per ogni squadra che ha quel giocatore
+                    for _, row in targets.iterrows():
+                        df_leghe_upd.loc[df_leghe_upd['Squadra'] == row['Squadra_LFM'], 'Crediti'] += row['R_Star']
+                    
+                    # 2. Rimuovi il giocatore dal roster globale
+                    df_rosters_upd = df_rosters_upd[df_rosters_upd['Id'] != targets.iloc[0]['Id']]
+                    
+                    # 3. Prepara il log
+                    log = targets[['Nome', 'Squadra_LFM', 'Lega', 'R', 'FVM', 'Meta_Qt', 'R_Star']].copy()
+                    log.columns = ['Giocatore', 'Squadra', 'Lega', 'Ruolo', 'Quota_FVM', 'Quota_Qt', 'Totale']
+                    log['Tipo'] = "STAR (*)"
+                    
+                    # 4. Salva tutto su GitHub
+                    save_to_github_direct('leghe.csv', df_leghe_upd, f"Svincolo {scelta}")
+                    save_to_github_direct('fantamanager-2021-rosters.csv', df_rosters_upd, f"Rimozione {scelta}")
+                    
+                    old_l = get_df_from_github('svincolati_gennaio.csv')
+                    save_to_github_direct('svincolati_gennaio.csv', pd.concat([old_l, log], ignore_index=True), "Log Star")
+                    
+                    # 5. Messaggio finale e reset
+                    st.success(f"Operazione completata per {scelta}!")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+            else:
+                st.error(f"Errore: il giocatore {scelta} non è presente nei dati correnti.")
 
 # --- 2. TAGLI ---
 elif menu == "2. Tagli":
