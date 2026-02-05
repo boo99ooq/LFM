@@ -1,128 +1,128 @@
-Id,R,Nome,Qt.I,FVM
-5135,P,Guaita,5,1
-3,P,Radunovic,1,1
-6184,P,Martinelli T.,1,1
-6482,P,Mandas,3,1
-4518,P,Russo A.,1,1
-216,P,Donnarumma An.,1,1
-6210,P,Popa,1,1
-6066,D,Posch,5,7
-4177,D,Pavard,8,22
-6480,D,Tchatchoua,8,17
-6887,D,Leoni,7,13
-6531,D,Jimenez A.,5,10
-6055,D,Thiaw,4,8
-7020,D,Salah-Eddine,4,7
-6894,D,Unai Nunez,5,8
-4982,D,Erlic,3,7
-6231,D,Azzi,3,7
-6245,D,Vogliacco,3,3
-6802,D,Savona,3,9
-5353,D,Balogh,3,7
-6533,D,Giannetti L.,3,5
-6444,D,Bonfanti,2,8
-5406,D,Di Pardo,2,4
-6944,D,Jack,2,4
-5860,D,Ravanelli,2,3
-4904,D,Marì,7,8
-5718,D,Viti,4,7
-6821,D,Hainaut,2,5
-6965,D,Lovik,2,7
-6411,D,Mateus Lusuardi,4,5
-7141,D,Rus,2,3
-4495,D,Kumbulla,2,5
-6189,D,Missori,2,5
-49,D,Masina,3,8
-6925,D,Palma,1,4
-6537,D,Goglichidze,4,7
-7336,D,Tchoca,2,5
-6551,D,Ilic M.,1,2
-6464,D,Wieteska,1,2
-6636,D,Veroli,1,1
-5891,D,Quagliata,1,2
-2847,D,Sernicola,1,1
-6803,D,Rouhi,1,4
-7136,D,Kouassi,4,4
-7170,D,Mbambi,1,2
-7142,D,Esteves T.,1,2
-6885,D,Abdulhamid,1,1
-7154,D,Odenthal,3,7
-6431,D,Paz Y.,1,3
-6826,D,Dembelè A.,1,2
-6900,D,Rui Modesto,3,7
-5324,D,Godfrey,1,1
-6874,D,Palacios T.,1,1
-5564,C,Ndoye,19,60
-449,C,Vazquez,10,11
-4186,C,Guendouzi,11,20
-5393,C,Man,11,15
-2670,C,Bailey,16,10
-4662,C,Weah,7,5
-181,C,Vecino,6,13
-2842,C,Zanimacchia,5,5
-6106,C,Carboni V.,11,12
-4856,C,Chukwueze,4,11
-4930,C,Ghion,4,9
-6225,C,El Azzouzi,3,7
-5863,C,Castagnetti,3,5
-4911,C,Douglas Luiz,3,6
-6410,C,Kaba,1,12
-6634,C,Tete Morente,9,12
-6528,C,Sarmiento J.,4,8
-6676,C,Engelhardt,2,3
-5857,C,Pickel,2,3
-6804,C,Richardson,4,8
-6722,C,Gronbaek,12,4
-5719,C,Asllani,4,14
-4423,C,Hernani,7,10
-6506,C,Fini,1,1
-6656,C,Braunoder,1,1
-2553,C,Alli,1,1
-2274,C,Valoti,7,3
-5516,C,Bianco,1,2
-7135,C,Stanciu,8,5
-6633,C,Pierret,6,9
-6222,C,Rafia,3,7
-6678,C,Liberali,1,1
-7151,C,Arena,1,1
-5824,C,Pafundi,1,6
-7177,C,Santiago,2,2
-2117,C,Kastanos,4,8
-6618,C,Cissè A.,1,1
-2076,C,Rog,1,1
-7025,C,Cuenca H.,1,1
-6226,A,Castellanos,21,65
-2369,A,Thauvin,16,64
-4730,A,Lookman,29,65
-7120,A,Lang,19,20
-4179,A,Gonzalez N.,12,15
-6145,A,Ngonge,9,11
-6667,A,Benedyczak,1,10
-6229,A,Tourè E.,7,9
-5496,A,Johnsen,7,8
-2155,A,Cutrone,10,14
-6409,A,Beltran L.,7,10
-2475,A,Sanchez,7,10
-6215,A,Lucca,15,11
-6205,A,Mulattieri,5,10
-785,A,Immobile,19,15
-6628,A,Taremi,4,5
-6227,A,Okafor,4,5
-7153,A,Lind,4,7
-6653,A,Bravo,6,12
-6459,A,Karlsson,3,7
-5297,A,Luvumbo,12,10
-5512,A,De Luca,8,3
-647,A,Dzeko,15,10
-6213,A,Brenner,3,5
-6644,A,Rocha Livramento,3,8
-1842,A,Pierini,5,8
-5845,A,Alvarez A.,2,4
-7264,A,Ambrosino,1,1
-7027,A,Azon,1,5
-6657,A,Gabrielloni,1,1
-7134,A,Nasti,1,3
-7171,A,Buffon L.,1,1
-7152,A,Bonfanti N.,1,2
-7159,A,Skjellerup,1,1
-6635,A,Pizarro,1,3
+Id,R,Nome,Squadra,Qt.I,FVM
+5135,P,Guaita,Parma,5,1
+3,P,Radunovic,Cagliari,1,1
+6184,P,Martinelli T.,Fiorentina,1,1
+6482,P,Mandas,Lazio,3,1
+4518,P,Russo A.,Sassuolo,1,1
+216,P,Donnarumma An.,Torino,1,1
+6210,P,Popa,Torino,1,1
+6066,D,Posch,Como,5,7
+4177,D,Pavard,Inter,8,22
+6480,D,Tchatchoua,Verona,8,17
+6887,D,Leoni,Parma,7,13
+6531,D,Jimenez A.,Milan,5,10
+6055,D,Thiaw,Milan,4,8
+7020,D,Salah-Eddine,Roma,4,7
+6894,D,Unai Nunez,Verona,5,8
+4982,D,Erlic,Bologna,3,7
+6231,D,Azzi,Cremonese,3,7
+6245,D,Vogliacco,Genoa,3,3
+6802,D,Savona,Juventus,3,9
+5353,D,Balogh,Parma,3,7
+6533,D,Giannetti L.,Udinese,3,5
+6444,D,Bonfanti,Pisa,2,8
+5406,D,Di Pardo,Cagliari,2,4
+6944,D,Jack,Como,2,4
+5860,D,Ravanelli,Cremonese,2,3
+4904,D,Marì,Fiorentina,7,8
+5718,D,Viti,Fiorentina,4,7
+6821,D,Hainaut,Parma,2,5
+6965,D,Lovik,Parma,2,7
+6411,D,Mateus Lusuardi,Pisa,4,5
+7141,D,Rus,Pisa,2,3
+4495,D,Kumbulla,Roma,2,5
+6189,D,Missori,Sassuolo,2,5
+49,D,Masina,Torino,3,8
+6925,D,Palma,Udinese,1,4
+6537,D,Goglichidze,Udinese,4,7
+7336,D,Tchoca,Torino,2,5
+6551,D,Ilic M.,Bologna,1,2
+6464,D,Wieteska,Cagliari,1,2
+6636,D,Veroli,Cagliari,1,1
+5891,D,Quagliata,Cremonese,1,2
+2847,D,Sernicola,Cremonese,1,1
+6803,D,Rouhi,Juventus,1,4
+7136,D,Kouassi,Lecce,4,4
+7170,D,Mbambi,Pisa,1,2
+7142,D,Esteves T.,Pisa,1,2
+6885,D,Abdulhamid,Roma,1,1
+7154,D,Odenthal,Sassuolo,3,7
+6431,D,Paz Y.,Sassuolo,1,3
+6826,D,Dembelè A.,Torino,1,2
+6900,D,Rui Modesto,Udinese,3,7
+5324,D,Godfrey,Atalanta,1,1
+6874,D,Palacios T.,Inter,1,1
+5564,C,Ndoye,Bologna,19,60
+449,C,Vazquez,Cremonese,10,11
+4186,C,Guendouzi,Lazio,11,20
+5393,C,Man,Parma,11,15
+2670,C,Bailey,Roma,16,10
+4662,C,Weah,Juventus,7,5
+181,C,Vecino,Lazio,6,13
+2842,C,Zanimacchia,Cremonese,5,5
+6106,C,Carboni V.,Genoa,11,12
+4856,C,Chukwueze,Milan,4,11
+4930,C,Ghion,Sassuolo,4,9
+6225,C,El Azzouzi,Bologna,3,7
+5863,C,Castagnetti,Cremonese,3,5
+4911,C,Douglas Luiz,Juventus,3,6
+6410,C,Kaba,Lecce,1,12
+6634,C,Tete Morente,Lecce,9,12
+6528,C,Sarmiento J.,Cremonese,4,8
+6676,C,Engelhardt,Como,2,3
+5857,C,Pickel,Cremonese,2,3
+6804,C,Richardson,Fiorentina,4,8
+6722,C,Gronbaek,Genoa,12,4
+5719,C,Asllani,Torino,4,14
+4423,C,Hernani,Parma,7,10
+6506,C,Fini,Genoa,1,1
+6656,C,Braunoder,Como,1,1
+2553,C,Alli,Como,1,1
+2274,C,Valoti,Cremonese,7,3
+5516,C,Bianco,Fiorentina,1,2
+7135,C,Stanciu,Genoa,8,5
+6633,C,Pierret,Lecce,6,9
+6222,C,Rafia,Lecce,3,7
+6678,C,Liberali,Milan,1,1
+7151,C,Arena,Pisa,1,1
+5824,C,Pafundi,Udinese,1,6
+7177,C,Santiago,Verona,2,2
+2117,C,Kastanos,Verona,4,8
+6618,C,Cissè A.,Verona,1,1
+2076,C,Rog,Cagliari,1,1
+7025,C,Cuenca H.,Genoa,1,1
+6226,A,Castellanos,Lazio,21,65
+2369,A,Thauvin,Udinese,16,64
+4730,A,Lookman,Atalanta,29,65
+7120,A,Lang,Napoli,19,20
+4179,A,Gonzalez N.,Juventus,12,15
+6145,A,Ngonge,Torino,9,11
+6667,A,Benedyczak,Parma,1,10
+6229,A,Tourè E.,Atalanta,7,9
+5496,A,Johnsen,Cremonese,7,8
+2155,A,Cutrone,Parma,10,14
+6409,A,Beltran L.,Fiorentina,7,10
+2475,A,Sanchez,Udinese,7,10
+6215,A,Lucca,Napoli,15,11
+6205,A,Mulattieri,Sassuolo,5,10
+785,A,Immobile,Bologna,19,15
+6628,A,Taremi,Inter,4,5
+6227,A,Okafor,Milan,4,5
+7153,A,Lind,Pisa,4,7
+6653,A,Bravo,Udinese,6,12
+6459,A,Karlsson,Bologna,3,7
+5297,A,Luvumbo,Cagliari,12,10
+5512,A,De Luca,Cremonese,8,3
+647,A,Dzeko,Fiorentina,15,10
+6213,A,Brenner,Udinese,3,5
+6644,A,Rocha Livramento,Verona,3,8
+1842,A,Pierini,Sassuolo,5,8
+5845,A,Alvarez A.,Sassuolo,2,4
+7264,A,Ambrosino,Napoli,1,1
+7027,A,Azon,Como,1,5
+6657,A,Gabrielloni,Como,1,1
+7134,A,Nasti,Cremonese,1,3
+7171,A,Buffon L.,Pisa,1,1
+7152,A,Bonfanti N.,Pisa,1,2
+7159,A,Skjellerup,Sassuolo,1,1
+6635,A,Pizarro,Udinese,1,3
