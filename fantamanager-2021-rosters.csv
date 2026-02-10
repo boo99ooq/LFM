@@ -1,5 +1,5 @@
 Squadra_LFM,Id,Prezzo
-$,0,$
+$,$,$
 Reggina Calcio 1914,7357,1
 Reggina Calcio 1914,7211,16
 Reggina Calcio 1914,6869,11
@@ -35,7 +35,7 @@ Reggina Calcio 1914,309,1
 Reggina Calcio 1914,294,1
 Reggina Calcio 1914,218,1
 Reggina Calcio 1914,158,1
-$,0,$
+$,$,$
 Villarreal,7351,20
 Villarreal,7347,40
 Villarreal,7344,4
@@ -71,7 +71,7 @@ Villarreal,2816,1
 Villarreal,2765,1
 Villarreal,1933,1
 Villarreal,574,2
-$,0,$
+$,$,$
 Udinese,7332,1
 Udinese,7223,61
 Udinese,7125,19
@@ -107,7 +107,7 @@ Udinese,4360,14
 Udinese,4349,1
 Udinese,2765,10
 Udinese,1976,6
-$,0,$
+$,$,$
 Inter,7351,31
 Inter,7162,39
 Inter,7126,30
@@ -144,7 +144,7 @@ Inter,322,1
 Inter,313,69
 Inter,133,1
 Inter,22,1
-$,0,$
+$,$,$
 Valencia,7356,11
 Valencia,7346,1
 Valencia,7345,12
@@ -180,7 +180,7 @@ Valencia,4431,1
 Valencia,2137,1
 Valencia,2120,1
 Valencia,4,1
-$,0,$
+$,$,$
 As Roma,7313,38
 As Roma,7253,8
 As Roma,7219,34
@@ -216,7 +216,7 @@ As Roma,761,1
 As Roma,530,1
 As Roma,441,59
 As Roma,152,1
-$,0,$
+$,$,$
 Arsenal,7356,1
 Arsenal,7349,2
 Arsenal,7345,1
@@ -251,7 +251,7 @@ Arsenal,2167,1
 Arsenal,536,1
 Arsenal,531,184
 Arsenal,254,1
-$,0,$
+$,$,$
 Napoli,7272,1
 Napoli,7127,1
 Napoli,6967,1
@@ -286,7 +286,7 @@ Napoli,608,1
 Napoli,536,1
 Napoli,513,1
 Napoli,4,1
-$,0,$
+$,$,$
 Parma,7347,1
 Parma,7337,1
 Parma,7220,5
@@ -322,7 +322,7 @@ Parma,2606,42
 Parma,572,1
 Parma,460,1
 Parma,333,7
-$,0,$
+$,$,$
 Sampdoria,7128,3
 Sampdoria,7014,2
 Sampdoria,6875,1
@@ -355,7 +355,7 @@ Sampdoria,779,1
 Sampdoria,610,1
 Sampdoria,505,3
 Sampdoria,256,4
-$,0,$
+$,$,$
 Como 1907,7316,45
 Como 1907,7183,22
 Como 1907,7132,9
@@ -390,7 +390,7 @@ Como 1907,1870,1
 Como 1907,770,1
 Como 1907,479,1
 Como 1907,188,1
-$,0,$
+$,$,$
 Siviglia,7255,7
 Siviglia,7209,6
 Siviglia,7185,1
@@ -426,7 +426,7 @@ Siviglia,2499,52
 Siviglia,2188,1
 Siviglia,1870,1
 Siviglia,788,1
-$,0,$
+$,$,$
 Pisa SC 1909,7356,1
 Pisa SC 1909,7349,11
 Pisa SC 1909,7341,2
@@ -461,7 +461,7 @@ Pisa SC 1909,2120,1
 Pisa SC 1909,543,1
 Pisa SC 1909,531,365
 Pisa SC 1909,393,1
-$,0,$
+$,$,$
 Atletico Madrid,7349,19
 Atletico Madrid,7318,8
 Atletico Madrid,7261,1
@@ -496,7 +496,7 @@ Atletico Madrid,827,1
 Atletico Madrid,531,187
 Atletico Madrid,530,1
 Atletico Madrid,309,1
-$,0,$
+$,$,$
 fiorentina,7329,3
 fiorentina,7317,1
 fiorentina,7276,1
@@ -505,17 +505,13 @@ fiorentina,7023,1
 fiorentina,6957,1
 fiorentina,6836,120
 fiorentina,6669,1
-fiorentina,6667,1
 fiorentina,6664,1
-fiorentina,6653,1
 fiorentina,6641,1
-fiorentina,6537,1
 fiorentina,6495,1
 fiorentina,6439,1
 fiorentina,6435,1
 fiorentina,6424,1
 fiorentina,6243,1
-fiorentina,6215,1
 fiorentina,6024,1
 fiorentina,6013,1
 fiorentina,5850,1
@@ -527,7 +523,6 @@ fiorentina,4957,1
 fiorentina,4892,1
 fiorentina,4479,1
 fiorentina,4465,1
-fiorentina,4423,1
 fiorentina,4364,1
 fiorentina,2848,1
 fiorentina,2531,1
@@ -537,8 +532,7 @@ fiorentina,2170,1
 fiorentina,2160,1
 fiorentina,1933,1
 fiorentina,254,1
-fiorentina,181,1
-$,0,$
+$,$,$
 Athletic Bilbao,7172,1
 Athletic Bilbao,7133,25
 Athletic Bilbao,7018,4
@@ -574,7 +568,7 @@ Athletic Bilbao,333,1
 Athletic Bilbao,254,1
 Athletic Bilbao,133,1
 Athletic Bilbao,22,1
-$,0,$
+$,$,$
 Liverpool Football Club,7252,35
 Liverpool Football Club,7220,6
 Liverpool Football Club,7068,45
@@ -610,7 +604,7 @@ Liverpool Football Club,2531,59
 Liverpool Football Club,2038,1
 Liverpool Football Club,513,1
 Liverpool Football Club,218,0
-$,0,$
+$,$,$
 Deportivo La Coruna,7312,1
 Deportivo La Coruna,7252,96
 Deportivo La Coruna,7223,1
@@ -646,40 +640,43 @@ Deportivo La Coruna,632,1
 Deportivo La Coruna,460,1
 Deportivo La Coruna,313,80
 Deportivo La Coruna,152,67
-$,0,$
+$,$,$
+Borussia Dortmund,7316,12
 Borussia Dortmund,7175,22
-Borussia Dortmund,7120,69
+Borussia Dortmund,7155,18
 Borussia Dortmund,7008,1
+Borussia Dortmund,6989,7
+Borussia Dortmund,6984,16
+Borussia Dortmund,6893,10
 Borussia Dortmund,6844,39
 Borussia Dortmund,6831,14
+Borussia Dortmund,6717,42
 Borussia Dortmund,6666,1
 Borussia Dortmund,6642,1
 Borussia Dortmund,6572,1
 Borussia Dortmund,6495,1
-Borussia Dortmund,6066,1
-Borussia Dortmund,6010,1
 Borussia Dortmund,5841,1
 Borussia Dortmund,5578,1
+Borussia Dortmund,5455,15
+Borussia Dortmund,5422,16
 Borussia Dortmund,5318,38
 Borussia Dortmund,5307,4
 Borussia Dortmund,5010,1
 Borussia Dortmund,4890,1
 Borussia Dortmund,4777,1
-Borussia Dortmund,4730,1
 Borussia Dortmund,4510,1
 Borussia Dortmund,4463,1
 Borussia Dortmund,4317,1
 Borussia Dortmund,4287,12
 Borussia Dortmund,2788,1
-Borussia Dortmund,2640,1
+Borussia Dortmund,2401,1
 Borussia Dortmund,2160,1
 Borussia Dortmund,2137,1
 Borussia Dortmund,2134,1
 Borussia Dortmund,1870,1
-Borussia Dortmund,610,1
 Borussia Dortmund,441,22
 Borussia Dortmund,22,18
-$,0,$
+$,$,$
 Manchester United FC,7351,70
 Manchester United FC,7344,2
 Manchester United FC,7316,67
@@ -715,7 +712,7 @@ Manchester United FC,2499,30
 Manchester United FC,2097,1
 Manchester United FC,2077,1
 Manchester United FC,152,57
-$,0,$
+$,$,$
 Osasuna,7353,5
 Osasuna,7175,27
 Osasuna,6836,2
@@ -750,27 +747,28 @@ Osasuna,697,1
 Osasuna,554,13
 Osasuna,479,8
 Osasuna,218,1
-$,0,$
+$,$,$
+Union Berlino,7356,7
+Union Berlino,7349,50
 Union Berlino,7252,50
+Union Berlino,7203,2
+Union Berlino,7128,52
 Union Berlino,7071,47
-Union Berlino,6895,1
-Union Berlino,6889,1
 Union Berlino,6875,1
 Union Berlino,6869,49
-Union Berlino,6664,1
+Union Berlino,6827,6
 Union Berlino,6556,1
-Union Berlino,6549,1
+Union Berlino,6496,57
+Union Berlino,6274,1
 Union Berlino,6218,1
-Union Berlino,6215,1
-Union Berlino,6159,1
 Union Berlino,6052,224
+Union Berlino,6015,6
+Union Berlino,6001,40
 Union Berlino,5998,1
 Union Berlino,5918,50
 Union Berlino,5876,1
-Union Berlino,5840,1
 Union Berlino,5527,1
 Union Berlino,5520,1
-Union Berlino,5007,1
 Union Berlino,4896,1
 Union Berlino,4887,1
 Union Berlino,4364,1
@@ -779,14 +777,13 @@ Union Berlino,2816,1
 Union Berlino,2593,1
 Union Berlino,2379,149
 Union Berlino,2194,1
-Union Berlino,1930,1
 Union Berlino,1852,1
 Union Berlino,779,19
 Union Berlino,761,28
 Union Berlino,536,1
-Union Berlino,479,1
+Union Berlino,218,2
 Union Berlino,184,12
-$,0,$
+$,$,$
 Everton,7260,3
 Everton,6981,70
 Everton,6889,1
@@ -822,39 +819,37 @@ Everton,4210,1
 Everton,788,0
 Everton,787,1
 Everton,543,1
-$,0,$
-Wolfsburg,7209,6
+$,$,$
+Wolfsburg,7337,1
+Wolfsburg,7329,3
+Wolfsburg,7255,3
 Wolfsburg,7199,17
-Wolfsburg,7183,9
-Wolfsburg,7146,10
-Wolfsburg,7139,4
-Wolfsburg,7133,25
-Wolfsburg,7128,54
 Wolfsburg,6672,7
-Wolfsburg,6482,1
-Wolfsburg,6365,199
-Wolfsburg,6314,180
+Wolfsburg,6424,3
+Wolfsburg,6403,1
+Wolfsburg,6005,1
 Wolfsburg,5995,1
 Wolfsburg,5885,1
 Wolfsburg,5844,32
-Wolfsburg,5735,7
-Wolfsburg,5719,12
+Wolfsburg,5823,13
+Wolfsburg,5813,5
 Wolfsburg,5637,48
-Wolfsburg,5555,7
-Wolfsburg,5504,8
-Wolfsburg,5422,13
+Wolfsburg,5585,273
+Wolfsburg,5504,6
+Wolfsburg,5471,1
 Wolfsburg,4665,1
 Wolfsburg,4427,8
 Wolfsburg,4409,1
+Wolfsburg,4404,13
 Wolfsburg,4401,7
 Wolfsburg,4210,16
-Wolfsburg,4137,5
 Wolfsburg,2814,1
 Wolfsburg,2766,31
 Wolfsburg,2521,1
+Wolfsburg,2273,2
 Wolfsburg,2097,1
 Wolfsburg,460,1
-$,0,$
+$,$,$
 West Ham United,7341,4
 West Ham United,7329,3
 West Ham United,7223,59
@@ -890,7 +885,7 @@ West Ham United,2724,0
 West Ham United,2521,1
 West Ham United,2160,1
 West Ham United,554,13
-$,0,$
+$,$,$
 Nottingham Forest,7357,1
 Nottingham Forest,7347,4
 Nottingham Forest,7314,44
@@ -921,51 +916,51 @@ Nottingham Forest,5427,40
 Nottingham Forest,5320,21
 Nottingham Forest,5301,10
 Nottingham Forest,4994,1
+Nottingham Forest,4461,4
 Nottingham Forest,4349,0
 Nottingham Forest,2428,1
 Nottingham Forest,188,1
-$,0,$
-Bayern Monaco,7132,10
-Bayern Monaco,6667,1
-Bayern Monaco,6643,1
-Bayern Monaco,6641,1
+$,$,$
+Bayern Monaco,7347,26
+Bayern Monaco,7219,21
+Bayern Monaco,6664,10
+Bayern Monaco,6650,1
+Bayern Monaco,6643,11
+Bayern Monaco,6549,3
 Bayern Monaco,6485,13
 Bayern Monaco,6434,1
+Bayern Monaco,6380,107
 Bayern Monaco,6252,1
 Bayern Monaco,6047,9
 Bayern Monaco,6046,1
-Bayern Monaco,6039,1
 Bayern Monaco,5858,1
 Bayern Monaco,5791,1
 Bayern Monaco,5734,1
 Bayern Monaco,5514,1
-Bayern Monaco,5500,1
 Bayern Monaco,5319,1
 Bayern Monaco,4994,22
-Bayern Monaco,4677,1
 Bayern Monaco,4360,1
 Bayern Monaco,4220,41
-Bayern Monaco,2653,1
+Bayern Monaco,2861,4
 Bayern Monaco,2529,9
-Bayern Monaco,2077,1
+Bayern Monaco,2528,7
 Bayern Monaco,2038,1
 Bayern Monaco,770,1
-Bayern Monaco,647,66
 Bayern Monaco,632,1
 Bayern Monaco,554,1
-Bayern Monaco,313,108
-Bayern Monaco,218,1
-$,0,$
+$,$,$
+EINTRACHT FRANCOFORTE,7314,52
 EINTRACHT FRANCOFORTE,7249,11
 EINTRACHT FRANCOFORTE,7181,76
 EINTRACHT FRANCOFORTE,7127,60
 EINTRACHT FRANCOFORTE,7126,48
 EINTRACHT FRANCOFORTE,7023,1
 EINTRACHT FRANCOFORTE,6967,1
+EINTRACHT FRANCOFORTE,6895,2
 EINTRACHT FRANCOFORTE,6884,1
 EINTRACHT FRANCOFORTE,6814,14
-EINTRACHT FRANCOFORTE,6722,39
 EINTRACHT FRANCOFORTE,6663,1
+EINTRACHT FRANCOFORTE,6575,62
 EINTRACHT FRANCOFORTE,6439,6
 EINTRACHT FRANCOFORTE,6271,18
 EINTRACHT FRANCOFORTE,6217,1
@@ -977,7 +972,6 @@ EINTRACHT FRANCOFORTE,5831,1
 EINTRACHT FRANCOFORTE,5800,1
 EINTRACHT FRANCOFORTE,5687,1
 EINTRACHT FRANCOFORTE,5685,1
-EINTRACHT FRANCOFORTE,5603,1
 EINTRACHT FRANCOFORTE,5562,1
 EINTRACHT FRANCOFORTE,5559,1
 EINTRACHT FRANCOFORTE,5119,1
@@ -989,9 +983,8 @@ EINTRACHT FRANCOFORTE,4431,1
 EINTRACHT FRANCOFORTE,4236,25
 EINTRACHT FRANCOFORTE,2848,1
 EINTRACHT FRANCOFORTE,2531,1
-EINTRACHT FRANCOFORTE,2297,1
-EINTRACHT FRANCOFORTE,2155,1
-$,0,$
+EINTRACHT FRANCOFORTE,4,6
+$,$,$
 Leicester City Football Club,7353,1
 Leicester City Football Club,7274,1
 Leicester City Football Club,7253,6
@@ -1007,7 +1000,6 @@ Leicester City Football Club,6151,25
 Leicester City Football Club,6039,4
 Leicester City Football Club,5844,16
 Leicester City Football Club,5585,165
-Leicester City Football Club,5527,1
 Leicester City Football Club,5514,1
 Leicester City Football Club,5504,8
 Leicester City Football Club,5022,1
@@ -1016,7 +1008,6 @@ Leicester City Football Club,4777,1
 Leicester City Football Club,4463,1
 Leicester City Football Club,4436,1
 Leicester City Football Club,4431,1
-Leicester City Football Club,2861,4
 Leicester City Football Club,2832,8
 Leicester City Football Club,2678,50
 Leicester City Football Club,2593,1
@@ -1029,25 +1020,28 @@ Leicester City Football Club,393,1
 Leicester City Football Club,333,15
 Leicester City Football Club,313,75
 Leicester City Football Club,4,0
-$,0,$
+$,$,$
+Bayer 04 Leverkusen,7357,1
+Bayer 04 Leverkusen,7223,103
 Bayer 04 Leverkusen,7212,22
-Bayer 04 Leverkusen,7135,31
+Bayer 04 Leverkusen,7146,4
+Bayer 04 Leverkusen,7012,2
 Bayer 04 Leverkusen,6842,1
+Bayer 04 Leverkusen,6836,4
 Bayer 04 Leverkusen,6766,10
+Bayer 04 Leverkusen,6631,3
 Bayer 04 Leverkusen,6462,1
+Bayer 04 Leverkusen,6190,3
 Bayer 04 Leverkusen,6042,1
-Bayer 04 Leverkusen,5761,41
 Bayer 04 Leverkusen,5739,1
-Bayer 04 Leverkusen,5718,1
+Bayer 04 Leverkusen,5674,8
 Bayer 04 Leverkusen,5526,1
-Bayer 04 Leverkusen,5297,1
-Bayer 04 Leverkusen,5273,32
 Bayer 04 Leverkusen,4923,1
 Bayer 04 Leverkusen,4502,1
 Bayer 04 Leverkusen,4465,8
-Bayer 04 Leverkusen,4459,1
 Bayer 04 Leverkusen,4312,1
 Bayer 04 Leverkusen,2841,154
+Bayer 04 Leverkusen,2815,1
 Bayer 04 Leverkusen,2764,1
 Bayer 04 Leverkusen,2724,1
 Bayer 04 Leverkusen,2423,1
@@ -1057,10 +1051,9 @@ Bayer 04 Leverkusen,788,1
 Bayer 04 Leverkusen,787,1
 Bayer 04 Leverkusen,543,1
 Bayer 04 Leverkusen,531,150
-Bayer 04 Leverkusen,449,18
+Bayer 04 Leverkusen,333,41
 Bayer 04 Leverkusen,27,1
-Bayer 04 Leverkusen,4,1
-$,0,$
+$,$,$
 Futbol Club Barcelona,7309,9
 Futbol Club Barcelona,7143,24
 Futbol Club Barcelona,6989,9
@@ -1089,35 +1082,33 @@ Futbol Club Barcelona,2379,83
 Futbol Club Barcelona,2077,1
 Futbol Club Barcelona,779,18
 Futbol Club Barcelona,294,2
-$,0,$
+$,$,$
+Borussia Mgladbach,7351,19
 Borussia Mgladbach,7143,22
-Borussia Mgladbach,6965,25
 Borussia Mgladbach,6908,50
 Borussia Mgladbach,6898,6
 Borussia Mgladbach,6684,1
 Borussia Mgladbach,6669,1
-Borussia Mgladbach,6653,1
-Borussia Mgladbach,6634,1
+Borussia Mgladbach,6662,20
+Borussia Mgladbach,6641,10
 Borussia Mgladbach,6632,1
-Borussia Mgladbach,6629,1
-Borussia Mgladbach,6274,6
 Borussia Mgladbach,6243,17
 Borussia Mgladbach,6170,4
-Borussia Mgladbach,6106,35
 Borussia Mgladbach,5877,1
 Borussia Mgladbach,5820,23
+Borussia Mgladbach,5735,6
 Borussia Mgladbach,5672,1
 Borussia Mgladbach,5620,1
 Borussia Mgladbach,5589,1
 Borussia Mgladbach,5336,50
+Borussia Mgladbach,5320,25
 Borussia Mgladbach,5295,6
-Borussia Mgladbach,4867,1
 Borussia Mgladbach,4772,1
 Borussia Mgladbach,4734,1
 Borussia Mgladbach,4686,1
-Borussia Mgladbach,4186,1
+Borussia Mgladbach,4657,15
+Borussia Mgladbach,4371,106
 Borussia Mgladbach,4159,21
-Borussia Mgladbach,2861,29
 Borussia Mgladbach,2428,1
 Borussia Mgladbach,2120,1
 Borussia Mgladbach,1926,1
@@ -1125,15 +1116,20 @@ Borussia Mgladbach,608,1
 Borussia Mgladbach,530,1
 Borussia Mgladbach,505,4
 Borussia Mgladbach,393,1
-$,0,$
+Borussia Mgladbach,313,2
+$,$,$
+Hoffenheim,7344,13
+Hoffenheim,7313,20
+Hoffenheim,7220,5
 Hoffenheim,7179,54
 Hoffenheim,7162,17
+Hoffenheim,7125,5
 Hoffenheim,7070,57
+Hoffenheim,6981,6
 Hoffenheim,6916,6
-Hoffenheim,6528,4
 Hoffenheim,6486,1
 Hoffenheim,6435,1
-Hoffenheim,6226,1
+Hoffenheim,6314,4
 Hoffenheim,6013,3
 Hoffenheim,5862,1
 Hoffenheim,5792,1
@@ -1144,6 +1140,7 @@ Hoffenheim,5427,21
 Hoffenheim,5301,6
 Hoffenheim,4957,1
 Hoffenheim,4751,1
+Hoffenheim,4486,59
 Hoffenheim,4436,18
 Hoffenheim,4433,1
 Hoffenheim,4359,1
@@ -1151,39 +1148,40 @@ Hoffenheim,2765,1
 Hoffenheim,2517,122
 Hoffenheim,2296,1
 Hoffenheim,2170,1
+Hoffenheim,2077,9
 Hoffenheim,513,1
+Hoffenheim,511,1
 Hoffenheim,322,1
-$,0,$
+Hoffenheim,152,81
+$,$,$
+Friburgo,7272,2
 Friburgo,7172,1
 Friburgo,7129,63
-Friburgo,6896,1
 Friburgo,6867,39
 Friburgo,6832,25
-Friburgo,6519,1
+Friburgo,6822,4
 Friburgo,6020,6
 Friburgo,5851,45
 Friburgo,5850,1
 Friburgo,5812,18
 Friburgo,5750,6
 Friburgo,5701,1
+Friburgo,5506,29
 Friburgo,5453,1
 Friburgo,5298,1
+Friburgo,4973,110
 Friburgo,4870,1
 Friburgo,4479,29
 Friburgo,4461,1
-Friburgo,4378,1
 Friburgo,2722,1
-Friburgo,2670,23
 Friburgo,2606,78
 Friburgo,2499,100
 Friburgo,2489,1
 Friburgo,1933,1
-Friburgo,785,119
 Friburgo,574,1
 Friburgo,309,1
-Friburgo,252,1
 Friburgo,133,1
-$,0,$
+$,$,$
 Real Madrid,7357,8
 Real Madrid,7326,3
 Real Madrid,7313,136
@@ -1219,7 +1217,7 @@ Real Madrid,2167,1
 Real Madrid,2134,1
 Real Madrid,572,1
 Real Madrid,441,8
-$,0,$
+$,$,$
 real betis balompie,7316,40
 real betis balompie,7314,63
 real betis balompie,7262,1
@@ -1255,7 +1253,7 @@ real betis balompie,761,6
 real betis balompie,505,16
 real betis balompie,393,1
 real betis balompie,188,1
-$,0,$
+$,$,$
 Tottenham Hotspur,7212,9
 Tottenham Hotspur,7203,2
 Tottenham Hotspur,7129,55
@@ -1270,6 +1268,7 @@ Tottenham Hotspur,6190,1
 Tottenham Hotspur,6060,14
 Tottenham Hotspur,5862,1
 Tottenham Hotspur,5840,12
+Tottenham Hotspur,5784,3
 Tottenham Hotspur,5685,1
 Tottenham Hotspur,5036,11
 Tottenham Hotspur,4751,0
@@ -1290,7 +1289,7 @@ Tottenham Hotspur,460,30
 Tottenham Hotspur,322,1
 Tottenham Hotspur,309,0
 Tottenham Hotspur,22,12
-$,0,$
+$,$,$
 Chelsea,7012,11
 Chelsea,7008,1
 Chelsea,6898,4
@@ -1319,38 +1318,51 @@ Chelsea,779,11
 Chelsea,632,1
 Chelsea,608,1
 Chelsea,133,1
-$,0,$
+$,$,$
+Red Bull Lipsia,7342,1
+Red Bull Lipsia,7338,1
+Red Bull Lipsia,7332,20
+Red Bull Lipsia,7318,36
+Red Bull Lipsia,7301,1
 Red Bull Lipsia,7260,10
 Red Bull Lipsia,7140,1
+Red Bull Lipsia,7028,4
 Red Bull Lipsia,7017,1
+Red Bull Lipsia,6990,14
 Red Bull Lipsia,6966,1
 Red Bull Lipsia,6956,1
 Red Bull Lipsia,6680,1
-Red Bull Lipsia,6675,1
 Red Bull Lipsia,6646,1
-Red Bull Lipsia,6633,1
-Red Bull Lipsia,6555,6
+Red Bull Lipsia,6630,4
 Red Bull Lipsia,6552,85
 Red Bull Lipsia,6398,1
+Red Bull Lipsia,6365,7
 Red Bull Lipsia,6206,1
 Red Bull Lipsia,6164,1
 Red Bull Lipsia,6151,12
-Red Bull Lipsia,6145,1
+Red Bull Lipsia,6112,12
 Red Bull Lipsia,5835,1
+Red Bull Lipsia,5500,7
+Red Bull Lipsia,5457,2
 Red Bull Lipsia,4970,1
 Red Bull Lipsia,4947,1
 Red Bull Lipsia,4892,1
 Red Bull Lipsia,4807,27
 Red Bull Lipsia,4728,208
 Red Bull Lipsia,4385,1
+Red Bull Lipsia,4263,6
 Red Bull Lipsia,4199,46
+Red Bull Lipsia,2845,1
+Red Bull Lipsia,2832,48
+Red Bull Lipsia,2809,1
+Red Bull Lipsia,2678,34
 Red Bull Lipsia,2188,1
+Red Bull Lipsia,1976,7
 Red Bull Lipsia,827,1
 Red Bull Lipsia,795,10
-Red Bull Lipsia,697,1
 Red Bull Lipsia,572,1
 Red Bull Lipsia,254,1
-$,0,$
+$,$,$
 Manchester City,7346,2
 Manchester City,7337,1
 Manchester City,7317,1
