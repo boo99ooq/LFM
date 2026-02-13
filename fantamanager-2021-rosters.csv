@@ -40,6 +40,7 @@ Villarreal,7351,20
 Villarreal,7347,40
 Villarreal,7344,4
 Villarreal,7342,1
+Villarreal,7332,8
 Villarreal,7212,11
 Villarreal,7012,4
 Villarreal,6984,23
@@ -49,7 +50,6 @@ Villarreal,6572,1
 Villarreal,6549,1
 Villarreal,6398,1
 Villarreal,6294,1
-Villarreal,6125,2
 Villarreal,6013,3
 Villarreal,6001,11
 Villarreal,5885,1
@@ -1173,6 +1173,7 @@ Friburgo,4973,110
 Friburgo,4870,1
 Friburgo,4479,29
 Friburgo,4461,1
+Friburgo,2832,4
 Friburgo,2722,1
 Friburgo,2606,78
 Friburgo,2499,100
@@ -1192,7 +1193,6 @@ Real Madrid,7183,3
 Real Madrid,7042,1
 Real Madrid,7014,4
 Real Madrid,6884,1
-Real Madrid,6667,1
 Real Madrid,6666,1
 Real Madrid,6664,1
 Real Madrid,6495,1
@@ -1206,6 +1206,7 @@ Real Madrid,5589,1
 Real Madrid,5555,1
 Real Madrid,5526,1
 Real Madrid,5513,0
+Real Madrid,5119,10
 Real Madrid,4929,1
 Real Madrid,4923,1
 Real Madrid,4510,1
@@ -1319,30 +1320,24 @@ Chelsea,632,1
 Chelsea,608,1
 Chelsea,133,1
 $,$,$
-Red Bull Lipsia,7342,1
-Red Bull Lipsia,7338,1
 Red Bull Lipsia,7332,20
 Red Bull Lipsia,7318,36
 Red Bull Lipsia,7301,1
 Red Bull Lipsia,7260,10
 Red Bull Lipsia,7140,1
-Red Bull Lipsia,7028,4
 Red Bull Lipsia,7017,1
 Red Bull Lipsia,6990,14
 Red Bull Lipsia,6966,1
 Red Bull Lipsia,6956,1
 Red Bull Lipsia,6680,1
 Red Bull Lipsia,6646,1
-Red Bull Lipsia,6630,4
 Red Bull Lipsia,6552,85
 Red Bull Lipsia,6398,1
-Red Bull Lipsia,6365,7
 Red Bull Lipsia,6206,1
 Red Bull Lipsia,6164,1
 Red Bull Lipsia,6151,12
 Red Bull Lipsia,6112,12
 Red Bull Lipsia,5835,1
-Red Bull Lipsia,5500,7
 Red Bull Lipsia,5457,2
 Red Bull Lipsia,4970,1
 Red Bull Lipsia,4947,1
@@ -1353,8 +1348,6 @@ Red Bull Lipsia,4385,1
 Red Bull Lipsia,4263,6
 Red Bull Lipsia,4199,46
 Red Bull Lipsia,2845,1
-Red Bull Lipsia,2832,48
-Red Bull Lipsia,2809,1
 Red Bull Lipsia,2678,34
 Red Bull Lipsia,2188,1
 Red Bull Lipsia,1976,7
