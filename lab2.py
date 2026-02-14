@@ -288,9 +288,9 @@ if df_base is not None:
                 "Residui": row['Crediti'],
                 "Tassa": -tassa,
                 "Premio Pos.": bonus_pos,
-                "Premio Coppa": bonus_coppa,
-                "Rimb. Giugno": row['Rimborso_Star'],
-                "Rimb. Sett.": row['Rimborso_Taglio'],
+                "Bonus Coppa": bonus_coppa,
+                "Rimb. *": row['Rimborso_Star'],
+                "Rimb. Tagli": row['Rimborso_Taglio'],
                 "Mercato": inp['mercato']
             })
 
