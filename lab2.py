@@ -204,8 +204,14 @@ if df_base is not None:
     elif menu == "💰 Prospetto Finanze":
         st.title("💰 Prospetto Finanze: Budget Nuova Stagione")
         
-        # 1. Preparazione Dati Base
+        # 1. Filtro Lega
+        lega_selezionata = st.selectbox("Seleziona Lega da visualizzare:", ["Tutte"] + ORDINE_LEGHE)
+
+        # 2. Preparazione Dati Base
         df_pros = st.session_state.df_leghe_full.copy()
+        if lega_selezionata != "Tutte":
+            df_pros = df_pros[df_pros['Lega'] == lega_selezionata]
+        
         df_pros['Squadra_Key'] = df_pros['Squadra'].str.strip().str.upper()
         
         # Merge Stadi
@@ -213,22 +219,19 @@ if df_base is not None:
         stadi_p['Squadra_Key'] = stadi_p['Squadra'].str.strip().str.upper()
         df_pros = pd.merge(df_pros, stadi_p[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
         
-        # 2. Calcolo Rimborsi Distinti
-        # Giugno (Fuori Lista / Star)
+        # Calcolo Rimborsi Distinti
         res_june = df_base[df_base['Rimborsato_Star']].groupby('Squadra_Key')['Rimborso_Star'].sum().reset_index()
-        # Settembre (Tagli)
         res_sept = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_Key')['Rimborso_Taglio'].sum().reset_index()
-        
         df_pros = pd.merge(df_pros, res_june, on='Squadra_Key', how='left').fillna(0)
         df_pros = pd.merge(df_pros, res_sept, on='Squadra_Key', how='left').fillna(0)
         
-        # 3. Inizializzazione parametri input (Stato persistente)
+        # Inizializzazione parametri input
         if 'input_finanze' not in st.session_state:
-            st.session_state.input_finanze = {sq: {"pos": 1, "coppa": "Nessuna", "mercato": 0.0} for sq in df_pros['Squadra']}
+            st.session_state.input_finanze = {sq: {"pos": 1, "coppa": "Nessuna", "mercato": 0.0} for sq in st.session_state.df_leghe_full['Squadra']}
         
         st.subheader("📝 Configurazione Premi e Risultati")
         
-        # Tabella di input interattiva
+        # Tabella di input filtrata
         input_data = []
         for sq in df_pros['Squadra']:
             input_data.append({
@@ -248,70 +251,65 @@ if df_base is not None:
             },
             hide_index=True,
             use_container_width=True,
-            key="editor_finanze"
+            key=f"editor_{lega_selezionata}"
         )
 
-        # Salvataggio modifiche nello stato
+        # Aggiornamento stato globale
         for _, row in edited_df.iterrows():
             st.session_state.input_finanze[row['Squadra']] = {"pos": row['Posizione'], "coppa": row['Coppa'], "mercato": row['Operazioni Mercato']}
 
-        # 4. Calcoli Finali
+        # 3. Logica Calcolo
         def get_tax(cap):
             if cap <= 50: return 70
-            if cap <= 60: return 90
-            if cap <= 70: return 120
-            if cap <= 80: return 150
-            if cap <= 90: return 185
-            return 215
+            elif cap <= 60: return 90
+            elif cap <= 70: return 120
+            elif cap <= 80: return 150
+            elif cap <= 90: return 185
+            else: return 215
 
         premi_pos = {1:550, 2:555, 3:560, 4:565, 5:570, 6:575, 7:580, 8:585, 9:590, 10:600}
         premi_coppe = {"Nessuna":0, "Champions":50, "Europa League":25, "Conference":10}
 
-        # Applichiamo i calcoli riga per riga
         final_rows = []
         for _, row in df_pros.iterrows():
             sq = row['Squadra']
             inp = st.session_state.input_finanze[sq]
             
-            # Valori
-            crediti_residui = row['Crediti']
             tassa = get_tax(row['Stadio'])
             bonus_pos = premi_pos.get(inp['pos'], 0)
             bonus_coppa = premi_coppe.get(inp['coppa'], 0)
-            rimborso_giugno = row['Rimborso_Star']
-            rimborso_sett = row['Rimborso_Taglio']
-            ops_mercato = inp['mercato']
             
-            totale = crediti_residui - tassa + bonus_pos + bonus_coppa + rimborso_giugno + rimborso_sett + ops_mercato
+            totale = row['Crediti'] - tassa + bonus_pos + bonus_coppa + row['Rimborso_Star'] + row['Rimborso_Taglio'] + inp['mercato']
             
             final_rows.append({
                 "Squadra": sq,
+                "BUDGET FINALE": totale,
                 "Lega": row['Lega'],
-                "Crediti Residui": crediti_residui,
-                "Tassa Stadio": -tassa,
-                "Premio Posizione": bonus_pos,
+                "Residui": row['Crediti'],
+                "Tassa": -tassa,
+                "Premio Pos.": bonus_pos,
                 "Premio Coppa": bonus_coppa,
-                "Rimborsi Giugno": rimborso_giugno,
-                "Rimborsi Sett.": rimborso_sett,
-                "Manovra Mercato": ops_mercato,
-                "BUDGET FINALE": totale
+                "Rimb. Giugno": row['Rimborso_Star'],
+                "Rimb. Sett.": row['Rimborso_Taglio'],
+                "Mercato": inp['mercato']
             })
 
         df_final = pd.DataFrame(final_rows)
 
         st.divider()
-        st.subheader("📊 Tabella Finanziaria Completa")
+        st.subheader(f"📊 Bilancio Finale - {lega_selezionata}")
 
-        # Styling: Budget Finale evidenziato
-        def highlight_total(s):
-            return ['background-color: #1a1a1a; color: #f1c40f; font-weight: bold; font-size: 16px' if s.name == 'BUDGET FINALE' else '' for _ in s]
-
+        # Stile: Budget Finale in evidenza (Seconda colonna dopo il nome)
         st.dataframe(
-            df_final.style.apply(highlight_total, axis=0).format({
-                "Crediti Residui": "{:.1f}", "Tassa Stadio": "{:.0f}", 
-                "Premio Posizione": "+{:.0f}", "Premio Coppa": "+{:.0f}",
-                "Rimborsi Giugno": "{:.1f}", "Rimborsi Sett.": "{:.1f}",
-                "Manovra Mercato": "{:.1f}", "BUDGET FINALE": "{:.1f}"
+            df_final.style.format({
+                "BUDGET FINALE": "{:.1f}", "Residui": "{:.1f}", "Tassa": "{:.0f}", 
+                "Premio Pos.": "+{:.0f}", "Premio Coppa": "+{:.0f}",
+                "Rimb. Giugno": "{:.1f}", "Rimb. Sett.": "{:.1f}", "Mercato": "{:.1f}"
+            }).set_properties(subset=['BUDGET FINALE'], **{
+                'background-color': '#2e7d32',
+                'color': 'white',
+                'font-weight': 'bold',
+                'font-size': '18px'
             }),
             use_container_width=True,
             hide_index=True
