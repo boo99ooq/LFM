@@ -96,7 +96,7 @@ if df_base is not None:
     df_base['Taglio_Key'] = df_base['Id'].astype(int).astype(str) + "_" + df_base['Squadra_LFM'].astype(str)
     df_base['Rimborsato_Taglio'] = df_base['Taglio_Key'].isin(st.session_state.tagli_map)
 
-    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "📊 Ranking FVM", "💰 Ranking Finanziario", "📋 Rose Complete", "🟢 Giocatori Liberi", "📈 Statistiche Leghe", "⚙️ Gestione Squadre"])
+    menu = st.sidebar.radio("Navigazione:", ["🏠 Dashboard", "🗓️ Calendari Campionati", "🏆 Coppe e Preliminari", "💰 Prospetto Finanze", "📊 Ranking FVM", "💰 Ranking Finanziario", "📋 Rose Complete", "🟢 Giocatori Liberi", "📈 Statistiche Leghe", "⚙️ Gestione Squadre"])
 
     # --- 🏠 DASHBOARD ---
     if menu == "🏠 Dashboard":
@@ -199,7 +199,123 @@ if df_base is not None:
                             except: continue
                 st.table(pd.DataFrame(res))
                 if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
+                    
+    # --- 💰 PROSPETTO FINANZE (Nuova Stagione) ---
+    elif menu == "💰 Prospetto Finanze":
+        st.title("💰 Prospetto Finanze: Budget Nuova Stagione")
+        
+        # 1. Preparazione Dati Base
+        df_pros = st.session_state.df_leghe_full.copy()
+        df_pros['Squadra_Key'] = df_pros['Squadra'].str.strip().str.upper()
+        
+        # Merge Stadi
+        stadi_p = df_stadi.copy()
+        stadi_p['Squadra_Key'] = stadi_p['Squadra'].str.strip().str.upper()
+        df_pros = pd.merge(df_pros, stadi_p[['Squadra_Key', 'Stadio']], on='Squadra_Key', how='left').fillna(0)
+        
+        # 2. Calcolo Rimborsi Distinti
+        # Giugno (Fuori Lista / Star)
+        res_june = df_base[df_base['Rimborsato_Star']].groupby('Squadra_Key')['Rimborso_Star'].sum().reset_index()
+        # Settembre (Tagli)
+        res_sept = df_base[df_base['Rimborsato_Taglio']].groupby('Squadra_Key')['Rimborso_Taglio'].sum().reset_index()
+        
+        df_pros = pd.merge(df_pros, res_june, on='Squadra_Key', how='left').fillna(0)
+        df_pros = pd.merge(df_pros, res_sept, on='Squadra_Key', how='left').fillna(0)
+        
+        # 3. Inizializzazione parametri input (Stato persistente)
+        if 'input_finanze' not in st.session_state:
+            st.session_state.input_finanze = {sq: {"pos": 1, "coppa": "Nessuna", "mercato": 0.0} for sq in df_pros['Squadra']}
+        
+        st.subheader("📝 Configurazione Premi e Risultati")
+        
+        # Tabella di input interattiva
+        input_data = []
+        for sq in df_pros['Squadra']:
+            input_data.append({
+                "Squadra": sq,
+                "Posizione": st.session_state.input_finanze[sq]["pos"],
+                "Coppa": st.session_state.input_finanze[sq]["coppa"],
+                "Operazioni Mercato": st.session_state.input_finanze[sq]["mercato"]
+            })
+        
+        df_input = pd.DataFrame(input_data)
+        edited_df = st.data_editor(
+            df_input,
+            column_config={
+                "Posizione": st.column_config.NumberColumn("Pos. Campionato", min_value=1, max_value=10, step=1),
+                "Coppa": st.column_config.SelectboxColumn("Coppa", options=["Nessuna", "Champions", "Europa League", "Conference"]),
+                "Operazioni Mercato": st.column_config.NumberColumn("Extra Mercato (+/-)", step=0.5)
+            },
+            hide_index=True,
+            use_container_width=True,
+            key="editor_finanze"
+        )
 
+        # Salvataggio modifiche nello stato
+        for _, row in edited_df.iterrows():
+            st.session_state.input_finanze[row['Squadra']] = {"pos": row['Posizione'], "coppa": row['Coppa'], "mercato": row['Operazioni Mercato']}
+
+        # 4. Calcoli Finali
+        def get_tax(cap):
+            if cap <= 50: return 70
+            if cap <= 60: return 90
+            if cap <= 70: return 120
+            if cap <= 80: return 150
+            if cap <= 90: return 185
+            return 215
+
+        premi_pos = {1:550, 2:555, 3:560, 4:565, 5:570, 6:575, 7:580, 8:585, 9:590, 10:600}
+        premi_coppe = {"Nessuna":0, "Champions":50, "Europa League":25, "Conference":10}
+
+        # Applichiamo i calcoli riga per riga
+        final_rows = []
+        for _, row in df_pros.iterrows():
+            sq = row['Squadra']
+            inp = st.session_state.input_finanze[sq]
+            
+            # Valori
+            crediti_residui = row['Crediti']
+            tassa = get_tax(row['Stadio'])
+            bonus_pos = premi_pos.get(inp['pos'], 0)
+            bonus_coppa = premi_coppe.get(inp['coppa'], 0)
+            rimborso_giugno = row['Rimborso_Star']
+            rimborso_sett = row['Rimborso_Taglio']
+            ops_mercato = inp['mercato']
+            
+            totale = crediti_residui - tassa + bonus_pos + bonus_coppa + rimborso_giugno + rimborso_sett + ops_mercato
+            
+            final_rows.append({
+                "Squadra": sq,
+                "Lega": row['Lega'],
+                "Crediti Residui": crediti_residui,
+                "Tassa Stadio": -tassa,
+                "Premio Posizione": bonus_pos,
+                "Premio Coppa": bonus_coppa,
+                "Rimborsi Giugno": rimborso_giugno,
+                "Rimborsi Sett.": rimborso_sett,
+                "Manovra Mercato": ops_mercato,
+                "BUDGET FINALE": totale
+            })
+
+        df_final = pd.DataFrame(final_rows)
+
+        st.divider()
+        st.subheader("📊 Tabella Finanziaria Completa")
+
+        # Styling: Budget Finale evidenziato
+        def highlight_total(s):
+            return ['background-color: #1a1a1a; color: #f1c40f; font-weight: bold; font-size: 16px' if s.name == 'BUDGET FINALE' else '' for _ in s]
+
+        st.dataframe(
+            df_final.style.apply(highlight_total, axis=0).format({
+                "Crediti Residui": "{:.1f}", "Tassa Stadio": "{:.0f}", 
+                "Premio Posizione": "+{:.0f}", "Premio Coppa": "+{:.0f}",
+                "Rimborsi Giugno": "{:.1f}", "Rimborsi Sett.": "{:.1f}",
+                "Manovra Mercato": "{:.1f}", "BUDGET FINALE": "{:.1f}"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
     # --- 📊 RANKING FVM ---
     elif menu == "📊 Ranking FVM":
         st.title("📊 Ranking FVM Internazionale")
