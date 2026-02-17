@@ -283,7 +283,7 @@ if df_base is not None:
             
             final_rows.append({
                 "Squadra": sq,
-                "BUDGET PROVVISORIO": totale,
+                "BUDGET TOTALE": totale,
                 "Lega": row['Lega'],
                 "Residui": row['Crediti'],
                 "Tassa": -tassa,
