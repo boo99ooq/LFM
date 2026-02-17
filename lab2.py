@@ -283,14 +283,14 @@ if df_base is not None:
             
             final_rows.append({
                 "Squadra": sq,
-                "BUDGET FINALE": totale,
+                "BUDGET PROVVISORIO": totale,
                 "Lega": row['Lega'],
                 "Residui": row['Crediti'],
-                "Tassa": -tassa,
+                "Tassa Stadio": -tassa,
                 "Premio Pos.": bonus_pos,
                 "Bonus Coppa": bonus_coppa,
                 "Rimb. *": row['Rimborso_Star'],
-                "Rimb. Tagli": row['Rimborso_Taglio'],
+                "Rimb.Tagli": row['Rimborso_Taglio'],
                 "Mercato": inp['mercato']
             })
 
