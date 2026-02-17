@@ -286,11 +286,11 @@ if df_base is not None:
                 "BUDGET PROVVISORIO": totale,
                 "Lega": row['Lega'],
                 "Residui": row['Crediti'],
-                "Tassa Stadio": -tassa,
+                "Tassa": -tassa,
                 "Premio Pos.": bonus_pos,
                 "Bonus Coppa": bonus_coppa,
                 "Rimb. *": row['Rimborso_Star'],
-                "Rimb.Tagli": row['Rimborso_Taglio'],
+                "Rimb. Tagli": row['Rimborso_Taglio'],
                 "Mercato": inp['mercato']
             })
 
