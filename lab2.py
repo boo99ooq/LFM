@@ -166,7 +166,6 @@ if df_base is not None:
                             res.append({"Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
                 st.table(pd.DataFrame(res))
 
-    # --- 🏆 COPPE E PRELIMINARI ---
     elif menu == "🏆 Coppe e Preliminari":
         st.title("🏆 Coppe e Preliminari")
 
@@ -182,44 +181,52 @@ if df_base is not None:
 
         if os.path.exists(nome_file):
             try:
-                # Leggiamo tutto il file senza saltare righe, gestendo la codifica Excel
-                df_raw = pd.read_csv(nome_file, header=None, encoding='ISO-8859-1').fillna("")
+                # Carichiamo il file forzando tutte le colonne a stringa per evitare problemi con gli '0'
+                df_raw = pd.read_csv(nome_file, header=None, encoding='ISO-8859-1', dtype=str).fillna("")
                 
                 partite_pulite = []
                 g_sx, g_dx = "", ""
 
                 for i in range(len(df_raw)):
+                    # Trasformiamo la riga in una lista di testi puliti
                     r = [str(x).strip() for x in df_raw.iloc[i].tolist()]
 
-                    # 1. Identificazione delle Giornate nelle intestazioni
-                    if "Giornata" in r[0]:
+                    # --- 1. RICONOSCIMENTO GIORNATA ---
+                    if len(r) > 0 and "Giornata" in r[0]:
                         g_sx = r[0].split(" lega")[0]
                     if len(r) > 7 and "Giornata" in r[7]:
                         g_dx = r[7].split(" lega")[0]
 
-                    # 2. Estrazione Partita Sinistra (es: A, Liverpool, 0, 0, Napoli)
-                    # Controlliamo che r[1] non sia vuoto e r[2] sia lo "0" del punteggio
-                    if len(r) > 4 and r[1] != "" and r[2] == "0":
-                        partite_pulite.append({
-                            "G": g_sx if g_sx else "Fase Gironi",
-                            "Girone": r[0],
-                            "Casa": r[1],
-                            "Fuori": r[4]
-                        })
+                    # --- 2. LOGICA ESTRAZIONE PARTITA SINISTRA ---
+                    # Verifichiamo se la colonna 1 ha una squadra e la colonna 2 o 3 ha uno "0"
+                    if len(r) > 4:
+                        squadra_casa_sx = r[1]
+                        squadra_fuori_sx = r[4]
+                        # Una riga è valida se ha nomi di squadre e non è un'intestazione
+                        if squadra_casa_sx != "" and squadra_fuori_sx != "" and "Giornata" not in squadra_casa_sx and r[0] != "Girone":
+                            partite_pulite.append({
+                                "G": g_sx if g_sx else "Gironi",
+                                "Girone": r[0],
+                                "Casa": squadra_casa_sx,
+                                "Fuori": squadra_fuori_sx
+                            })
 
-                    # 3. Estrazione Partita Destra (stessa logica per le colonne traslate)
-                    if len(r) > 11 and r[8] != "" and r[9] == "0":
-                        partite_pulite.append({
-                            "G": g_dx if g_dx else "Fase Gironi",
-                            "Girone": r[7],
-                            "Casa": r[8],
-                            "Fuori": r[11]
-                        })
+                    # --- 3. LOGICA ESTRAZIONE PARTITA DESTRA ---
+                    if len(r) > 11:
+                        squadra_casa_dx = r[8]
+                        squadra_fuori_dx = r[11]
+                        if squadra_casa_dx != "" and squadra_fuori_dx != "" and "Giornata" not in squadra_casa_dx:
+                            partite_pulite.append({
+                                "G": g_dx if g_dx else "Gironi",
+                                "Girone": r[7],
+                                "Casa": squadra_casa_dx,
+                                "Fuori": squadra_fuori_dx
+                            })
 
                 if partite_pulite:
                     df_final = pd.DataFrame(partite_pulite)
                     
-                    # Creazione menu selezione giornata
+                    # Ordiniamo le giornate trovate
                     giornate_disp = sorted(df_final['G'].unique(), key=natural_sort_key)
                     sel_g = st.selectbox("Seleziona Giornata:", giornate_disp)
                     
@@ -227,30 +234,31 @@ if df_base is not None:
                     res = []
                     
                     for _, row in view.iterrows():
-                        # Calcolo bonus stadi dinamico
-                        nome_h, nome_a = row['Casa'].upper(), row['Fuori'].upper()
+                        # Calcolo Bonus Stadi
+                        casa_up = row['Casa'].upper()
+                        fuori_up = row['Fuori'].upper()
                         
-                        cap_h = df_stadi[df_stadi['Squadra'].str.upper() == nome_h]['Stadio'].values[0] if nome_h in df_stadi['Squadra'].str.upper().values else 0
-                        cap_a = df_stadi[df_stadi['Squadra'].str.upper() == nome_a]['Stadio'].values[0] if nome_a in df_stadi['Squadra'].str.upper().values else 0
+                        cap_h = df_stadi[df_stadi['Squadra'].str.upper() == casa_up]['Stadio'].values[0] if casa_up in df_stadi['Squadra'].str.upper().values else 0
+                        cap_a = df_stadi[df_stadi['Squadra'].str.upper() == fuori_up]['Stadio'].values[0] if fuori_up in df_stadi['Squadra'].str.upper().values else 0
                         
                         bh, _ = calculate_stadium_bonus(cap_h)
                         _, ba = calculate_stadium_bonus(cap_a)
                         
                         res.append({
                             "Girone": row['Girone'],
-                            "Partita": f"{row['Casa']} vs {row['Fuori']}",
+                            "Incontro": f"{row['Casa']} vs {row['Fuori']}",
                             "Bonus Casa": f"+{format_num(bh)}",
                             "Bonus Fuori": f"+{format_num(ba)}"
                         })
                     
                     st.table(pd.DataFrame(res))
                 else:
-                    st.warning("Nessuna partita trovata nel file. Verifica che i nomi delle squadre siano seguiti dallo '0'.")
+                    st.warning("Non ho trovato partite. Assicurati che il file CSV non sia vuoto.")
                     
             except Exception as e:
-                st.error(f"Errore nella lettura del file: {e}")
+                st.error(f"Errore tecnico: {e}")
         else:
-            st.error(f"File non trovato: {nome_file}")     
+            st.error(f"Manca il file: {nome_file}")
     # --- 💰 PROSPETTO FINANZE (Nuova Stagione) ---
     elif menu == "💰 Prospetto Finanze":
         st.title("💰 Prospetto Finanze: Budget Nuova Stagione")
