@@ -167,7 +167,7 @@ if df_base is not None:
                 st.table(pd.DataFrame(res))
 
     # --- 🏆 COPPE E PRELIMINARI ---
-   elif menu == "🏆 Coppe e Preliminari":
+    elif menu == "🏆 Coppe e Preliminari":
         st.title("🏆 Coppe e Preliminari")
 
         opzioni_coppe = {
@@ -241,7 +241,7 @@ if df_base is not None:
             except Exception as e:
                 st.error(f"Errore durante la lettura del file: {e}")
         else:
-            st.error(f"File {nome_file} non trovato.")          
+            st.error(f"File {nome_file} non trovato.")      
     # --- 💰 PROSPETTO FINANZE (Nuova Stagione) ---
     elif menu == "💰 Prospetto Finanze":
         st.title("💰 Prospetto Finanze: Budget Nuova Stagione")
