@@ -169,36 +169,79 @@ if df_base is not None:
     # --- 🏆 COPPE E PRELIMINARI ---
     elif menu == "🏆 Coppe e Preliminari":
         st.title("🏆 Coppe e Preliminari")
-        files = [f for f in os.listdir('.') if any(x in f.upper() for x in ["CHAMPIONS", "EUROPA", "PRELIMINARI"]) and f.endswith(".csv")]
-        if files:
-            camp = st.selectbox("Seleziona:", files)
-            df_co = pd.read_csv(camp, header=None, encoding='latin1').fillna("")
-            g_pos = []
-            for r in range(len(df_co)):
-                for c in range(len(df_co.columns)):
-                    if "Giornata" in str(df_co.iloc[r, c]) and "serie a" not in str(df_co.iloc[r, c]).lower():
-                        g_pos.append((str(df_co.iloc[r, c]).strip(), r, c))
-            if g_pos:
-                sel_g = st.selectbox("Giornata:", sorted(list(set([x[0] for x in g_pos])), key=natural_sort_key))
-                res, rip = [], []
-                for label, r, col_idx in [x for x in g_pos if x[0] == sel_g]:
-                    for i in range(1, 16):
-                        if r+i < len(df_co):
-                            row = df_co.iloc[r+i]
-                            if "Giornata" in str(row[col_idx]): break
-                            if "Riposa" in str(row[col_idx]) or "Riposa" in str(row[col_idx+1]):
-                                rip.append(str(row[col_idx] if "Riposa" in str(row[col_idx]) else row[col_idx+1]).replace("Riposa","").strip())
-                                continue
-                            try:
-                                h, a = str(row[col_idx+1]).strip(), str(row[col_idx+4]).strip()
-                                if h and h != "nan" and len(h) > 2:
-                                    cap_h = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == h.upper()]['Stadio'].values[0] if h.upper() in df_stadi['Squadra'].str.upper().values else 0
-                                    cap_a = df_stadi[df_stadi['Squadra'].str.strip().str.upper() == a.upper()]['Stadio'].values[0] if a.upper() in df_stadi['Squadra'].str.upper().values else 0
-                                    bh, _ = calculate_stadium_bonus(cap_h); _, ba = calculate_stadium_bonus(cap_a)
-                                    res.append({"Girone": str(row[col_idx]).strip(), "Casa": h, "Fuori": a, "Bonus Casa": f"+{format_num(bh)}", "Bonus Fuori": f"+{format_num(ba)}"})
-                            except: continue
-                st.table(pd.DataFrame(res))
-                if rip: st.info("☕ **Riposano:** " + ", ".join(sorted(list(set(filter(None, rip))))))
+
+        # Mappatura file caricati
+        opzioni_coppe = {
+            "Champions League": "Calendario_Champions-League.csv",
+            "Europa League": "Calendario_Europa-League.csv",
+            "Conference League": "Calendario_Conference-League.csv",
+            "Preliminari CL": "Calendario_PRELIMINARI-CHAMPIONS-LEAGUE-FASE-3.csv"
+        }
+        
+        scelta = st.selectbox("Seleziona competizione:", list(opzioni_coppe.keys()))
+        nome_file = opzioni_coppe[scelta]
+
+        if os.path.exists(nome_file):
+            # Carichiamo il file grezzo (saltando le prime righe se necessario)
+            skip = 4 if "PRELIMINARI" not in nome_file else 1
+            df_raw = pd.read_csv(nome_file, skiprows=skip, header=None)
+
+            partite_pulite = []
+            
+            # Logica per estrarre le partite dai blocchi affiancati
+            for i in range(0, len(df_raw)):
+                riga = df_raw.iloc[i].tolist()
+                
+                # Blocco Sinistro (Giornate 1, 3, 5...)
+                if pd.notna(riga[1]) and str(riga[2]).isdigit():
+                    giornata_label = "Giornata Ignota"
+                    # Cerchiamo l'intestazione della giornata nelle righe precedenti
+                    for j in range(i, -1, -1):
+                        val = str(df_raw.iloc[j, 0])
+                        if "Giornata" in val:
+                            giornata_label = val.split(" lega")[0]
+                            break
+                    
+                    partite_pulite.append({"G": giornata_label, "Girone": riga[0], "Casa": riga[1], "Fuori": riga[4]})
+
+                # Blocco Destro (Giornate 2, 4, 6...)
+                if len(riga) > 8 and pd.notna(riga[8]) and str(riga[9]).isdigit():
+                    giornata_label_dx = "Giornata Ignota"
+                    for j in range(i, -1, -1):
+                        val = str(df_raw.iloc[j, 7]) if len(df_raw.columns) > 7 else ""
+                        if "Giornata" in val:
+                            giornata_label_dx = val.split(" lega")[0]
+                            break
+                    
+                    partite_pulite.append({"G": giornata_label_dx, "Girone": riga[7], "Casa": riga[8], "Fuori": riga[11]})
+
+            df_final = pd.DataFrame(partite_pulite)
+            
+            # Selezione Giornata
+            giornate_disponibili = sorted(df_final['G'].unique(), key=natural_sort_key)
+            sel_g = st.selectbox("Seleziona Giornata:", giornate_disponibili)
+            
+            # Visualizzazione con Bonus
+            view = df_final[df_final['G'] == sel_g]
+            res = []
+            for _, r in view.iterrows():
+                # Calcolo bonus (usando la tua funzione esistente)
+                cap_h = df_stadi[df_stadi['Squadra'].str.upper() == str(r['Casa']).upper()]['Stadio'].values[0] if str(r['Casa']).upper() in df_stadi['Squadra'].str.upper().values else 0
+                cap_a = df_stadi[df_stadi['Squadra'].str.upper() == str(r['Fuori']).upper()]['Stadio'].values[0] if str(r['Fuori']).upper() in df_stadi['Squadra'].str.upper().values else 0
+                
+                bh, _ = calculate_stadium_bonus(cap_h)
+                _, ba = calculate_stadium_bonus(cap_a)
+                
+                res.append({
+                    "Girone": r['Girone'],
+                    "Match": f"{r['Casa']} vs {r['Fuori']}",
+                    "Bonus Casa": f"+{format_num(bh)}",
+                    "Bonus Fuori": f"+{format_num(ba)}"
+                })
+            
+            st.table(pd.DataFrame(res))
+        else:
+            st.error(f"File {nome_file} non trovato. Assicurati di averlo caricato con questo nome esatto.")
                     
     # --- 💰 PROSPETTO FINANZE (Nuova Stagione) ---
     elif menu == "💰 Prospetto Finanze":
