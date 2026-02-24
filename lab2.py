@@ -184,7 +184,15 @@ if df_base is not None:
         if os.path.exists(nome_file):
             # Carichiamo il file grezzo (saltando le prime righe se necessario)
             skip = 4 if "PRELIMINARI" not in nome_file else 1
-            df_raw = pd.read_csv(nome_file, skiprows=skip, header=None)
+            
+            # --- INIZIO MODIFICA ---
+            try:
+                # Prova a leggere con la codifica tipica di Excel
+                df_raw = pd.read_csv(nome_file, skiprows=skip, header=None, encoding='ISO-8859-1', on_bad_lines='skip')
+            except UnicodeDecodeError:
+                # Se ricevi ancora errore, prova con UTF-8 come emergenza
+                df_raw = pd.read_csv(nome_file, skiprows=skip, header=None, encoding='utf-8', errors='replace', on_bad_lines='skip')
+            # --- FINE MODIFICA ---
 
             partite_pulite = []
             
