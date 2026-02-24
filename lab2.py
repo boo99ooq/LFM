@@ -232,9 +232,8 @@ if df_base is not None:
                     
                     view = df_final[df_final['G'] == sel_g]
                     res = []
-                    
                     for _, row in view.iterrows():
-                        # Calcolo Bonus Stadi
+                        # Calcolo Bonus Stadi (Case-insensitive)
                         casa_up = row['Casa'].upper()
                         fuori_up = row['Fuori'].upper()
                         
@@ -244,12 +243,16 @@ if df_base is not None:
                         bh, _ = calculate_stadium_bonus(cap_h)
                         _, ba = calculate_stadium_bonus(cap_a)
                         
+                        # Formattazione richiesta: Squadra Casa +Bonus, Squadra Fuori +Bonus
+                        info_match = f"{row['Casa']} +{format_num(bh)} — {row['Fuori']} +{format_num(ba)}"
+                        
                         res.append({
                             "Girone": row['Girone'],
-                            "Incontro": f"{row['Casa']} vs {row['Fuori']}",
-                            "Bonus Casa": f"+{format_num(bh)}",
-                            "Bonus Fuori": f"+{format_num(ba)}"
+                            "Partita con Bonus": info_match
                         })
+                    
+                    # Mostriamo la tabella con la nuova colonna combinata
+                    st.table(pd.DataFrame(res))
                     
                     st.table(pd.DataFrame(res))
                 else:
