@@ -1,7 +1,6 @@
 Squadra_LFM,Id,Prezzo
 $,$,$
 Reggina Calcio 1914,7357,1
-Reggina Calcio 1914,7211,16
 Reggina Calcio 1914,6869,11
 Reggina Calcio 1914,6680,19
 Reggina Calcio 1914,6677,1
@@ -20,8 +19,9 @@ Reggina Calcio 1914,5471,1
 Reggina Calcio 1914,5320,6
 Reggina Calcio 1914,5318,28
 Reggina Calcio 1914,5022,1
-Reggina Calcio 1914,4728,121
+Reggina Calcio 1914,4686,14
 Reggina Calcio 1914,4665,1
+Reggina Calcio 1914,4510,1
 Reggina Calcio 1914,4461,1
 Reggina Calcio 1914,4137,9
 Reggina Calcio 1914,2816,1
@@ -69,6 +69,7 @@ Villarreal,2848,1
 Villarreal,2841,0
 Villarreal,2816,1
 Villarreal,2765,1
+Villarreal,2134,0
 Villarreal,1933,1
 Villarreal,574,2
 $,$,$
@@ -78,10 +79,12 @@ Udinese,7125,19
 Udinese,7071,206
 Udinese,7017,58
 Udinese,6986,27
+Udinese,6822,1
 Udinese,6815,20
 Udinese,6572,38
 Udinese,6496,23
 Udinese,6218,1
+Udinese,6164,1
 Udinese,6159,7
 Udinese,6046,1
 Udinese,6039,60
@@ -90,6 +93,7 @@ Udinese,5858,18
 Udinese,5833,1
 Udinese,5672,3
 Udinese,5559,13
+Udinese,5527,1
 Udinese,5526,16
 Udinese,5514,1
 Udinese,5453,7
@@ -100,7 +104,6 @@ Udinese,4976,1
 Udinese,4947,1
 Udinese,4923,1
 Udinese,4896,1
-Udinese,4686,14
 Udinese,4433,1
 Udinese,4371,187
 Udinese,4360,14
@@ -181,41 +184,41 @@ Valencia,2137,1
 Valencia,2120,1
 Valencia,4,1
 $,$,$
-As Roma,7313,38
-As Roma,7253,8
-As Roma,7219,34
-As Roma,7203,17
-As Roma,7199,113
-As Roma,7012,7
-As Roma,6981,11
-As Roma,6966,1
-As Roma,6642,18
-As Roma,6552,69
-As Roma,6001,6
-As Roma,5840,1
-As Roma,5761,57
-As Roma,5687,1
-As Roma,5678,1
-As Roma,5578,1
-As Roma,5500,1
-As Roma,5449,8
-As Roma,5301,10
-As Roma,5131,6
-As Roma,5036,13
-As Roma,4657,8
-As Roma,4427,1
-As Roma,4359,1
-As Roma,2841,1
-As Roma,2839,1
-As Roma,2832,61
-As Roma,2788,1
-As Roma,2766,1
-As Roma,2428,1
-As Roma,2296,1
-As Roma,761,1
-As Roma,530,1
-As Roma,441,59
-As Roma,152,1
+AC Milan,7313,38
+AC Milan,7253,8
+AC Milan,7219,34
+AC Milan,7211,16
+AC Milan,7199,113
+AC Milan,7012,7
+AC Milan,6981,11
+AC Milan,6966,1
+AC Milan,6642,18
+AC Milan,6552,69
+AC Milan,6001,6
+AC Milan,5840,1
+AC Milan,5761,57
+AC Milan,5687,1
+AC Milan,5678,1
+AC Milan,5578,1
+AC Milan,5500,1
+AC Milan,5449,8
+AC Milan,5301,10
+AC Milan,5131,6
+AC Milan,5036,13
+AC Milan,4657,8
+AC Milan,4427,1
+AC Milan,4359,1
+AC Milan,2841,1
+AC Milan,2839,1
+AC Milan,2832,61
+AC Milan,2788,1
+AC Milan,2766,1
+AC Milan,2428,1
+AC Milan,2296,1
+AC Milan,2120,1
+AC Milan,761,1
+AC Milan,530,1
+AC Milan,152,1
 $,$,$
 Arsenal,7356,1
 Arsenal,7349,2
@@ -258,21 +261,23 @@ Napoli,6967,1
 Napoli,6893,8
 Napoli,6831,1
 Napoli,6485,5
-Napoli,6054,1
+Napoli,6052,420
 Napoli,5877,1
 Napoli,5813,1
-Napoli,5585,200
+Napoli,5562,1
+Napoli,5520,1
 Napoli,5481,1
 Napoli,5427,26
 Napoli,5168,5
-Napoli,4887,1
+Napoli,4892,1
 Napoli,4772,1
+Napoli,4465,1
 Napoli,4431,1
 Napoli,4409,1
 Napoli,4284,1
 Napoli,4220,1
-Napoli,4199,1
 Napoli,2640,1
+Napoli,2529,1
 Napoli,2379,74
 Napoli,2297,1
 Napoli,2263,1
@@ -302,7 +307,6 @@ Parma,6956,1
 Parma,6895,1
 Parma,6867,12
 Parma,6844,21
-Parma,6822,1
 Parma,6814,13
 Parma,6015,6
 Parma,5918,11
@@ -323,73 +327,72 @@ Parma,572,1
 Parma,460,1
 Parma,333,7
 $,$,$
-Sampdoria,7128,3
-Sampdoria,7014,2
-Sampdoria,6875,1
-Sampdoria,6675,1
-Sampdoria,6660,3
-Sampdoria,6575,22
-Sampdoria,6211,1
-Sampdoria,6164,88
-Sampdoria,6151,8
-Sampdoria,6125,1
-Sampdoria,6060,77
-Sampdoria,6052,420
-Sampdoria,5998,1
-Sampdoria,5851,17
-Sampdoria,5841,1
-Sampdoria,5812,6
-Sampdoria,5792,1
-Sampdoria,5674,6
-Sampdoria,5589,1
-Sampdoria,5506,5
-Sampdoria,5455,21
-Sampdoria,4973,31
-Sampdoria,4807,10
-Sampdoria,4374,3
-Sampdoria,4317,1
-Sampdoria,4210,1
-Sampdoria,2528,5
-Sampdoria,795,1
-Sampdoria,779,1
-Sampdoria,610,1
-Sampdoria,505,3
-Sampdoria,256,4
+Roma,7128,3
+Roma,7014,2
+Roma,6875,1
+Roma,6575,22
+Roma,6211,1
+Roma,6151,8
+Roma,6125,1
+Roma,6060,77
+Roma,5998,1
+Roma,5841,1
+Roma,5812,6
+Roma,5792,1
+Roma,5674,6
+Roma,5589,1
+Roma,5585,200
+Roma,5506,5
+Roma,5455,21
+Roma,4973,31
+Roma,4807,10
+Roma,4374,3
+Roma,4317,1
+Roma,4210,1
+Roma,2528,5
+Roma,795,1
+Roma,779,1
+Roma,610,1
+Roma,505,3
+Roma,256,4
 $,$,$
-Como 1907,7316,45
-Como 1907,7183,22
-Como 1907,7132,9
-Como 1907,6908,70
-Como 1907,6813,1
-Como 1907,6684,1
-Como 1907,6505,1
-Como 1907,6365,412
-Como 1907,6252,1
-Como 1907,6217,1
-Como 1907,6191,1
-Como 1907,6112,23
-Como 1907,5750,5
-Como 1907,5532,1
-Como 1907,5527,1
-Como 1907,5513,1
-Como 1907,5010,1
-Como 1907,4751,1
-Como 1907,4510,1
-Como 1907,4463,1
-Como 1907,4312,1
-Como 1907,4287,1
-Como 1907,2815,0
-Como 1907,2728,4
-Como 1907,2724,1
-Como 1907,2593,1
-Como 1907,2529,1
-Como 1907,2167,1
-Como 1907,2137,1
-Como 1907,2077,1
-Como 1907,1870,1
-Como 1907,770,1
-Como 1907,479,1
-Como 1907,188,1
+Torino FC,7316,45
+Torino FC,7203,17
+Torino FC,7183,22
+Torino FC,7132,9
+Torino FC,6908,70
+Torino FC,6813,1
+Torino FC,6684,1
+Torino FC,6675,1
+Torino FC,6660,3
+Torino FC,6505,1
+Torino FC,6365,412
+Torino FC,6252,1
+Torino FC,6217,1
+Torino FC,6191,1
+Torino FC,6112,23
+Torino FC,6054,1
+Torino FC,5750,5
+Torino FC,5532,1
+Torino FC,5513,1
+Torino FC,5010,1
+Torino FC,4751,1
+Torino FC,4728,121
+Torino FC,4463,1
+Torino FC,4312,1
+Torino FC,4287,1
+Torino FC,2815,0
+Torino FC,2728,4
+Torino FC,2724,1
+Torino FC,2593,1
+Torino FC,2167,1
+Torino FC,2137,1
+Torino FC,2077,1
+Torino FC,1870,1
+Torino FC,770,1
+Torino FC,479,1
+Torino FC,441,59
+Torino FC,188,1
 $,$,$
 Siviglia,7255,7
 Siviglia,7209,6
@@ -450,14 +453,11 @@ Pisa SC 1909,6434,1
 Pisa SC 1909,6010,1
 Pisa SC 1909,5995,1
 Pisa SC 1909,5888,1
-Pisa SC 1909,5562,1
-Pisa SC 1909,5520,1
 Pisa SC 1909,4871,1
 Pisa SC 1909,4777,1
 Pisa SC 1909,4734,1
 Pisa SC 1909,4436,1
 Pisa SC 1909,4401,1
-Pisa SC 1909,2120,1
 Pisa SC 1909,543,1
 Pisa SC 1909,531,365
 Pisa SC 1909,393,1
@@ -497,41 +497,42 @@ Atletico Madrid,531,187
 Atletico Madrid,530,1
 Atletico Madrid,309,1
 $,$,$
-fiorentina,7329,3
-fiorentina,7317,1
-fiorentina,7276,1
-fiorentina,7213,1
-fiorentina,7023,1
-fiorentina,6957,1
-fiorentina,6836,120
-fiorentina,6669,1
-fiorentina,6664,1
-fiorentina,6641,1
-fiorentina,6495,1
-fiorentina,6439,1
-fiorentina,6435,1
-fiorentina,6424,1
-fiorentina,6243,1
-fiorentina,6024,1
-fiorentina,6013,1
-fiorentina,5850,1
-fiorentina,5835,1
-fiorentina,5791,1
-fiorentina,5298,1
-fiorentina,5119,1
-fiorentina,4957,1
-fiorentina,4892,1
-fiorentina,4479,1
-fiorentina,4465,1
-fiorentina,4364,1
-fiorentina,2848,1
-fiorentina,2531,1
-fiorentina,2525,1
-fiorentina,2423,1
-fiorentina,2170,1
-fiorentina,2160,1
-fiorentina,1933,1
-fiorentina,254,1
+FiorentinaT,7329,3
+FiorentinaT,7317,1
+FiorentinaT,7276,1
+FiorentinaT,7213,1
+FiorentinaT,7023,1
+FiorentinaT,6957,1
+FiorentinaT,6836,120
+FiorentinaT,6669,1
+FiorentinaT,6664,1
+FiorentinaT,6641,1
+FiorentinaT,6495,1
+FiorentinaT,6439,1
+FiorentinaT,6435,1
+FiorentinaT,6424,1
+FiorentinaT,6243,1
+FiorentinaT,6024,1
+FiorentinaT,6013,1
+FiorentinaT,5851,17
+FiorentinaT,5850,1
+FiorentinaT,5835,1
+FiorentinaT,5791,1
+FiorentinaT,5298,1
+FiorentinaT,5119,1
+FiorentinaT,4957,1
+FiorentinaT,4887,1
+FiorentinaT,4479,1
+FiorentinaT,4364,1
+FiorentinaT,4199,1
+FiorentinaT,2848,1
+FiorentinaT,2531,1
+FiorentinaT,2525,1
+FiorentinaT,2423,1
+FiorentinaT,2170,1
+FiorentinaT,2160,1
+FiorentinaT,1933,1
+FiorentinaT,254,1
 $,$,$
 Athletic Bilbao,7172,1
 Athletic Bilbao,7133,25
@@ -585,8 +586,8 @@ Liverpool Football Club,5877,1
 Liverpool Football Club,5833,1
 Liverpool Football Club,5823,1
 Liverpool Football Club,5750,7
-Liverpool Football Club,5562,1
 Liverpool Football Club,5455,9
+Liverpool Football Club,4923,1
 Liverpool Football Club,4892,1
 Liverpool Football Club,4807,12
 Liverpool Football Club,4734,1
@@ -759,20 +760,21 @@ Union Berlino,6869,49
 Union Berlino,6827,6
 Union Berlino,6556,1
 Union Berlino,6496,57
+Union Berlino,6485,13
 Union Berlino,6274,1
 Union Berlino,6218,1
 Union Berlino,6052,224
 Union Berlino,6015,6
 Union Berlino,6001,40
-Union Berlino,5998,1
 Union Berlino,5918,50
 Union Berlino,5876,1
+Union Berlino,5791,1
 Union Berlino,5527,1
 Union Berlino,5520,1
+Union Berlino,5319,1
 Union Berlino,4896,1
 Union Berlino,4887,1
 Union Berlino,4364,1
-Union Berlino,4349,19
 Union Berlino,2816,1
 Union Berlino,2593,1
 Union Berlino,2379,149
@@ -782,7 +784,6 @@ Union Berlino,779,19
 Union Berlino,761,28
 Union Berlino,536,1
 Union Berlino,218,2
-Union Berlino,184,12
 $,$,$
 Everton,7260,3
 Everton,6981,70
@@ -927,19 +928,18 @@ Bayern Monaco,6664,10
 Bayern Monaco,6650,1
 Bayern Monaco,6643,11
 Bayern Monaco,6549,3
-Bayern Monaco,6485,13
 Bayern Monaco,6434,1
 Bayern Monaco,6380,107
 Bayern Monaco,6252,1
 Bayern Monaco,6047,9
 Bayern Monaco,6046,1
+Bayern Monaco,5998,1
 Bayern Monaco,5858,1
-Bayern Monaco,5791,1
 Bayern Monaco,5734,1
 Bayern Monaco,5514,1
-Bayern Monaco,5319,1
 Bayern Monaco,4994,22
 Bayern Monaco,4360,1
+Bayern Monaco,4349,19
 Bayern Monaco,4220,41
 Bayern Monaco,2861,4
 Bayern Monaco,2529,9
@@ -948,6 +948,7 @@ Bayern Monaco,2038,1
 Bayern Monaco,770,1
 Bayern Monaco,632,1
 Bayern Monaco,554,1
+Bayern Monaco,184,12
 $,$,$
 EINTRACHT FRANCOFORTE,7314,52
 EINTRACHT FRANCOFORTE,7249,11
@@ -1000,10 +1001,10 @@ Leicester City Football Club,6151,25
 Leicester City Football Club,6039,4
 Leicester City Football Club,5844,16
 Leicester City Football Club,5585,165
+Leicester City Football Club,5562,1
 Leicester City Football Club,5514,1
 Leicester City Football Club,5504,8
 Leicester City Football Club,5022,1
-Leicester City Football Club,4923,1
 Leicester City Football Club,4777,1
 Leicester City Football Club,4463,1
 Leicester City Football Club,4436,1
@@ -1215,7 +1216,6 @@ Real Madrid,4364,1
 Real Madrid,4360,1
 Real Madrid,2296,1
 Real Madrid,2167,1
-Real Madrid,2134,1
 Real Madrid,572,1
 Real Madrid,441,8
 $,$,$
@@ -1291,17 +1291,18 @@ Tottenham Hotspur,322,1
 Tottenham Hotspur,309,0
 Tottenham Hotspur,22,12
 $,$,$
+Chelsea,7172,0
 Chelsea,7012,11
 Chelsea,7008,1
 Chelsea,6898,4
 Chelsea,6426,1
-Chelsea,6365,312
 Chelsea,6202,1
 Chelsea,6010,1
 Chelsea,6001,6
 Chelsea,5885,1
 Chelsea,5831,2
 Chelsea,5761,39
+Chelsea,5506,0
 Chelsea,5318,50
 Chelsea,5116,21
 Chelsea,4887,1
@@ -1318,7 +1319,6 @@ Chelsea,2134,1
 Chelsea,779,11
 Chelsea,632,1
 Chelsea,608,1
-Chelsea,133,1
 $,$,$
 Red Bull Lipsia,7332,20
 Red Bull Lipsia,7318,36
