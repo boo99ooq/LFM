@@ -33,36 +33,25 @@ except:
 
 # --- 2. FUNZIONI UTILITY ---
 def pulisci_nome(nome):
-    """Pulisce il nome rimuovendo prefissi strani come 'arrw'"""
+    """Pulisce il nome rimuovendo TUTTO ciò che non è una lettera all'inizio"""
     if not nome or pd.isna(nome):
         return ""
     
     nome_pulito = str(nome).strip()
     
-    # Rimuovi "arrw" e varianti (case insensitive)
-    patterns = [
-        r'^arrw\s*', r'^arrW\s*', r'^arr\s*', 
-        r'^W_\s*', r'^W\s*',
-        r'^FC\s*', r'^F\.C\.\s*',
-        r'^AS\s*', r'^A\.S\.\s*',
-        r'^US\s*', r'^U\.S\.\s*',
-        r'^SS\s*', r'^S\.S\.\s*',
-        r'^AC\s*', r'^A\.C\.\s*'
-    ]
+    # Rimuovi tutto fino al primo carattere alfabetico (A-Z o a-z)
+    match = re.search(r'[A-Za-z]', nome_pulito)
+    if match:
+        nome_pulito = nome_pulito[match.start():]
     
-    for pattern in patterns:
-        nome_pulito = re.sub(pattern, '', nome_pulito, flags=re.IGNORECASE)
-    
-    # Se il nome inizia con un carattere non alfabetico, trova il primo carattere valido
-    if nome_pulito and not nome_pulito[0].isalpha():
-        match = re.search(r'[A-Za-z]', nome_pulito)
-        if match:
-            nome_pulito = nome_pulito[match.start():]
+    # Se il nome inizia con una lettera minuscola, rendila maiuscola
+    if nome_pulito and nome_pulito[0].islower():
+        nome_pulito = nome_pulito[0].upper() + nome_pulito[1:]
     
     # Rimuovi spazi multipli
     nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
     
-    # Se il nome è vuoto, restituisci l'originale
+    # Se il nome è vuoto o troppo corto, restituisci l'originale
     if not nome_pulito or len(nome_pulito) < 2:
         return str(nome).strip()
     
@@ -131,11 +120,10 @@ st.set_page_config(
     page_title="LFM - Portale Clausole", 
     page_icon="🛡️", 
     layout="wide",
-    initial_sidebar_state="expanded"  # <--- Aggiungi questo
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     
@@ -173,6 +161,7 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 4px;
+        text-align: center;
     }
     
     .fvm-sub {
@@ -181,6 +170,7 @@ st.markdown("""
         margin-bottom: 20px;
         padding-bottom: 16px;
         border-bottom: 1px solid rgba(255,215,0,0.1);
+        text-align: center;
     }
     
     div[data-baseweb="input"] {
@@ -297,6 +287,7 @@ st.markdown("""
     h1, h2, h3 {
         color: #e2e8f0 !important;
         font-weight: 800 !important;
+        text-align: center !important;
     }
     
     hr {
@@ -373,6 +364,78 @@ st.markdown("""
         color: #f87171;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
+    
+    /* Nasconde il testo "keyboard_double_arrow_right" */
+    button[data-testid="baseButton-header"] {
+        font-size: 0 !important;
+    }
+    button[data-testid="baseButton-header"]::before {
+        content: "☰" !important;
+        font-size: 1.5rem !important;
+    }
+    
+    .team-title {
+        text-align: center;
+        width: 100%;
+        padding: 6px 0;
+    }
+    .team-title .team-icon {
+        font-size: 1.4rem;
+    }
+    .team-title .team-name {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #FFD700;
+    }
+    .team-title .team-budget {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-left: 16px;
+    }
+    
+    .login-container {
+        background: #1a2338;
+        padding: 30px;
+        border-radius: 20px;
+        border: 1px solid rgba(255,215,0,0.1);
+    }
+    
+    .login-title {
+        text-align: center;
+        padding: 30px 0 20px 0;
+    }
+    .login-title .icon {
+        font-size: 4rem;
+    }
+    .login-title h1 {
+        font-size: 2.8rem;
+        margin: 0;
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .login-title p {
+        color: #94a3b8;
+        font-size: 1.1rem;
+        margin-top: 8px;
+    }
+    
+    .terminal-header {
+        text-align: center;
+        padding: 16px 0;
+        margin-bottom: 24px;
+    }
+    .terminal-header .title {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: #FFD700;
+    }
+    .terminal-header .subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-top: 4px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -387,6 +450,10 @@ if 'portale_aperto' not in st.session_state:
 # --- 6. CARICAMENTO DATI ---
 df_leghe = carica_csv("leghe.csv")
 
+# Pulisci i nomi delle squadre nel DataFrame
+if not df_leghe.empty:
+    df_leghe['Squadra_Pulita'] = df_leghe['Squadra'].apply(pulisci_nome)
+
 # --- 7. FUNZIONE PER OTTENERE SQUADRE PULITE ---
 def get_clean_teams(lega=None):
     """Restituisce un dizionario {nome_pulito: nome_originale} per le squadre"""
@@ -398,7 +465,7 @@ def get_clean_teams(lega=None):
     teams = {}
     for _, row in df_filtered.iterrows():
         original = row['Squadra']
-        clean = pulisci_nome(original)
+        clean = row.get('Squadra_Pulita', pulisci_nome(original))
         if not clean:
             clean = original
         teams[clean] = original
@@ -407,10 +474,10 @@ def get_clean_teams(lega=None):
 # --- 8. LOGIN ---
 if not st.session_state.loggato:
     st.markdown("""
-    <div style="text-align: center; padding: 20px 0;">
-        <div style="font-size: 4rem;">🛡️</div>
-        <h1 style="font-size: 2.8rem; margin: 0;">LFM - Accesso Portale</h1>
-        <p style="color: #94a3b8; font-size: 1.1rem;">Inserisci le tue credenziali per accedere</p>
+    <div class="login-title">
+        <div class="icon">🛡️</div>
+        <h1>LFM - Accesso Portale</h1>
+        <p>Inserisci le tue credenziali per accedere</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -418,7 +485,7 @@ if not st.session_state.loggato:
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             with st.container():
-                st.markdown("<div style='background: #1a2338; padding: 30px; border-radius: 20px; border: 1px solid rgba(255,215,0,0.1);'>", unsafe_allow_html=True)
+                st.markdown('<div class="login-container">', unsafe_allow_html=True)
                 
                 lega = st.selectbox("📋 Lega", df_leghe['Lega'].unique())
                 teams_dict = get_clean_teams(lega)
@@ -439,7 +506,7 @@ if not st.session_state.loggato:
                     except:
                         st.error("❌ Squadra non trovata. Contatta l'amministratore.")
                 
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 9. AREA LOGGATO ---
 else:
@@ -449,17 +516,17 @@ else:
     squadra_display = get_team_display_name(st.session_state.squadra)
     
     st.markdown(f"""
-<div class="header-bar">
-    <div style="font-size: 2.8rem;">🛡️</div>
-    <div style="flex: 1;">
-        <div style="color: #94a3b8; font-size: 0.9rem;">LFM · Portale Clausole</div>
-        <div style="font-size: 1.4rem; font-weight: 800; color: #FFD700;">{squadra_display}</div>
+    <div class="header-bar">
+        <div style="font-size: 2.8rem;">🛡️</div>
+        <div style="flex: 1;">
+            <div style="color: #94a3b8; font-size: 0.9rem;">LFM · Portale Clausole</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #FFD700;">{squadra_display}</div>
+        </div>
+        <div>
+            <span class="status-badge {status_class}">{status_text}</span>
+        </div>
     </div>
-    <div>
-        <span class="status-badge {status_class}">{status_text}</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     # --- 10. SIDEBAR ADMIN ---
     if st.session_state.squadra in ADMIN_SQUADRE:
@@ -496,6 +563,18 @@ else:
                 for m in mancanti:
                     m_clean = get_team_display_name(m)
                     st.text(f"❌ {m_clean}")
+            
+            st.markdown("---")
+            
+            # DEBUG - Mostra i nomi grezzi
+            st.markdown("### 🔍 DEBUG NOMI")
+            if st.checkbox("Mostra debug nomi squadre"):
+                df_r = carica_csv("fantamanager-2021-rosters.csv")
+                if not df_r.empty:
+                    nomi_unici = df_r['Squadra_LFM'].unique().tolist()
+                    st.write("**Nomi grezzi dal CSV:**")
+                    for n in nomi_unici[:10]:
+                        st.write(f"`{n}` → `{pulisci_nome(n)}`")
             
             st.markdown("---")
             
@@ -539,7 +618,7 @@ else:
     # SEZIONE MERCATO (PORTALE APERTO)
     if st.session_state.portale_aperto:
         st.markdown("## 🔓 Mercato Clausole Rescissorie")
-        st.markdown("<p style='color:#94a3b8;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; text-align:center;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
         
         lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
@@ -566,11 +645,21 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
 
+        # Mostra squadre con nomi puliti e centrati
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            with st.expander(f"🏟️  **{sq_clean.upper()}**  ·  **💰 {sq_c} cr**"):
+            # Titolo centrato con nome squadra e budget
+            title_html = f"""
+            <div class="team-title">
+                <span class="team-icon">🏟️</span>
+                <span class="team-name">{sq_clean.upper()}</span>
+                <span class="team-budget">💰 {sq_c} cr</span>
+            </div>
+            """
+            
+            with st.expander(title_html, unsafe_allow_html=True):
                 if sq in salvati:
                     for p in salvati[sq].split(";"):
                         try:
@@ -622,8 +711,14 @@ else:
     # SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
     else:
         squadra_display = get_team_display_name(st.session_state.squadra)
-        st.markdown(f"## 🛡️ Terminale Blindaggi: {squadra_display}")
-        st.markdown("<p style='color:#94a3b8;'>Imposta le clausole per blindare i tuoi giocatori</p>", unsafe_allow_html=True)
+        
+        # Header centrato per il terminale
+        st.markdown(f"""
+        <div class="terminal-header">
+            <div class="title">🛡️ {squadra_display.upper()}</div>
+            <div class="subtitle">Imposta le clausole per blindare i tuoi giocatori</div>
+        </div>
+        """, unsafe_allow_html=True)
         
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
