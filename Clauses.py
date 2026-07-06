@@ -4,12 +4,21 @@ from github import Github
 from io import StringIO
 import math
 from datetime import datetime
-import time  # <--- IMPORTANTE: per i delay
+import time
 
 # --- 1. CONFIGURAZIONE ---
+# MODALITA' DI TEST - Imposta False per vedere il terminale blindaggi
+FORZA_MODALITA = False  # False = Terminale Blindaggi | True = Mercato
+
 SCADENZA = datetime(2026, 8, 1) 
 OGGI = datetime.now()
-PORTALE_APERTO = True  # <--- Forza apertura per test
+
+# Se FORZA_MODALITA è True, override della data
+if FORZA_MODALITA:
+    PORTALE_APERTO = True
+else:
+    PORTALE_APERTO = OGGI >= SCADENZA  # False fino al 1 Agosto 2026
+
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
 try:
@@ -21,18 +30,16 @@ except:
     st.error("Errore configurazione GitHub nei Secrets.")
     st.stop()
 
-# --- 2. FUNZIONI CON CACHE PER EVITARE RATE LIMIT ---
-@st.cache_data(ttl=300)  # Cache per 5 minuti
+# --- 2. FUNZIONI CON CACHE ---
+@st.cache_data(ttl=300)
 def carica_csv(file_name):
-    """Carica CSV con caching per ridurre chiamate API"""
     try:
         content = repo.get_contents(file_name)
         return pd.read_csv(StringIO(content.decoded_content.decode("latin1")))
-    except:
+    except: 
         return pd.DataFrame()
 
 def salva_file_github(path, df, msg):
-    """Salva con delay per evitare rate limit"""
     time.sleep(0.5)
     csv_buffer = df.to_csv(index=False)
     try:
@@ -43,7 +50,6 @@ def salva_file_github(path, df, msg):
         raise
 
 def salva_clausola_singola(squadra, dati_stringa):
-    """Salva clausola con delay"""
     time.sleep(0.5)
     path = "clausole_segrete.csv"
     nuova_riga = f"{squadra},{dati_stringa}"
@@ -57,7 +63,6 @@ def salva_clausola_singola(squadra, dati_stringa):
         repo.create_file(path, "Inizializzazione", nuova_riga)
 
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
-    """Registra richiesta con delay"""
     time.sleep(0.5)
     path = "richieste_scippo.csv"
     orario = datetime.now().strftime("%H:%M:%S")
@@ -79,29 +84,37 @@ def calcola_tassa(valore):
         tassa = 20 + 15 + (valore - 300) * 0.20
     return math.ceil(tassa)
 
-# --- 3. UI E CSS MIGLIORATO ---
+def pulisci_nome(nome):
+    """Rimuove prefissi strani e pulisce il nome"""
+    if not nome or pd.isna(nome):
+        return ""
+    nome_pulito = str(nome)
+    # Rimuovi prefissi comuni
+    prefissi_da_rimuovere = ['arrW', 'arr', 'W_', 'W', 'FC', 'F.C.']
+    for prefisso in prefissi_da_rimuovere:
+        if nome_pulito.startswith(prefisso):
+            nome_pulito = nome_pulito[len(prefisso):]
+    return nome_pulito.strip()
+
+# --- 3. UI E CSS ---
 st.set_page_config(
     page_title="LFM - Portale Clausole", 
     page_icon="🛡️", 
     layout="wide"
 )
 
-# CSS Migliorato con tema scuro elegante
 st.markdown("""
 <style>
-    /* Reset e font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     
     * {
         font-family: 'Inter', sans-serif !important;
     }
     
-    /* Background principale */
     .stApp {
         background: linear-gradient(135deg, #0a0e1a 0%, #141b2d 50%, #1a2338 100%);
     }
     
-    /* Cards principali */
     .player-card {
         background: linear-gradient(145deg, #1a2338, #0f1628);
         border-radius: 20px;
@@ -118,7 +131,6 @@ st.markdown("""
         box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     }
     
-    /* Nome giocatore - effetto oro */
     .player-name {
         background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
         -webkit-background-clip: text;
@@ -131,7 +143,6 @@ st.markdown("""
         margin-bottom: 4px;
     }
     
-    /* Sottotitolo FVM */
     .fvm-sub {
         color: #94a3b8 !important;
         font-size: 1rem !important;
@@ -140,7 +151,6 @@ st.markdown("""
         border-bottom: 1px solid rgba(255,215,0,0.1);
     }
     
-    /* Input numerici - stile premium */
     div[data-baseweb="input"] {
         background: #0f1628 !important;
         border: 2px solid rgba(255, 215, 0, 0.3) !important;
@@ -161,14 +171,12 @@ st.markdown("""
         background: transparent !important;
     }
     
-    /* Progress bar personalizzata */
     .stProgress > div > div {
         background: linear-gradient(90deg, #FFD700, #FF6B00) !important;
         border-radius: 10px !important;
         height: 8px !important;
     }
     
-    /* Badge status */
     .badge-safe {
         background: rgba(34, 197, 94, 0.15);
         border: 1px solid rgba(34, 197, 94, 0.3);
@@ -189,7 +197,6 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Budget Box */
     .budget-box {
         background: linear-gradient(145deg, #1a2338, #0f1628);
         border-radius: 16px;
@@ -199,7 +206,6 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     
-    /* Metric cards */
     div[data-testid="stMetric"] {
         background: linear-gradient(145deg, #1a2338, #0f1628);
         border-radius: 14px;
@@ -217,7 +223,6 @@ st.markdown("""
         font-weight: 800 !important;
     }
     
-    /* Expander cards */
     div[data-testid="stExpander"] {
         background: linear-gradient(145deg, #1a2338, #0f1628) !important;
         border: 1px solid rgba(255, 215, 0, 0.12) !important;
@@ -232,7 +237,6 @@ st.markdown("""
         padding: 8px 4px !important;
     }
     
-    /* Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #FFD700, #F59E0B) !important;
         color: #0f1628 !important;
@@ -249,11 +253,6 @@ st.markdown("""
         box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3) !important;
     }
     
-    .stButton > button:active {
-        transform: translateY(0px) !important;
-    }
-    
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f1628, #0a0e1a) !important;
         border-right: 1px solid rgba(255, 215, 0, 0.1) !important;
@@ -263,24 +262,20 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
     
-    /* Headers */
     h1, h2, h3 {
         color: #e2e8f0 !important;
         font-weight: 800 !important;
     }
     
-    /* Divider */
     hr {
         border-color: rgba(255, 215, 0, 0.15) !important;
         margin: 24px 0 !important;
     }
     
-    /* Text general */
     p, span, label, .stMarkdown {
         color: #94a3b8 !important;
     }
     
-    /* Success/Warning/Error boxes */
     .stAlert {
         border-radius: 12px !important;
         border: none !important;
@@ -290,7 +285,6 @@ st.markdown("""
         background: rgba(255, 215, 0, 0.05) !important;
     }
     
-    /* Player row nel mercato */
     .player-row {
         display: flex;
         align-items: center;
@@ -316,6 +310,37 @@ st.markdown("""
         border-radius: 20px;
         font-size: 0.9rem;
     }
+    
+    .header-bar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+        padding: 16px 24px;
+        background: linear-gradient(145deg, #1a2338, #0f1628);
+        border-radius: 16px;
+        border: 1px solid rgba(255,215,0,0.15);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    
+    .status-open {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .status-closed {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -329,8 +354,13 @@ df_leghe = carica_csv("leghe.csv")
 
 # --- 6. LOGIN ---
 if not st.session_state.loggato:
-    st.title("🛡️ LFM - Accesso Portale")
-    st.markdown("<p style='color:#94a3b8;'>Inserisci le tue credenziali per accedere al portale clausole</p>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align: center; padding: 20px 0;">
+        <div style="font-size: 4rem;">🛡️</div>
+        <h1 style="font-size: 2.8rem; margin: 0;">LFM - Accesso Portale</h1>
+        <p style="color: #94a3b8; font-size: 1.1rem;">Inserisci le tue credenziali per accedere</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if not df_leghe.empty:
         col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -350,24 +380,46 @@ if not st.session_state.loggato:
                     else:
                         st.error("❌ PIN errato. Riprova.")
                 st.markdown("</div>", unsafe_allow_html=True)
+
+# --- 7. AREA LOGGATO ---
 else:
-    # --- 7. AREA LOGGATO ---
+    # Header
+    status_text = "🔓 MERCATO APERTO" if PORTALE_APERTO else "🛡️ TERMINALE BLINDAGGI"
+    status_class = "status-open" if PORTALE_APERTO else "status-closed"
     
-    # Header con logo e nome squadra
     st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 16px 24px; background: linear-gradient(145deg, #1a2338, #0f1628); border-radius: 16px; border: 1px solid rgba(255,215,0,0.15);">
+    <div class="header-bar">
         <div style="font-size: 2.8rem;">🛡️</div>
+        <div style="flex: 1;">
+            <div style="color: #94a3b8; font-size: 0.9rem;">LFM · Portale Clausole</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #FFD700;">{st.session_state.squadra}</div>
+        </div>
         <div>
-            <div style="font-size: 1.2rem; color: #94a3b8;">LFM · Portale Clausole</div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: #FFD700;">{st.session_state.squadra}</div>
+            <span class="status-badge {status_class}">{status_text}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 8. ADMIN PANEL ---
+    # --- 8. SIDEBAR ADMIN ---
     if st.session_state.squadra in ADMIN_SQUADRE:
         with st.sidebar:
             st.markdown("### 🕵️ PANNELLO ADMIN")
+            st.markdown("---")
+            
+            # Toggle per switchare modalità (solo admin)
+            modalita_attuale = PORTALE_APERTO
+            if st.toggle("🔓 Modalità Mercato", value=modalita_attuale, help="Attiva per vedere il mercato, disattiva per il terminale blindaggi"):
+                if modalita_attuale != True:
+                    # Cambia la variabile globale
+                    global PORTALE_APERTO
+                    PORTALE_APERTO = True
+                    st.rerun()
+            else:
+                if modalita_attuale != False:
+                    global PORTALE_APERTO
+                    PORTALE_APERTO = False
+                    st.rerun()
+            
             st.markdown("---")
             
             # Stato Blindaggi
@@ -425,6 +477,8 @@ else:
                     st.info("📭 Nessuna richiesta presente")
 
     # --- 9. LOGICA PRINCIPALE ---
+    
+    # SEZIONE MERCATO (PORTALE APERTO)
     if PORTALE_APERTO:
         st.markdown("## 🔓 Mercato Clausole Rescissorie")
         st.markdown("<p style='color:#94a3b8;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
@@ -458,20 +512,22 @@ else:
 
         # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
+            sq_clean = pulisci_nome(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            with st.expander(f"🏟️  {sq.upper()}  ·  💰 {sq_c} cr"):
+            with st.expander(f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"):
                 if sq in salvati:
                     for p in salvati[sq].split(";"):
                         try:
                             pid, pnm, pvl = p.split(":")
                             pvl_int = int(pvl)
+                            pnm_clean = pulisci_nome(pnm)
                             
                             col1, col2, col3 = st.columns([3, 1, 1.5])
                             with col1:
-                                st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm}</span></div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
                             with col2:
-                                st.markdown(f"<span class='p-value'>{pvl} cr</span>", unsafe_allow_html=True)
+                                st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
                             if sq != st.session_state.squadra:
                                 with col3:
                                     if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
@@ -481,7 +537,7 @@ else:
                                             st.rerun()
                                         else:
                                             st.error("❌ Budget insufficiente!")
-                        except:
+                        except Exception as e:
                             st.warning(f"⚠️ Errore nel formato dei dati per: {p}")
                 else:
                     st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
@@ -491,12 +547,13 @@ else:
                     for _, row in top_giocatori.iterrows():
                         pid, pnm = row['Id'], row['Nome']
                         pvl = int(row['FVM'])
+                        pnm_clean = pulisci_nome(pnm)
                         
                         col1, col2, col3 = st.columns([3, 1, 1.5])
                         with col1:
-                            st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
                         with col2:
-                            st.markdown(f"<span class='p-value'>{pvl} cr</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
                         if sq != st.session_state.squadra:
                             with col3:
                                 if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
@@ -507,9 +564,9 @@ else:
                                     else:
                                         st.error("❌ Budget insufficiente!")
 
+    # SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
     else:
-        # --- 10. TERMINALE BLINDAGGI ---
-        st.markdown(f"## 🛡️ Terminale: {st.session_state.squadra}")
+        st.markdown(f"## 🛡️ Terminale Blindaggi: {st.session_state.squadra}")
         st.markdown("<p style='color:#94a3b8;'>Imposta le clausole per blindare i tuoi giocatori</p>", unsafe_allow_html=True)
         
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
@@ -539,9 +596,10 @@ else:
         # Mostra i 3 giocatori
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
+            nome_clean = pulisci_nome(nome)
             
             st.markdown("<div class='player-card'>", unsafe_allow_html=True)
-            st.markdown(f"<div class='player-name'>{nome}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='player-name'>{nome_clean}</div>", unsafe_allow_html=True)
             st.markdown(f"<div class='fvm-sub'><span style='color:#94a3b8;'>Valore di Mercato (FVM):</span> <span style='color:#FFD700; font-weight:700;'>{fvm} cr</span></div>", unsafe_allow_html=True)
             
             col1, col2 = st.columns([1.8, 1.5])
@@ -553,7 +611,6 @@ else:
                     key=f"c_{p_id}",
                     help="Inserisci l'importo della clausola rescissoria"
                 )
-                # Progress bar per visualizzare la soglia
                 progress = min(1.0, val / max_rivale) if max_rivale > 0 else 0
                 st.progress(progress)
                 if val > max_rivale:
