@@ -379,7 +379,7 @@ else:
                                     st.success("Richiesta inviata!")
                                 else: st.error("Budget insufficiente!")
 
-    else:
+        else:
         st.markdown(f"<h2><i class='fa-solid fa-lock' style='color:#D4AF37;'></i> Terminale: {st.session_state.squadra}</h2>", unsafe_allow_html=True)
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
@@ -415,7 +415,8 @@ else:
                 st.progress(min(1.0, val / max_rivale) if max_rivale > 0 else 1.0)
             with col2:
                 st.write("")
-                t = calcola_tassa(val); tot_tasse += t
+                t = calcola_tassa(val)
+                tot_tasse += t
                 c_t, c_s = st.columns(2)
                 c_t.metric("Tassa", f"{t} cr")
                 with c_s:
@@ -427,20 +428,20 @@ else:
             dati_invio.append(f"{p_id}:{nome}:{val}")
 
         st.write("---")
-        eccedenza = max(0, tot_tasse - 60)
-        budget_residuo = crediti_totali - extra if (extra := max(0, tot_tasse - 60)) else crediti_totali
+        extra = max(0, tot_tasse - 60)
+        budget_residuo = crediti_totali - extra
 
         if tot_tasse <= 60:
             st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
         else:
-            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{eccedenza} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
+            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{extra} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
 
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("Totale Tasse", f"{tot_tasse} cr")
         c_fin2.metric("Franchigia Bonus", "- 60 cr")
-        c_fin3.metric("Budget Rimanente", f"{budget_residuo} cr", delta=-eccedenza if eccedenza > 0 else 0)
+        c_fin3.metric("Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
 
         if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
-            st.success("✅ Salvataggio completato!"); st.balloons()
-            
+            st.success("✅ Salvataggio completato!")
+            st.balloons()
