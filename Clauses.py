@@ -33,26 +33,40 @@ except:
 
 # --- 2. FUNZIONI UTILITY ---
 def pulisci_nome(nome):
-    """Pulisce il nome rimuovendo prefissi strani e caratteri speciali"""
+    """Pulisce il nome rimuovendo prefissi strani come 'arrw'"""
     if not nome or pd.isna(nome):
         return ""
     
     nome_pulito = str(nome).strip()
     
-    # RIMUOVI TUTTI I PREFISSI CON "arrw" (case insensitive)
-    # Questo è il problema principale!
-    pattern = r'^(arrw|arrW|arr|W_|W|FC|F\.C\.|AS|A\.S\.|US|U\.S\.|SS|S\.S\.|AC|A\.C\.|C\.F\.|cf)\s*'
-    nome_pulito = re.sub(pattern, '', nome_pulito, flags=re.IGNORECASE)
+    # Rimuovi "arrw" e varianti (case insensitive)
+    patterns = [
+        r'^arrw\s*', r'^arrW\s*', r'^arr\s*', 
+        r'^W_\s*', r'^W\s*',
+        r'^FC\s*', r'^F\.C\.\s*',
+        r'^AS\s*', r'^A\.S\.\s*',
+        r'^US\s*', r'^U\.S\.\s*',
+        r'^SS\s*', r'^S\.S\.\s*',
+        r'^AC\s*', r'^A\.C\.\s*'
+    ]
     
-    # Rimuovi anche eventuali caratteri strani all'inizio
-    if nome_pulito and not nome_pulito[0].isalpha() and nome_pulito[0] not in [' ', "'", '"']:
-        nome_pulito = nome_pulito[1:].strip()
+    for pattern in patterns:
+        nome_pulito = re.sub(pattern, '', nome_pulito, flags=re.IGNORECASE)
+    
+    # Se il nome inizia con un carattere non alfabetico, trova il primo carattere valido
+    if nome_pulito and not nome_pulito[0].isalpha():
+        match = re.search(r'[A-Za-z]', nome_pulito)
+        if match:
+            nome_pulito = nome_pulito[match.start():]
+    
+    # Rimuovi spazi multipli
+    nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
     
     # Se il nome è vuoto, restituisci l'originale
-    if not nome_pulito:
-        return str(nome)
+    if not nome_pulito or len(nome_pulito) < 2:
+        return str(nome).strip()
     
-    return nome_pulito.strip()
+    return nome_pulito
 
 def get_team_display_name(squadra):
     """Restituisce il nome della squadra pulito per la visualizzazione"""
@@ -357,16 +371,6 @@ st.markdown("""
         color: #f87171;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
-    
-    .team-name {
-        font-weight: 700 !important;
-        color: #e2e8f0 !important;
-    }
-    
-    .team-budget {
-        font-weight: 700 !important;
-        color: #FFD700 !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -375,7 +379,6 @@ if 'loggato' not in st.session_state:
     st.session_state.loggato = False
     st.session_state.squadra = None
     
-# Salva lo stato del portale nella sessione
 if 'portale_aperto' not in st.session_state:
     st.session_state.portale_aperto = PORTALE_APERTO
 
@@ -394,7 +397,6 @@ def get_clean_teams(lega=None):
     for _, row in df_filtered.iterrows():
         original = row['Squadra']
         clean = pulisci_nome(original)
-        # Se il nome pulito è vuoto, usa l'originale
         if not clean:
             clean = original
         teams[clean] = original
@@ -417,16 +419,10 @@ if not st.session_state.loggato:
                 st.markdown("<div style='background: #1a2338; padding: 30px; border-radius: 20px; border: 1px solid rgba(255,215,0,0.1);'>", unsafe_allow_html=True)
                 
                 lega = st.selectbox("📋 Lega", df_leghe['Lega'].unique())
-                
-                # Ottieni squadre pulite per la lega selezionata
                 teams_dict = get_clean_teams(lega)
                 clean_team_names = list(teams_dict.keys())
-                
-                # Selectbox con nomi puliti
                 selected_clean = st.selectbox("🏟️ Squadra", clean_team_names)
-                # Recupera il nome originale
                 squadra = teams_dict[selected_clean]
-                
                 pin = st.text_input("🔑 PIN Segreto", type="password")
                 
                 if st.button("🚀 ACCEDI", use_container_width=True):
@@ -448,8 +444,6 @@ else:
     # Header
     status_text = "🔓 MERCATO APERTO" if st.session_state.portale_aperto else "🛡️ TERMINALE BLINDAGGI"
     status_class = "status-open" if st.session_state.portale_aperto else "status-closed"
-    
-    # Mostra il nome della squadra pulito nell'header
     squadra_display = get_team_display_name(st.session_state.squadra)
     
     st.markdown(f"""
@@ -471,7 +465,6 @@ else:
             st.markdown("### 🕵️ PANNELLO ADMIN")
             st.markdown("---")
             
-            # Toggle per switchare modalità
             nuova_modalita = st.toggle(
                 "🔓 Modalità Mercato", 
                 value=st.session_state.portale_aperto,
@@ -483,7 +476,6 @@ else:
             
             st.markdown("---")
             
-            # Stato Blindaggi
             st.markdown("#### 📝 Stato Blindaggi")
             try:
                 f_segrete = repo.get_contents("clausole_segrete.csv")
@@ -491,7 +483,6 @@ else:
             except: 
                 consegnate = []
             
-            # Mostra i nomi delle squadre puliti
             tutte_squadre = df_leghe['Squadra'].unique()
             mancanti = [s for s in tutte_squadre if s not in consegnate]
             
@@ -506,7 +497,6 @@ else:
             
             st.markdown("---")
             
-            # Gestione Richieste
             st.markdown("#### 💸 Clausole Rescissorie")
             if st.checkbox("📥 GESTISCI RICHIESTE"):
                 df_sc = carica_csv("richieste_scippo.csv")
@@ -552,7 +542,6 @@ else:
         lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         
-        # Sidebar Budget
         st.sidebar.markdown(f"""
         <div style="background: linear-gradient(145deg, #1a2338, #0f1628); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,215,0,0.2); text-align: center; margin-bottom: 20px;">
             <div style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">💰 IL TUO BUDGET</div>
@@ -560,7 +549,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # Carica clausole salvate
         salvati = {}
         try:
             f = repo.get_contents("clausole_segrete.csv")
@@ -576,12 +564,10 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
 
-        # Mostra squadre con nomi puliti e in grassetto
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            # Nome squadra in grassetto e crediti in evidenza
             with st.expander(f"🏟️  **{sq_clean.upper()}**  ·  **💰 {sq_c} cr**"):
                 if sq in salvati:
                     for p in salvati[sq].split(";"):
@@ -640,7 +626,6 @@ else:
         crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
         max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
         
-        # Budget Box
         st.markdown("<div class='budget-box'>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("💰 Budget Attuale", f"{crediti_totali} cr")
@@ -648,7 +633,6 @@ else:
         c3.info(f"Soglia Blindaggio: > {max_rivale} cr")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Carica giocatori
         df_r = carica_csv("fantamanager-2021-rosters.csv")
         df_q = carica_csv("quot.csv")
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
@@ -661,7 +645,6 @@ else:
         tot_tasse = 0
         dati_invio = []
 
-        # Mostra i 3 giocatori con nomi puliti
         for i, (_, row) in enumerate(top_3.iterrows()):
             nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
             nome_clean = get_team_display_name(nome)
@@ -700,7 +683,6 @@ else:
             st.markdown("</div>", unsafe_allow_html=True)
             dati_invio.append(f"{p_id}:{nome}:{val}")
 
-        # Riepilogo
         st.markdown("---")
         st.markdown("### 📊 Riepilogo Clausole")
         
@@ -715,4 +697,13 @@ else:
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
         c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
-        c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta)
+        c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
+
+        if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
+            with st.spinner("⏳ Salvataggio in corso..."):
+                try:
+                    salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
+                    st.success("✅ Salvataggio completato con successo!")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"❌ Errore durante il salvataggio: {e}")
