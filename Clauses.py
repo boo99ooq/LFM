@@ -443,3 +443,4 @@ else:
         if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
             salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
             st.success("✅ Salvataggio completato!"); st.balloons()
+            
