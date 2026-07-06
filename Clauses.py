@@ -449,17 +449,17 @@ else:
     squadra_display = get_team_display_name(st.session_state.squadra)
     
     st.markdown(f"""
-    <div class="header-bar">
-        <div style="font-size: 2.8rem;">🛡️</div>
-        <div style="flex: 1;">
-            <div style="color: #94a3b8; font-size: 0.9rem;">LFM · Portale Clausole</div>
-            <div style="font-size: 1.4rem; font-weight: 800; color: #FFD700;">{squadra_display}</div>
-        </div>
-        <div>
-            <span class="status-badge {status_class}">{status_text}</span>
-        </div>
+<div class="header-bar">
+    <div style="font-size: 2.8rem;">🛡️</div>
+    <div style="flex: 1;">
+        <div style="color: #94a3b8; font-size: 0.9rem;">LFM · Portale Clausole</div>
+        <div style="font-size: 1.4rem; font-weight: 800; color: #FFD700;">{squadra_display}</div>
     </div>
-    """, unsafe_allow_html=True)
+    <div>
+        <span class="status-badge {status_class}">{status_text}</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     # --- 10. SIDEBAR ADMIN ---
     if st.session_state.squadra in ADMIN_SQUADRE:
