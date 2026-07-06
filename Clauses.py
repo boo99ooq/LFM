@@ -39,41 +39,28 @@ def pulisci_nome(nome):
     
     nome_pulito = str(nome).strip()
     
-    # Rimuovi tutto ciò che non è una lettera o spazio all'inizio
-    match = re.search(r'[A-Za-z]', nome_pulito)
-    if match:
-        nome_pulito = nome_pulito[match.start():]
+    # RIMUOVI TUTTI I PREFISSI CON "arrw" (case insensitive)
+    # Questo è il problema principale!
+    pattern = r'^(arrw|arrW|arr|W_|W|FC|F\.C\.|AS|A\.S\.|US|U\.S\.|SS|S\.S\.|AC|A\.C\.|C\.F\.|cf)\s*'
+    nome_pulito = re.sub(pattern, '', nome_pulito, flags=re.IGNORECASE)
     
-    # Lista di prefissi da rimuovere (case insensitive)
-    prefissi_da_rimuovere = [
-        'arrW', 'arr', 'W_', 'W', 
-        'FC', 'F.C.', 'f.c.', 
-        'AS', 'A.S.', 'a.s.',
-        'US', 'U.S.', 'u.s.',
-        'SS', 'S.S.', 's.s.',
-        'AC', 'A.C.', 'a.c.',
-        'C.F.', 'cf'
-    ]
-    
-    # Rimuovi i prefissi (case insensitive)
-    for prefisso in prefissi_da_rimuovere:
-        if nome_pulito.lower().startswith(prefisso.lower()):
-            nome_pulito = nome_pulito[len(prefisso):].strip()
-            break
-    
-    # Se il nome inizia con un carattere non alfabetico, rimuovilo
-    if nome_pulito and not nome_pulito[0].isalpha():
+    # Rimuovi anche eventuali caratteri strani all'inizio
+    if nome_pulito and not nome_pulito[0].isalpha() and nome_pulito[0] not in [' ', "'", '"']:
         nome_pulito = nome_pulito[1:].strip()
     
     # Se il nome è vuoto, restituisci l'originale
     if not nome_pulito:
         return str(nome)
     
-    return nome_pulito
+    return nome_pulito.strip()
 
 def get_team_display_name(squadra):
     """Restituisce il nome della squadra pulito per la visualizzazione"""
     return pulisci_nome(squadra)
+
+def format_budget(crediti):
+    """Formatta il budget con il simbolo dei crediti"""
+    return f"💰 {crediti} cr"
 
 # --- 3. FUNZIONI GITHUB ---
 @st.cache_data(ttl=300)
@@ -374,6 +361,16 @@ st.markdown("""
         color: #f87171;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
+    
+    .team-name {
+        font-weight: 700 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .team-budget {
+        font-weight: 700 !important;
+        color: #FFD700 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -583,12 +580,13 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
 
-        # Mostra squadre con nomi puliti
+        # Mostra squadre con nomi puliti e in grassetto
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            with st.expander(f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"):
+            # Nome squadra in grassetto e crediti in evidenza
+            with st.expander(f"🏟️  **{sq_clean.upper()}**  ·  **💰 {sq_c} cr**"):
                 if sq in salvati:
                     for p in salvati[sq].split(";"):
                         try:
@@ -716,8 +714,4 @@ else:
         if tot_tasse <= 60:
             st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
         else:
-            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{extra} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
-
-        c_fin1, c_fin2, c_fin3 = st.columns(3)
-        c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
-        c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
+            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di
