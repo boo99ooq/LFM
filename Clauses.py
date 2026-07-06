@@ -58,10 +58,6 @@ def get_team_display_name(squadra):
     """Restituisce il nome della squadra pulito per la visualizzazione"""
     return pulisci_nome(squadra)
 
-def format_budget(crediti):
-    """Formatta il budget con il simbolo dei crediti"""
-    return f"💰 {crediti} cr"
-
 # --- 3. FUNZIONI GITHUB ---
 @st.cache_data(ttl=300)
 def carica_csv(file_name):
@@ -714,4 +710,9 @@ else:
         if tot_tasse <= 60:
             st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
         else:
-            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di
+            st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{extra} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
+
+        c_fin1, c_fin2, c_fin3 = st.columns(3)
+        c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
+        c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
+        c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta
