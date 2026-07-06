@@ -5,6 +5,7 @@ from io import StringIO
 import math
 import base64
 from datetime import datetime
+import time 
 
 # --- 1. CONFIGURAZIONE ---
 SCADENZA = datetime(2026, 8, 1)
