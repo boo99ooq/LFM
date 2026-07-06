@@ -348,6 +348,10 @@ st.markdown("""
 if 'loggato' not in st.session_state:
     st.session_state.loggato = False
     st.session_state.squadra = None
+    
+# Salva lo stato del portale nella sessione
+if 'portale_aperto' not in st.session_state:
+    st.session_state.portale_aperto = PORTALE_APERTO
 
 # --- 5. CARICAMENTO DATI ---
 df_leghe = carica_csv("leghe.csv")
@@ -384,8 +388,8 @@ if not st.session_state.loggato:
 # --- 7. AREA LOGGATO ---
 else:
     # Header
-    status_text = "🔓 MERCATO APERTO" if PORTALE_APERTO else "🛡️ TERMINALE BLINDAGGI"
-    status_class = "status-open" if PORTALE_APERTO else "status-closed"
+    status_text = "🔓 MERCATO APERTO" if st.session_state.portale_aperto else "🛡️ TERMINALE BLINDAGGI"
+    status_class = "status-open" if st.session_state.portale_aperto else "status-closed"
     
     st.markdown(f"""
     <div class="header-bar">
@@ -407,18 +411,14 @@ else:
             st.markdown("---")
             
             # Toggle per switchare modalità (solo admin)
-            modalita_attuale = PORTALE_APERTO
-            if st.toggle("🔓 Modalità Mercato", value=modalita_attuale, help="Attiva per vedere il mercato, disattiva per il terminale blindaggi"):
-                if modalita_attuale != True:
-                    # Cambia la variabile globale
-                    global PORTALE_APERTO
-                    PORTALE_APERTO = True
-                    st.rerun()
-            else:
-                if modalita_attuale != False:
-                    global PORTALE_APERTO
-                    PORTALE_APERTO = False
-                    st.rerun()
+            nuova_modalita = st.toggle(
+                "🔓 Modalità Mercato", 
+                value=st.session_state.portale_aperto,
+                help="Attiva per vedere il mercato, disattiva per il terminale blindaggi"
+            )
+            if nuova_modalita != st.session_state.portale_aperto:
+                st.session_state.portale_aperto = nuova_modalita
+                st.rerun()
             
             st.markdown("---")
             
@@ -479,7 +479,7 @@ else:
     # --- 9. LOGICA PRINCIPALE ---
     
     # SEZIONE MERCATO (PORTALE APERTO)
-    if PORTALE_APERTO:
+    if st.session_state.portale_aperto:
         st.markdown("## 🔓 Mercato Clausole Rescissorie")
         st.markdown("<p style='color:#94a3b8;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
         
