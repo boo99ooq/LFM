@@ -715,4 +715,4 @@ else:
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
         c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
-        c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta
+        c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta)
