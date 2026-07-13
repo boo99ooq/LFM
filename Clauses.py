@@ -750,12 +750,27 @@ else:
             top_3['FVM'] = pd.to_numeric(top_3['FVM'], errors='coerce').fillna(0)
             top_3 = top_3.nlargest(3, 'FVM')
 
+            # Carica l'eventuale bozza già salvata da questa squadra, per pre-riempire i campi
+            bozza_salvata = carica_clausole_salvate().get(st.session_state.squadra, "")
+            bozza_dict = {}
+            if bozza_salvata:
+                for p in bozza_salvata.split(";"):
+                    if p.strip():
+                        b_pid, b_nome, b_val = p.split(":")
+                        bozza_dict[b_pid] = int(b_val)
+
+            if bozza_dict:
+                st.info("💾 Hai già una bozza salvata: i valori qui sotto sono quelli dell'ultimo salvataggio. Puoi modificarli liberamente fino alla scadenza.")
+            else:
+                st.caption("ℹ️ Nessuna bozza salvata finora: i campi partono dal valore FVM di default.")
+
             tot_tasse = 0
             dati_invio = []
 
             for i, (_, row) in enumerate(top_3.iterrows()):
                 nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
                 nome_clean = get_team_display_name(nome)
+                valore_default = bozza_dict.get(str(p_id), fvm)
                 
                 st.markdown("<div class='player-card'>", unsafe_allow_html=True)
                 st.markdown(f"<div class='player-name'>{nome_clean}</div>", unsafe_allow_html=True)
@@ -766,7 +781,7 @@ else:
                     val = st.number_input(
                         "💎 CLAUSOLA", 
                         min_value=1, 
-                        value=fvm, 
+                        value=valore_default, 
                         key=f"c_{p_id}",
                         help="Inserisci l'importo della clausola rescissoria"
                     )
@@ -807,11 +822,13 @@ else:
             c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
             c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
 
-            if st.button("💾 SALVA CLAUSOLE (modificabile fino alla deadline)", type="primary", use_container_width=True):
+            st.caption(f"🗓️ Potrai modificare questa bozza quante volte vuoi fino al {SCADENZA.strftime('%d/%m/%Y')}. Dopo quella data il Terminale si chiude e l'ultima bozza salvata diventa la clausola definitiva.")
+
+            if st.button("📥 REGISTRA CLAUSOLE TEMPORANEAMENTE (PUOI MODIFICARLE FINO ALLA DEADLINE)", type="primary", use_container_width=True):
                 with st.spinner("⏳ Salvataggio in corso..."):
                     try:
                         salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
-                        st.success("✅ Salvataggio completato con successo!")
+                        st.success(f"✅ Bozza salvata! Puoi tornare a modificarla in qualsiasi momento prima del {SCADENZA.strftime('%d/%m/%Y')}.")
                         st.balloons()
                     except Exception as e:
                         st.error(f"❌ Errore durante il salvataggio: {e}")
