@@ -8,17 +8,15 @@ import time
 import re
 
 # --- 1. CONFIGURAZIONE ---
-# MODALITA' DI TEST - Imposta False per vedere il terminale blindaggi
 FORZA_MODALITA = False  # False = Terminale Blindaggi | True = Mercato
 
 SCADENZA = datetime(2026, 8, 1) 
 OGGI = datetime.now()
 
-# Se FORZA_MODALITA è True, override della data
 if FORZA_MODALITA:
     PORTALE_APERTO = True
 else:
-    PORTALE_APERTO = OGGI >= SCADENZA  # False fino al 1 Agosto 2026
+    PORTALE_APERTO = OGGI >= SCADENZA
 
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
@@ -33,27 +31,46 @@ except:
 
 # --- 2. FUNZIONI UTILITY ---
 def pulisci_nome(nome):
-    """Pulisce il nome rimuovendo TUTTO ciò che non è una lettera all'inizio"""
+    """
+    Pulisce il nome rimuovendo TUTTI i prefissi strani come arrW, arr, W_, etc.
+    Versione MOLTO aggressiva.
+    """
     if not nome or pd.isna(nome):
         return ""
     
     nome_pulito = str(nome).strip()
     
-    # Rimuovi tutto fino al primo carattere alfabetico (A-Z o a-z)
-    match = re.search(r'[A-Za-z]', nome_pulito)
-    if match:
-        nome_pulito = nome_pulito[match.start():]
+    # Lista di prefissi da rimuovere (case insensitive)
+    prefissi = [
+        'arrw', 'arrW', 'arr', 'ArRw', 'ARRW',
+        'w_', 'W_', 'w', 'W',
+        'fc', 'f.c.', 'FC', 'F.C.',
+        'as', 'a.s.', 'AS', 'A.S.',
+        'us', 'u.s.', 'US', 'U.S.',
+        'ss', 's.s.', 'SS', 'S.S.',
+        'ac', 'a.c.', 'AC', 'A.C.'
+    ]
     
-    # Se il nome inizia con una lettera minuscola, rendila maiuscola
-    if nome_pulito and nome_pulito[0].islower():
-        nome_pulito = nome_pulito[0].upper() + nome_pulito[1:]
+    # Rimuovi ogni prefisso (case insensitive)
+    for prefisso in prefissi:
+        if nome_pulito.lower().startswith(prefisso.lower()):
+            nome_pulito = nome_pulito[len(prefisso):].strip()
+            break
     
-    # Rimuovi spazi multipli
-    nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
+    # Se il nome inizia con un carattere non alfabetico, rimuovilo
+    if nome_pulito and not nome_pulito[0].isalpha():
+        match = re.search(r'[A-Za-z]', nome_pulito)
+        if match:
+            nome_pulito = nome_pulito[match.start():]
     
-    # Se il nome è vuoto o troppo corto, restituisci l'originale
+    # Se il nome è ancora vuoto, restituisci l'originale
     if not nome_pulito or len(nome_pulito) < 2:
         return str(nome).strip()
+    
+    # Pulisci spazi multipli e rendi maiuscola la prima lettera
+    nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
+    if nome_pulito:
+        nome_pulito = nome_pulito[0].upper() + nome_pulito[1:]
     
     return nome_pulito
 
@@ -365,7 +382,6 @@ st.markdown("""
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
     
-    /* Nasconde il testo "keyboard_double_arrow_right" */
     button[data-testid="baseButton-header"] {
         font-size: 0 !important;
     }
@@ -374,24 +390,49 @@ st.markdown("""
         font-size: 1.5rem !important;
     }
     
-    .team-title {
+    /* STILE SQUADRE NEL MERCATO - CENTRATO, GRANDE E LUMINOSO */
+    .team-card {
         text-align: center;
-        width: 100%;
-        padding: 6px 0;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,215,0,0.08);
+        transition: all 0.3s ease;
     }
-    .team-title .team-icon {
-        font-size: 1.4rem;
+    
+    .team-card:hover {
+        background: rgba(255,215,0,0.05);
+        border-radius: 12px;
     }
-    .team-title .team-name {
-        font-size: 1.3rem;
-        font-weight: 800;
-        color: #FFD700;
+    
+    .team-card .team-icon {
+        font-size: 1.6rem;
+        display: inline-block;
+        margin-right: 8px;
     }
-    .team-title .team-budget {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #94a3b8;
+    
+    .team-card .team-name {
+        font-size: 1.8rem !important;
+        font-weight: 800 !important;
+        color: #FFD700 !important;
+        text-shadow: 0 0 30px rgba(255,215,0,0.2);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+    
+    .team-card .team-budget {
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        color: #4ade80 !important;
         margin-left: 16px;
+        background: rgba(74, 222, 128, 0.12);
+        padding: 4px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(74, 222, 128, 0.2);
+    }
+    
+    .team-card .team-divider {
+        color: rgba(255,215,0,0.3);
+        margin: 0 12px;
+        font-size: 1.4rem;
     }
     
     .login-container {
@@ -645,15 +686,15 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
 
-        # Mostra squadre con nomi puliti
+        # Mostra squadre con NOMI CENTRATI, GRANDI E LUMINOSI
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            # TITOLO SEMPLICE (senza HTML) per l'expander
-            expander_title = f"🏟️ {sq_clean.upper()}  ·  💰 {sq_c} cr"
+            # TITOLO CENTRATO CON STILE MIGLIORATO
+            team_title = f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"
             
-            with st.expander(expander_title):
+            with st.expander(team_title):
                 if sq in salvati:
                     for p in salvati[sq].split(";"):
                         try:
@@ -706,7 +747,6 @@ else:
     else:
         squadra_display = get_team_display_name(st.session_state.squadra)
         
-        # Header centrato per il terminale
         st.markdown(f"""
         <div class="terminal-header">
             <div class="title">🛡️ {squadra_display.upper()}</div>
@@ -714,7 +754,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # VERIFICA CHE LA SQUADRA ESISTA NEL DATAFRAME
+        # VERIFICA CHE LA SQUADRA ESISTA
         squadra_found = False
         if not df_leghe.empty:
             squadra_match = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]
@@ -723,7 +763,6 @@ else:
                 crediti_totali = squadra_match['Crediti'].values[0]
                 max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
             else:
-                # Se la squadra non viene trovata, mostra un errore
                 st.error(f"⚠️ Squadra '{st.session_state.squadra}' non trovata nel database.")
                 if st.button("🔄 TORNA AL LOGIN"):
                     st.session_state.loggato = False
@@ -742,16 +781,14 @@ else:
             df_r = carica_csv("fantamanager-2021-rosters.csv")
             df_q = carica_csv("quot.csv")
             
-            # Verifica che i DataFrame non siano vuoti
             if df_r.empty or df_q.empty:
-                st.error("⚠️ Dati dei giocatori non disponibili. Contatta l'amministratore.")
+                st.error("⚠️ Dati dei giocatori non disponibili.")
                 st.stop()
             
             df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
             df_q['Id'] = df_q['Id'].astype(str)
             ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
             
-            # Se non ci sono giocatori, mostra un messaggio
             if not ids_miei:
                 st.warning("⚠️ Nessun giocatore trovato per la tua squadra.")
                 st.stop()
