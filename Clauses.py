@@ -78,6 +78,31 @@ def salva_file_github(path, df, msg):
         st.error(f"Errore salvataggio: {e}")
         raise
 
+def salva_clausola_singola(squadra, dati_stringa):
+    path = "clausole_segrete.csv"
+    nuova_riga = f"{squadra},{dati_stringa}"
+    try:
+        f = repo.get_contents(path)
+        contenuto = f.decoded_content.decode("utf-8")
+        righe = [r for r in contenuto.splitlines() if not r.startswith(f"{squadra},")]
+        righe.append(nuova_riga)
+        repo.update_file(path, f"Update {squadra}", "\n".join(righe), f.sha)
+    except:
+        repo.create_file(path, "Inizializzazione", nuova_riga)
+
+def carica_clausole_salvate():
+    """Legge clausole_segrete.csv e restituisce {squadra: 'id:nome:valore;id:nome:valore'}"""
+    salvati = {}
+    try:
+        f = repo.get_contents("clausole_segrete.csv")
+        for riga in f.decoded_content.decode("utf-8").splitlines():
+            if riga.strip() and "," in riga:
+                s, d = riga.split(",", 1)
+                salvati[s] = d
+    except:
+        pass
+    return salvati
+
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     time.sleep(0.5)
     path = "richieste_scippo.csv"
@@ -112,10 +137,21 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     
-    * {
-        font-family: 'Inter', sans-serif !important;
+    html, body, [class*="css"], p, span, div, label, h1, h2, h3, h4, h5, h6,
+    button, input, textarea, select, .stMarkdown, .stButton, .stMetric,
+    div[data-testid="stExpander"] summary {
+        font-family: 'Inter', sans-serif;
     }
-    
+
+    /* Non toccare MAI il font delle icone di sistema (Material Symbols), */
+    /* altrimenti le legature diventano testo grezzo (dark_mode, arrow_right, ecc.) */
+    [class*="material-symbols"], [class*="material-icons"],
+    button[data-testid="baseButton-header"],
+    div[data-testid="stExpanderToggleIcon"],
+    span[data-testid="stIconMaterial"] {
+        font-family: unset !important;
+    }
+
     .stApp {
         background: linear-gradient(135deg, #0a0e1a 0%, #141b2d 50%, #1a2338 100%);
     }
@@ -519,13 +555,16 @@ else:
             st.markdown("---")
             
             st.markdown("#### 📝 Stato Blindaggi")
-            # SENZA clausole_segrete.csv
-            consegnate = []
-            mancanti = df_leghe['Squadra'].unique().tolist()
-            
+            salvati_admin = carica_clausole_salvate()
+            consegnate = list(salvati_admin.keys())
+            mancanti = [s for s in df_leghe['Squadra'].unique() if s not in consegnate]
+
             col1, col2 = st.columns(2)
             col1.metric("Consegnate", f"{len(consegnate)}")
             col2.metric("Mancanti", f"{len(mancanti)}")
+            if st.checkbox("👀 Vedi chi manca"):
+                for m in mancanti:
+                    st.text(f"❌ {get_team_display_name(m)}")
             
             st.markdown("---")
             
@@ -597,6 +636,7 @@ else:
             df_q['Nome'] = df_q['Nome'].apply(pulisci_nome)
         
         df_q['Id'] = df_q['Id'].astype(str)
+        salvati = carica_clausole_salvate()
 
         # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
@@ -606,13 +646,20 @@ else:
             team_title = f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"
             
             with st.expander(team_title):
-                st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
-                ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
-                top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
-                
-                for _, row in top_giocatori.iterrows():
-                    pid, pnm = row['Id'], row['Nome']
-                    pvl = int(row['FVM'])
+                if sq in salvati:
+                    giocatori = []
+                    for p in salvati[sq].split(";"):
+                        if not p.strip():
+                            continue
+                        pid, pnm, pvl = p.split(":")
+                        giocatori.append((pid, pnm, int(pvl)))
+                else:
+                    st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
+                    ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
+                    top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
+                    giocatori = [(row['Id'], row['Nome'], int(row['FVM'])) for _, row in top_giocatori.iterrows()]
+
+                for pid, pnm, pvl in giocatori:
                     pnm_clean = get_team_display_name(pnm)
                     
                     col1, col2, col3 = st.columns([3, 1, 1.5])
@@ -751,18 +798,7 @@ else:
             if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
                 with st.spinner("⏳ Salvataggio in corso..."):
                     try:
-                        # SALVA SENZA clausole_segrete.csv
-                        path = "clausole_segrete.csv"
-                        nuova_riga = f"{st.session_state.squadra},{';'.join(dati_invio)}"
-                        try:
-                            f = repo.get_contents(path)
-                            contenuto = f.decoded_content.decode("utf-8")
-                            righe = [r for r in contenuto.splitlines() if not r.startswith(f"{st.session_state.squadra},")]
-                            righe.append(nuova_riga)
-                            repo.update_file(path, f"Update {st.session_state.squadra}", "\n".join(righe), f.sha)
-                        except:
-                            repo.create_file(path, "Inizializzazione", nuova_riga)
-                        
+                        salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
                         st.success("✅ Salvataggio completato con successo!")
                         st.balloons()
                     except Exception as e:
