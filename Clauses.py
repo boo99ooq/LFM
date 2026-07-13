@@ -78,19 +78,6 @@ def salva_file_github(path, df, msg):
         st.error(f"Errore salvataggio: {e}")
         raise
 
-def salva_clausola_singola(squadra, dati_stringa):
-    time.sleep(0.5)
-    path = "clausole_segrete.csv"
-    nuova_riga = f"{squadra},{dati_stringa}"
-    try:
-        f = repo.get_contents(path)
-        contenuto = f.decoded_content.decode("utf-8")
-        righe = [r for r in contenuto.splitlines() if not r.startswith(f"{squadra},")]
-        righe.append(nuova_riga)
-        repo.update_file(path, f"Update {squadra}", "\n".join(righe), f.sha)
-    except:
-        repo.create_file(path, "Inizializzazione", nuova_riga)
-
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     time.sleep(0.5)
     path = "richieste_scippo.csv"
@@ -532,23 +519,13 @@ else:
             st.markdown("---")
             
             st.markdown("#### 📝 Stato Blindaggi")
-            try:
-                f_segrete = repo.get_contents("clausole_segrete.csv")
-                consegnate = [r.split(",")[0] for r in f_segrete.decoded_content.decode("utf-8").splitlines() if r.strip()]
-            except: 
-                consegnate = []
-            
-            tutte_squadre = df_leghe['Squadra'].unique()
-            mancanti = [s for s in tutte_squadre if s not in consegnate]
+            # SENZA clausole_segrete.csv
+            consegnate = []
+            mancanti = df_leghe['Squadra'].unique().tolist()
             
             col1, col2 = st.columns(2)
             col1.metric("Consegnate", f"{len(consegnate)}")
             col2.metric("Mancanti", f"{len(mancanti)}")
-            
-            if st.checkbox("📋 VEDI CHI MANCA"):
-                for m in mancanti:
-                    m_clean = get_team_display_name(m)
-                    st.text(f"❌ {m_clean}")
             
             st.markdown("---")
             
@@ -608,79 +585,50 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        salvati = {}
-        try:
-            f = repo.get_contents("clausole_segrete.csv")
-            for riga in f.decoded_content.decode("utf-8").splitlines():
-                if riga.strip() and ',' in riga: 
-                    s, d = riga.split(",", 1)
-                    salvati[s] = d
-        except:
-            # Il file non esiste, salvati rimane vuoto
-            pass
-
         df_r = carica_csv("fantamanager-2021-rosters.csv")
         df_q = carica_csv("quot.csv")
-        df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+        
+        # PULIZIA NOMI
+        if not df_r.empty and 'Squadra_LFM' in df_r.columns:
+            df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+            df_r['Squadra_LFM'] = df_r['Squadra_LFM'].apply(pulisci_nome)
+        
+        if not df_q.empty and 'Nome' in df_q.columns:
+            df_q['Nome'] = df_q['Nome'].apply(pulisci_nome)
+        
         df_q['Id'] = df_q['Id'].astype(str)
 
-        # Mostra squadre con nomi centrati, grandi e luminosi
+        # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
-            # TITOLO CENTRATO CON STILE MIGLIORATO
             team_title = f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"
             
             with st.expander(team_title):
-                if sq in salvati and salvati[sq].strip():
-                    for p in salvati[sq].split(";"):
-                        try:
-                            if ':' in p:
-                                pid, pnm, pvl = p.split(":")
-                                pvl_int = int(pvl)
-                                pnm_clean = get_team_display_name(pnm)
-                                
-                                col1, col2, col3 = st.columns([3, 1, 1.5])
-                                with col1:
-                                    st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
-                                with col2:
-                                    st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
-                                if sq != st.session_state.squadra:
-                                    with col3:
-                                        if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
-                                            if my_cred >= pvl_int:
-                                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl_int)
-                                                st.success("✅ Richiesta inviata!")
-                                                st.rerun()
-                                            else:
-                                                st.error("❌ Budget insufficiente!")
-                        except Exception as e:
-                            st.warning(f"⚠️ Errore nel formato dei dati per: {p}")
-                else:
-                    st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
-                    ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
-                    top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
+                st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
+                ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
+                top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
+                
+                for _, row in top_giocatori.iterrows():
+                    pid, pnm = row['Id'], row['Nome']
+                    pvl = int(row['FVM'])
+                    pnm_clean = get_team_display_name(pnm)
                     
-                    for _, row in top_giocatori.iterrows():
-                        pid, pnm = row['Id'], row['Nome']
-                        pvl = int(row['FVM'])
-                        pnm_clean = get_team_display_name(pnm)
-                        
-                        col1, col2, col3 = st.columns([3, 1, 1.5])
-                        with col1:
-                            st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
-                        with col2:
-                            st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
-                        if sq != st.session_state.squadra:
-                            with col3:
-                                if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
-                                    if my_cred >= pvl:
-                                        registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
-                                        st.success("✅ Richiesta inviata!")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Budget insufficiente!")
+                    col1, col2, col3 = st.columns([3, 1, 1.5])
+                    with col1:
+                        st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
+                    if sq != st.session_state.squadra:
+                        with col3:
+                            if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
+                                if my_cred >= pvl:
+                                    registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                    st.success("✅ Richiesta inviata!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Budget insufficiente!")
 
     # SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
     else:
@@ -724,7 +672,14 @@ else:
                 st.error("⚠️ Dati dei giocatori non disponibili.")
                 st.stop()
             
-            df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+            # PULIZIA NOMI
+            if 'Squadra_LFM' in df_r.columns:
+                df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+                df_r['Squadra_LFM'] = df_r['Squadra_LFM'].apply(pulisci_nome)
+            
+            if 'Nome' in df_q.columns:
+                df_q['Nome'] = df_q['Nome'].apply(pulisci_nome)
+            
             df_q['Id'] = df_q['Id'].astype(str)
             ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
             
@@ -796,7 +751,18 @@ else:
             if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
                 with st.spinner("⏳ Salvataggio in corso..."):
                     try:
-                        salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
+                        # SALVA SENZA clausole_segrete.csv
+                        path = "clausole_segrete.csv"
+                        nuova_riga = f"{st.session_state.squadra},{';'.join(dati_invio)}"
+                        try:
+                            f = repo.get_contents(path)
+                            contenuto = f.decoded_content.decode("utf-8")
+                            righe = [r for r in contenuto.splitlines() if not r.startswith(f"{st.session_state.squadra},")]
+                            righe.append(nuova_riga)
+                            repo.update_file(path, f"Update {st.session_state.squadra}", "\n".join(righe), f.sha)
+                        except:
+                            repo.create_file(path, "Inizializzazione", nuova_riga)
+                        
                         st.success("✅ Salvataggio completato con successo!")
                         st.balloons()
                     except Exception as e:
