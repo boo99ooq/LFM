@@ -31,46 +31,27 @@ except:
 
 # --- 2. FUNZIONI UTILITY ---
 def pulisci_nome(nome):
-    """
-    Pulisce il nome rimuovendo TUTTI i prefissi strani come arrW, arr, W_, etc.
-    Versione MOLTO aggressiva.
-    """
+    """Pulisce il nome rimuovendo TUTTO ciò che non è una lettera all'inizio"""
     if not nome or pd.isna(nome):
         return ""
     
     nome_pulito = str(nome).strip()
     
-    # Lista di prefissi da rimuovere (case insensitive)
-    prefissi = [
-        'arrw', 'arrW', 'arr', 'ArRw', 'ARRW',
-        'w_', 'W_', 'w', 'W',
-        'fc', 'f.c.', 'FC', 'F.C.',
-        'as', 'a.s.', 'AS', 'A.S.',
-        'us', 'u.s.', 'US', 'U.S.',
-        'ss', 's.s.', 'SS', 'S.S.',
-        'ac', 'a.c.', 'AC', 'A.C.'
-    ]
+    # Rimuovi tutto fino al primo carattere alfabetico (A-Z o a-z)
+    match = re.search(r'[A-Za-z]', nome_pulito)
+    if match:
+        nome_pulito = nome_pulito[match.start():]
     
-    # Rimuovi ogni prefisso (case insensitive)
-    for prefisso in prefissi:
-        if nome_pulito.lower().startswith(prefisso.lower()):
-            nome_pulito = nome_pulito[len(prefisso):].strip()
-            break
+    # Se il nome inizia con una lettera minuscola, rendila maiuscola
+    if nome_pulito and nome_pulito[0].islower():
+        nome_pulito = nome_pulito[0].upper() + nome_pulito[1:]
     
-    # Se il nome inizia con un carattere non alfabetico, rimuovilo
-    if nome_pulito and not nome_pulito[0].isalpha():
-        match = re.search(r'[A-Za-z]', nome_pulito)
-        if match:
-            nome_pulito = nome_pulito[match.start():]
+    # Rimuovi spazi multipli
+    nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
     
-    # Se il nome è ancora vuoto, restituisci l'originale
+    # Se il nome è vuoto o troppo corto, restituisci l'originale
     if not nome_pulito or len(nome_pulito) < 2:
         return str(nome).strip()
-    
-    # Pulisci spazi multipli e rendi maiuscola la prima lettera
-    nome_pulito = re.sub(r'\s+', ' ', nome_pulito).strip()
-    if nome_pulito:
-        nome_pulito = nome_pulito[0].upper() + nome_pulito[1:]
     
     return nome_pulito
 
@@ -272,8 +253,17 @@ st.markdown("""
     
     div[data-testid="stExpander"] summary {
         font-weight: 700 !important;
-        color: #e2e8f0 !important;
-        padding: 8px 4px !important;
+        color: #FFD700 !important;
+        padding: 12px 4px !important;
+        font-size: 1.4rem !important;
+        text-align: center !important;
+        text-shadow: 0 0 30px rgba(255,215,0,0.15) !important;
+        letter-spacing: 0.5px !important;
+    }
+    
+    div[data-testid="stExpander"] summary:hover {
+        color: #FFE44D !important;
+        text-shadow: 0 0 50px rgba(255,215,0,0.3) !important;
     }
     
     .stButton > button {
@@ -388,51 +378,6 @@ st.markdown("""
     button[data-testid="baseButton-header"]::before {
         content: "☰" !important;
         font-size: 1.5rem !important;
-    }
-    
-    /* STILE SQUADRE NEL MERCATO - CENTRATO, GRANDE E LUMINOSO */
-    .team-card {
-        text-align: center;
-        padding: 12px 0;
-        border-bottom: 1px solid rgba(255,215,0,0.08);
-        transition: all 0.3s ease;
-    }
-    
-    .team-card:hover {
-        background: rgba(255,215,0,0.05);
-        border-radius: 12px;
-    }
-    
-    .team-card .team-icon {
-        font-size: 1.6rem;
-        display: inline-block;
-        margin-right: 8px;
-    }
-    
-    .team-card .team-name {
-        font-size: 1.8rem !important;
-        font-weight: 800 !important;
-        color: #FFD700 !important;
-        text-shadow: 0 0 30px rgba(255,215,0,0.2);
-        letter-spacing: 1px;
-        text-transform: uppercase;
-    }
-    
-    .team-card .team-budget {
-        font-size: 1.3rem !important;
-        font-weight: 700 !important;
-        color: #4ade80 !important;
-        margin-left: 16px;
-        background: rgba(74, 222, 128, 0.12);
-        padding: 4px 16px;
-        border-radius: 20px;
-        border: 1px solid rgba(74, 222, 128, 0.2);
-    }
-    
-    .team-card .team-divider {
-        color: rgba(255,215,0,0.3);
-        margin: 0 12px;
-        font-size: 1.4rem;
     }
     
     .login-container {
@@ -607,18 +552,6 @@ else:
             
             st.markdown("---")
             
-            # DEBUG - Mostra i nomi grezzi
-            st.markdown("### 🔍 DEBUG NOMI")
-            if st.checkbox("Mostra debug nomi squadre"):
-                df_r = carica_csv("fantamanager-2021-rosters.csv")
-                if not df_r.empty:
-                    nomi_unici = df_r['Squadra_LFM'].unique().tolist()
-                    st.write("**Nomi grezzi dal CSV:**")
-                    for n in nomi_unici[:10]:
-                        st.write(f"`{n}` → `{pulisci_nome(n)}`")
-            
-            st.markdown("---")
-            
             st.markdown("#### 💸 Clausole Rescissorie")
             if st.checkbox("📥 GESTISCI RICHIESTE"):
                 df_sc = carica_csv("richieste_scippo.csv")
@@ -658,8 +591,12 @@ else:
     
     # SEZIONE MERCATO (PORTALE APERTO)
     if st.session_state.portale_aperto:
-        st.markdown("## 🔓 Mercato Clausole Rescissorie")
-        st.markdown("<p style='color:#94a3b8; text-align:center;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="text-align: center; padding: 10px 0 20px 0;">
+            <h2 style="font-size: 2.5rem; color: #FFD700; text-shadow: 0 0 40px rgba(255,215,0,0.3);">🔓 Mercato Clausole Rescissorie</h2>
+            <p style="color: #94a3b8; font-size: 1.1rem;">Acquista i giocatori pagando la loro clausola rescissoria</p>
+        </div>
+        """, unsafe_allow_html=True)
         
         lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
@@ -675,10 +612,11 @@ else:
         try:
             f = repo.get_contents("clausole_segrete.csv")
             for riga in f.decoded_content.decode("utf-8").splitlines():
-                if riga.strip(): 
-                    s, d = riga.split(",")
+                if riga.strip() and ',' in riga: 
+                    s, d = riga.split(",", 1)
                     salvati[s] = d
-        except: 
+        except:
+            # Il file non esiste, salvati rimane vuoto
             pass
 
         df_r = carica_csv("fantamanager-2021-rosters.csv")
@@ -686,7 +624,7 @@ else:
         df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
         df_q['Id'] = df_q['Id'].astype(str)
 
-        # Mostra squadre con NOMI CENTRATI, GRANDI E LUMINOSI
+        # Mostra squadre con nomi centrati, grandi e luminosi
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
@@ -695,27 +633,28 @@ else:
             team_title = f"🏟️  {sq_clean.upper()}  ·  💰 {sq_c} cr"
             
             with st.expander(team_title):
-                if sq in salvati:
+                if sq in salvati and salvati[sq].strip():
                     for p in salvati[sq].split(";"):
                         try:
-                            pid, pnm, pvl = p.split(":")
-                            pvl_int = int(pvl)
-                            pnm_clean = get_team_display_name(pnm)
-                            
-                            col1, col2, col3 = st.columns([3, 1, 1.5])
-                            with col1:
-                                st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
-                            with col2:
-                                st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
-                            if sq != st.session_state.squadra:
-                                with col3:
-                                    if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
-                                        if my_cred >= pvl_int:
-                                            registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl_int)
-                                            st.success("✅ Richiesta inviata!")
-                                            st.rerun()
-                                        else:
-                                            st.error("❌ Budget insufficiente!")
+                            if ':' in p:
+                                pid, pnm, pvl = p.split(":")
+                                pvl_int = int(pvl)
+                                pnm_clean = get_team_display_name(pnm)
+                                
+                                col1, col2, col3 = st.columns([3, 1, 1.5])
+                                with col1:
+                                    st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
+                                with col2:
+                                    st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
+                                if sq != st.session_state.squadra:
+                                    with col3:
+                                        if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
+                                            if my_cred >= pvl_int:
+                                                registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl_int)
+                                                st.success("✅ Richiesta inviata!")
+                                                st.rerun()
+                                            else:
+                                                st.error("❌ Budget insufficiente!")
                         except Exception as e:
                             st.warning(f"⚠️ Errore nel formato dei dati per: {p}")
                 else:
