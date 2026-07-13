@@ -143,13 +143,25 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* Non toccare MAI il font delle icone di sistema (Material Symbols), */
-    /* altrimenti le legature diventano testo grezzo (dark_mode, arrow_right, ecc.) */
-    [class*="material-symbols"], [class*="material-icons"],
-    button[data-testid="baseButton-header"],
-    div[data-testid="stExpanderToggleIcon"],
-    span[data-testid="stIconMaterial"] {
-        font-family: unset !important;
+    /* Le icone di sistema Streamlit (menu in alto a destra, frecce expander, */
+    /* pulsante hamburger) usano un font a legature: qui va ripristinato */
+    /* ESPLICITAMENTE, "unset" non basta perché eredita Inter dal genitore. */
+    [data-testid="stIconMaterial"],
+    [data-testid="stExpanderToggleIcon"],
+    [data-testid="baseButton-header"],
+    [data-testid="stHeaderActionElements"],
+    [data-testid="stHeaderActionElements"] *,
+    [data-testid="stToolbarActions"],
+    [data-testid="stToolbarActions"] *,
+    [data-testid="stMainMenu"],
+    [data-testid="stMainMenu"] *,
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="stSidebarCollapseButton"] *,
+    span[class*="material-symbols"],
+    span[class*="material-icons"],
+    i[class*="material-symbols"],
+    i[class*="material-icons"] {
+        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
     }
 
     .stApp {
