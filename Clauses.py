@@ -765,4 +765,63 @@ else:
 
             for i, (_, row) in enumerate(top_3.iterrows()):
                 nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
-                nome_
+                nome_clean = get_team_display_name(nome)
+                
+                st.markdown("<div class='player-card'>", unsafe_allow_html=True)
+                st.markdown(f"<div class='player-name'>{nome_clean}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='fvm-sub'><span style='color:#94a3b8;'>Valore di Mercato (FVM):</span> <span style='color:#FFD700; font-weight:700;'>{fvm} cr</span></div>", unsafe_allow_html=True)
+                
+                col1, col2 = st.columns([1.8, 1.5])
+                with col1:
+                    val = st.number_input(
+                        "💎 CLAUSOLA", 
+                        min_value=1, 
+                        value=fvm, 
+                        key=f"c_{p_id}",
+                        help="Inserisci l'importo della clausola rescissoria"
+                    )
+                    progress = min(1.0, val / max_rivale) if max_rivale > 0 else 0
+                    st.progress(progress)
+                    if val > max_rivale:
+                        st.caption(f"✅ Superata la soglia di {max_rivale} cr")
+                    
+                with col2:
+                    st.write("")
+                    t = calcola_tassa(val)
+                    tot_tasse += t
+                    c_t, c_s = st.columns(2)
+                    with c_t:
+                        st.metric("📊 Tassa", f"{t} cr")
+                    with c_s:
+                        if val <= max_rivale:
+                            st.markdown("<div class='badge-danger'>🔓 VULNERABILE</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div class='badge-safe'>🛡️ BLINDATO</div>", unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+                dati_invio.append(f"{p_id}:{nome}:{val}")
+
+            st.markdown("---")
+            st.markdown("### 📊 Riepilogo Clausole")
+            
+            extra = max(0, tot_tasse - 60)
+            budget_residuo = crediti_totali - extra
+
+            if tot_tasse <= 60:
+                st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
+            else:
+                st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{extra} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
+
+            c_fin1, c_fin2, c_fin3 = st.columns(3)
+            c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
+            c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
+            c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
+
+            if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
+                with st.spinner("⏳ Salvataggio in corso..."):
+                    try:
+                        salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
+                        st.success("✅ Salvataggio completato con successo!")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"❌ Errore durante il salvataggio: {e}")
