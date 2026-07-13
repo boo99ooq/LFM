@@ -807,7 +807,7 @@ else:
             c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
             c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
 
-            if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
+            if st.button("💾 SALVA CLAUSOLE (modificabile fino alla deadline)", type="primary", use_container_width=True):
                 with st.spinner("⏳ Salvataggio in corso..."):
                     try:
                         salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
