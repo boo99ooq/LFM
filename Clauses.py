@@ -614,83 +614,51 @@ else:
                     st.info("📭 Nessuna richiesta presente")
 
     # --- 11. LOGICA PRINCIPALE ---
+
+# SEZIONE MERCATO (PORTALE APERTO)
+if st.session_state.portale_aperto:
+    st.markdown("## 🔓 Mercato Clausole Rescissorie")
+    st.markdown("<p style='color:#94a3b8; text-align:center;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
     
-    # SEZIONE MERCATO (PORTALE APERTO)
-    if st.session_state.portale_aperto:
-        st.markdown("## 🔓 Mercato Clausole Rescissorie")
-        st.markdown("<p style='color:#94a3b8; text-align:center;'>Acquista i giocatori pagando la loro clausola rescissoria</p>", unsafe_allow_html=True)
+    lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
+    my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
+    
+    st.sidebar.markdown(f"""
+    <div style="background: linear-gradient(145deg, #1a2338, #0f1628); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,215,0,0.2); text-align: center; margin-bottom: 20px;">
+        <div style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">💰 IL TUO BUDGET</div>
+        <div style="color: #FFD700; font-weight: 900; font-size: 2.4rem;">{my_cred} cr</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    salvati = {}
+    try:
+        f = repo.get_contents("clausole_segrete.csv")
+        for riga in f.decoded_content.decode("utf-8").splitlines():
+            if riga.strip(): 
+                s, d = riga.split(",")
+                salvati[s] = d
+    except: 
+        pass
+
+    df_r = carica_csv("fantamanager-2021-rosters.csv")
+    df_q = carica_csv("quot.csv")
+    df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+    df_q['Id'] = df_q['Id'].astype(str)
+
+    # Mostra squadre con nomi puliti
+    for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
+        sq_clean = get_team_display_name(sq)
+        sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
         
-        lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
-        my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
+        # TITOLO SEMPLICE (senza HTML) per l'expander
+        expander_title = f"🏟️ {sq_clean.upper()}  ·  💰 {sq_c} cr"
         
-        st.sidebar.markdown(f"""
-        <div style="background: linear-gradient(145deg, #1a2338, #0f1628); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,215,0,0.2); text-align: center; margin-bottom: 20px;">
-            <div style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">💰 IL TUO BUDGET</div>
-            <div style="color: #FFD700; font-weight: 900; font-size: 2.4rem;">{my_cred} cr</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        salvati = {}
-        try:
-            f = repo.get_contents("clausole_segrete.csv")
-            for riga in f.decoded_content.decode("utf-8").splitlines():
-                if riga.strip(): 
-                    s, d = riga.split(",")
-                    salvati[s] = d
-        except: 
-            pass
-
-        df_r = carica_csv("fantamanager-2021-rosters.csv")
-        df_q = carica_csv("quot.csv")
-        df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
-        df_q['Id'] = df_q['Id'].astype(str)
-
-        # Mostra squadre con nomi puliti e centrati
-        for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
-            sq_clean = get_team_display_name(sq)
-            sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
-            
-            # Titolo centrato con nome squadra e budget
-            title_html = f"""
-            <div class="team-title">
-                <span class="team-icon">🏟️</span>
-                <span class="team-name">{sq_clean.upper()}</span>
-                <span class="team-budget">💰 {sq_c} cr</span>
-            </div>
-            """
-            
-            with st.expander(title_html, unsafe_allow_html=True):
-                if sq in salvati:
-                    for p in salvati[sq].split(";"):
-                        try:
-                            pid, pnm, pvl = p.split(":")
-                            pvl_int = int(pvl)
-                            pnm_clean = get_team_display_name(pnm)
-                            
-                            col1, col2, col3 = st.columns([3, 1, 1.5])
-                            with col1:
-                                st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
-                            with col2:
-                                st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
-                            if sq != st.session_state.squadra:
-                                with col3:
-                                    if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
-                                        if my_cred >= pvl_int:
-                                            registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl_int)
-                                            st.success("✅ Richiesta inviata!")
-                                            st.rerun()
-                                        else:
-                                            st.error("❌ Budget insufficiente!")
-                        except Exception as e:
-                            st.warning(f"⚠️ Errore nel formato dei dati per: {p}")
-                else:
-                    st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
-                    ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
-                    top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
-                    
-                    for _, row in top_giocatori.iterrows():
-                        pid, pnm = row['Id'], row['Nome']
-                        pvl = int(row['FVM'])
+        with st.expander(expander_title):
+            if sq in salvati:
+                for p in salvati[sq].split(";"):
+                    try:
+                        pid, pnm, pvl = p.split(":")
+                        pvl_int = int(pvl)
                         pnm_clean = get_team_display_name(pnm)
                         
                         col1, col2, col3 = st.columns([3, 1, 1.5])
@@ -700,13 +668,136 @@ else:
                             st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
                         if sq != st.session_state.squadra:
                             with col3:
-                                if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
-                                    if my_cred >= pvl:
-                                        registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                if st.button("💸 PAGA", key=f"p_{pid}", use_container_width=True):
+                                    if my_cred >= pvl_int:
+                                        registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl_int)
                                         st.success("✅ Richiesta inviata!")
                                         st.rerun()
                                     else:
                                         st.error("❌ Budget insufficiente!")
+                    except Exception as e:
+                        st.warning(f"⚠️ Errore nel formato dei dati per: {p}")
+            else:
+                st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
+                ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
+                top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
+                
+                for _, row in top_giocatori.iterrows():
+                    pid, pnm = row['Id'], row['Nome']
+                    pvl = int(row['FVM'])
+                    pnm_clean = get_team_display_name(pnm)
+                    
+                    col1, col2, col3 = st.columns([3, 1, 1.5])
+                    with col1:
+                        st.markdown(f"<div class='player-row' style='margin-bottom:0; border:none; padding:6px 0;'><span class='p-name'>⚽ {pnm_clean}</span></div>", unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
+                    if sq != st.session_state.squadra:
+                        with col3:
+                            if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
+                                if my_cred >= pvl:
+                                    registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                    st.success("✅ Richiesta inviata!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Budget insufficiente!")
+
+# SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
+else:
+    squadra_display = get_team_display_name(st.session_state.squadra)
+    
+    # Header centrato per il terminale
+    st.markdown(f"""
+    <div class="terminal-header">
+        <div class="title">🛡️ {squadra_display.upper()}</div>
+        <div class="subtitle">Imposta le clausole per blindare i tuoi giocatori</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    crediti_totali = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
+    max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
+    
+    st.markdown("<div class='budget-box'>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("💰 Budget Attuale", f"{crediti_totali} cr")
+    c2.metric("🔝 Massimo Rivali", f"{max_rivale} cr")
+    c3.info(f"Soglia Blindaggio: > {max_rivale} cr")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    df_r = carica_csv("fantamanager-2021-rosters.csv")
+    df_q = carica_csv("quot.csv")
+    df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+    df_q['Id'] = df_q['Id'].astype(str)
+    ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
+    top_3 = df_q[df_q['Id'].isin(ids_miei)].copy()
+    top_3['FVM'] = pd.to_numeric(top_3['FVM'], errors='coerce').fillna(0)
+    top_3 = top_3.nlargest(3, 'FVM')
+
+    tot_tasse = 0
+    dati_invio = []
+
+    for i, (_, row) in enumerate(top_3.iterrows()):
+        nome, fvm, p_id = row['Nome'], int(row['FVM']), row['Id']
+        nome_clean = get_team_display_name(nome)
+        
+        st.markdown("<div class='player-card'>", unsafe_allow_html=True)
+        st.markdown(f"<div class='player-name'>{nome_clean}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='fvm-sub'><span style='color:#94a3b8;'>Valore di Mercato (FVM):</span> <span style='color:#FFD700; font-weight:700;'>{fvm} cr</span></div>", unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([1.8, 1.5])
+        with col1:
+            val = st.number_input(
+                "💎 CLAUSOLA", 
+                min_value=1, 
+                value=fvm, 
+                key=f"c_{p_id}",
+                help="Inserisci l'importo della clausola rescissoria"
+            )
+            progress = min(1.0, val / max_rivale) if max_rivale > 0 else 0
+            st.progress(progress)
+            if val > max_rivale:
+                st.caption(f"✅ Superata la soglia di {max_rivale} cr")
+            
+        with col2:
+            st.write("")
+            t = calcola_tassa(val)
+            tot_tasse += t
+            c_t, c_s = st.columns(2)
+            with c_t:
+                st.metric("📊 Tassa", f"{t} cr")
+            with c_s:
+                if val <= max_rivale:
+                    st.markdown("<div class='badge-danger'>🔓 VULNERABILE</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div class='badge-safe'>🛡️ BLINDATO</div>", unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        dati_invio.append(f"{p_id}:{nome}:{val}")
+
+    st.markdown("---")
+    st.markdown("### 📊 Riepilogo Clausole")
+    
+    extra = max(0, tot_tasse - 60)
+    budget_residuo = crediti_totali - extra
+
+    if tot_tasse <= 60:
+        st.success(f"✅ Il Bonus Lega di 60cr copre interamente le tue tasse ({tot_tasse} cr). Il tuo budget resta intatto.")
+    else:
+        st.warning(f"⚠️ Il Bonus Lega copre le tue tasse fino a 60cr. Eccedi il bonus di **{extra} crediti** (Tasse totali: {tot_tasse} cr), che verranno scalati dal tuo budget.")
+
+    c_fin1, c_fin2, c_fin3 = st.columns(3)
+    c_fin1.metric("💰 Totale Tasse", f"{tot_tasse} cr")
+    c_fin2.metric("🎁 Franchigia Bonus", "- 60 cr")
+    c_fin3.metric("💳 Budget Rimanente", f"{budget_residuo} cr", delta=-extra if extra > 0 else 0)
+
+    if st.button("📥 REGISTRA CLAUSOLE DEFINITIVAMENTE", type="primary", use_container_width=True):
+        with st.spinner("⏳ Salvataggio in corso..."):
+            try:
+                salva_clausola_singola(st.session_state.squadra, ";".join(dati_invio))
+                st.success("✅ Salvataggio completato con successo!")
+                st.balloons()
+            except Exception as e:
+                st.error(f"❌ Errore durante il salvataggio: {e}")
 
     # SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
     else:
