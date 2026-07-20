@@ -64,7 +64,7 @@ def get_team_display_name(squadra):
 def carica_csv(file_name):
     try:
         content = repo.get_contents(file_name)
-        return pd.read_csv(StringIO(content.decoded_content.decode("latin1")))
+        return pd.read_csv(StringIO(content.decoded_content.decode("utf-8")))
     except: 
         return pd.DataFrame()
 
@@ -707,7 +707,11 @@ else:
             if not squadra_match.empty:
                 squadra_found = True
                 crediti_totali = squadra_match['Crediti'].values[0]
-                max_rivale = df_leghe[df_leghe['Squadra'] != st.session_state.squadra]['Crediti'].max()
+                mia_lega = squadra_match['Lega'].values[0]
+                max_rivale = df_leghe[
+                    (df_leghe['Squadra'] != st.session_state.squadra) &
+                    (df_leghe['Lega'] == mia_lega)
+                ]['Crediti'].max()
             else:
                 st.error(f"⚠️ Squadra '{st.session_state.squadra}' non trovata nel database.")
                 if st.button("🔄 TORNA AL LOGIN"):
@@ -732,20 +736,61 @@ else:
                 st.stop()
             
             # PULIZIA NOMI
-            if 'Squadra_LFM' in df_r.columns:
-                df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
-                df_r['Squadra_LFM'] = df_r['Squadra_LFM'].apply(pulisci_nome)
-            
+            if 'Squadra_LFM' not in df_r.columns:
+                st.error(
+                    f"⚠️ Il file 'fantamanager-2021-rosters.csv' non contiene la colonna "
+                    f"'Squadra_LFM'. Colonne trovate: {df_r.columns.tolist()}. "
+                    f"Controlla l'intestazione del file su GitHub (spazi, maiuscole, delimitatore)."
+                )
+                st.stop()
+            df_r['Squadra_LFM'] = df_r['Squadra_LFM'].astype(str).str.strip()
+            df_r['Squadra_LFM'] = df_r['Squadra_LFM'].apply(pulisci_nome)
+
             if 'Nome' in df_q.columns:
                 df_q['Nome'] = df_q['Nome'].apply(pulisci_nome)
-            
+
             df_q['Id'] = df_q['Id'].astype(str)
             ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
             
             if not ids_miei:
                 st.warning("⚠️ Nessun giocatore trovato per la tua squadra.")
                 st.stop()
-            
+
+            # --- BUDGET NETTO: crediti - ingaggi rosa (Qt.I) - manutenzione stadio ---
+            df_q['Qt.I'] = pd.to_numeric(df_q['Qt.I'], errors='coerce').fillna(0)
+            costo_ingaggi = df_q[df_q['Id'].isin(ids_miei)]['Qt.I'].sum()
+
+            LIVELLI_STADIO = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            MANUTENZIONE_STADIO = {10: 45, 20: 25, 30: 35, 40: 50, 50: 70,
+                                    60: 90, 70: 120, 80: 150, 90: 185, 100: 215}
+
+            df_stadi = carica_csv("stadi.csv")
+            costo_stadio = 0
+            capacita_stadio = None
+            if not df_stadi.empty and 'Squadra' in df_stadi.columns and 'Stadio' in df_stadi.columns:
+                stadio_match = df_stadi[df_stadi['Squadra'] == st.session_state.squadra]
+                if not stadio_match.empty:
+                    capacita_stadio = pd.to_numeric(stadio_match['Stadio'].values[0], errors='coerce')
+                    if pd.notna(capacita_stadio):
+                        livello_vicino = min(LIVELLI_STADIO, key=lambda x: abs(x - capacita_stadio))
+                        costo_stadio = MANUTENZIONE_STADIO[livello_vicino]
+
+            budget_netto = crediti_totali - costo_ingaggi - costo_stadio
+
+            st.markdown("<div class='budget-box'>", unsafe_allow_html=True)
+            n1, n2, n3, n4 = st.columns(4)
+            n1.metric("💼 Ingaggi Rosa", f"-{int(costo_ingaggi)} cr", help="Somma di Qt.I (quot.csv) di tutti i giocatori in rosa")
+            if capacita_stadio is not None and pd.notna(capacita_stadio):
+                n2.metric("🏟️ Manutenzione Stadio", f"-{costo_stadio} cr", help=f"Capacità: {int(capacita_stadio)}.000 posti (stadi.csv)")
+            else:
+                n2.metric("🏟️ Manutenzione Stadio", "N/D", help="Squadra non trovata in stadi.csv")
+            n3.metric("💰 Budget Netto Proiettato", f"{int(budget_netto)} cr")
+            if budget_netto < 0:
+                n4.error("⚠️ Negativo")
+            else:
+                n4.success("✅ In equilibrio")
+            st.markdown("</div>", unsafe_allow_html=True)
+
             top_3 = df_q[df_q['Id'].isin(ids_miei)].copy()
             top_3['FVM'] = pd.to_numeric(top_3['FVM'], errors='coerce').fillna(0)
             top_3 = top_3.nlargest(3, 'FVM')
