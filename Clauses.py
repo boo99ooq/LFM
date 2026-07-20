@@ -700,6 +700,24 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
+        # --- Tabella manutenzione stadi (condivisa) ---
+        LIVELLI_STADIO = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        MANUTENZIONE_STADIO = {10: 45, 20: 25, 30: 35, 40: 50, 50: 70,
+                                60: 90, 70: 120, 80: 150, 90: 185, 100: 215}
+        df_stadi = carica_csv("stadi.csv")
+
+        def get_costo_stadio(nome_squadra):
+            if df_stadi.empty or 'Squadra' not in df_stadi.columns or 'Stadio' not in df_stadi.columns:
+                return 0
+            match = df_stadi[df_stadi['Squadra'] == nome_squadra]
+            if match.empty:
+                return 0
+            cap = pd.to_numeric(match['Stadio'].values[0], errors='coerce')
+            if pd.isna(cap):
+                return 0
+            livello_vicino = min(LIVELLI_STADIO, key=lambda x: abs(x - cap))
+            return MANUTENZIONE_STADIO[livello_vicino]
+
         # VERIFICA CHE LA SQUADRA ESISTA
         squadra_found = False
         if not df_leghe.empty:
@@ -708,10 +726,18 @@ else:
                 squadra_found = True
                 crediti_totali = squadra_match['Crediti'].values[0]
                 mia_lega = squadra_match['Lega'].values[0]
-                max_rivale = df_leghe[
+
+                rivali = df_leghe[
                     (df_leghe['Squadra'] != st.session_state.squadra) &
                     (df_leghe['Lega'] == mia_lega)
-                ]['Crediti'].max()
+                ].copy()
+                if not rivali.empty:
+                    rivali['CreditiNetti'] = rivali.apply(
+                        lambda r: r['Crediti'] - get_costo_stadio(r['Squadra']), axis=1
+                    )
+                    max_rivale = rivali['CreditiNetti'].max()
+                else:
+                    max_rivale = 0
             else:
                 st.error(f"⚠️ Squadra '{st.session_state.squadra}' non trovata nel database.")
                 if st.button("🔄 TORNA AL LOGIN"):
@@ -725,6 +751,7 @@ else:
             c1, c2, c3 = st.columns(3)
             c1.metric("💰 Budget Attuale", f"{crediti_totali} cr")
             c2.metric("🔝 Massimo Rivali", f"{max_rivale} cr")
+            c2.caption("Netto della sola manutenzione stadio (unico costo certo per tutti); ingaggi non sottratti perché non noti a priori per le altre squadre.")
             c3.info(f"Soglia Blindaggio: > {max_rivale} cr")
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -760,20 +787,12 @@ else:
             df_q['Qt.I'] = pd.to_numeric(df_q['Qt.I'], errors='coerce').fillna(0)
             costo_ingaggi = df_q[df_q['Id'].isin(ids_miei)]['Qt.I'].sum()
 
-            LIVELLI_STADIO = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-            MANUTENZIONE_STADIO = {10: 45, 20: 25, 30: 35, 40: 50, 50: 70,
-                                    60: 90, 70: 120, 80: 150, 90: 185, 100: 215}
-
-            df_stadi = carica_csv("stadi.csv")
-            costo_stadio = 0
+            costo_stadio = get_costo_stadio(st.session_state.squadra)
             capacita_stadio = None
             if not df_stadi.empty and 'Squadra' in df_stadi.columns and 'Stadio' in df_stadi.columns:
                 stadio_match = df_stadi[df_stadi['Squadra'] == st.session_state.squadra]
                 if not stadio_match.empty:
                     capacita_stadio = pd.to_numeric(stadio_match['Stadio'].values[0], errors='coerce')
-                    if pd.notna(capacita_stadio):
-                        livello_vicino = min(LIVELLI_STADIO, key=lambda x: abs(x - capacita_stadio))
-                        costo_stadio = MANUTENZIONE_STADIO[livello_vicino]
 
             budget_netto = crediti_totali - costo_ingaggi - costo_stadio
 
