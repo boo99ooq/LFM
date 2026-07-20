@@ -516,16 +516,21 @@ if not st.session_state.loggato:
                 pin = st.text_input("🔑 PIN Segreto", type="password")
                 
                 if st.button("🚀 ACCEDI", use_container_width=True):
-                    try:
-                        pin_r = df_leghe[df_leghe['Squadra'] == squadra]['PIN'].values[0]
-                        if str(pin) == str(pin_r):
+                    match = df_leghe[df_leghe['Squadra'] == squadra]
+                    if match.empty:
+                        squadre_lega = df_leghe[df_leghe['Lega'] == lega]['Squadra'].tolist()
+                        st.error(
+                            f"❌ Squadra '{squadra}' non trovata in leghe.csv per la lega '{lega}'. "
+                            f"Squadre disponibili in questa lega: {squadre_lega}"
+                        )
+                    else:
+                        pin_r = match['PIN'].values[0]
+                        if str(pin).strip() == str(pin_r).strip():
                             st.session_state.loggato = True
                             st.session_state.squadra = squadra
                             st.rerun()
                         else:
                             st.error("❌ PIN errato. Riprova.")
-                    except:
-                        st.error("❌ Squadra non trovata. Contatta l'amministratore.")
                 
                 st.markdown('</div>', unsafe_allow_html=True)
 
