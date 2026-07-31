@@ -10,7 +10,7 @@ import re
 # --- 1. CONFIGURAZIONE ---
 FORZA_MODALITA = False  # False = Terminale Blindaggi | True = Mercato
 
-SCADENZA = datetime(2026, 8, 1) 
+SCADENZA = datetime(2026, 8, 10) 
 OGGI = datetime.now()
 
 if FORZA_MODALITA:
@@ -115,6 +115,38 @@ def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo
     except:
         header = "Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario\n"
         repo.create_file(path, "Init Richieste", header + nuova_riga)
+
+def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, costo):
+    """Esegue immediatamente lo scambio di crediti e il trasferimento del giocatore,
+    senza passare per un'approvazione admin. Registra comunque un log per lo storico."""
+    df_ros = carica_csv("fantamanager-2021-rosters.csv")
+    riga_giocatore = df_ros[df_ros['Id'].astype(str) == str(player_id)]
+
+    # Controllo di sicurezza: il giocatore potrebbe essere già stato trasferito
+    # nel frattempo (pagina non aggiornata, doppio click, due manager in contemporanea)
+    if riga_giocatore.empty or riga_giocatore['Squadra_LFM'].values[0] != proprietario:
+        return False, "Questo giocatore non appartiene più a questa squadra: probabilmente è già stato trasferito. Nessun credito è stato mosso."
+
+    df_l = carica_csv("leghe.csv")
+    df_l.loc[df_l['Squadra'] == acquirente, 'Crediti'] -= int(costo)
+    df_l.loc[df_l['Squadra'] == proprietario, 'Crediti'] += int(costo)
+    salva_file_github("leghe.csv", df_l, f"Pagata clausola rescissoria {nome}")
+
+    df_ros.loc[df_ros['Id'].astype(str) == str(player_id), 'Squadra_LFM'] = acquirente
+    salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {nome}")
+
+    path = "richieste_scippo.csv"
+    orario = datetime.now().strftime("%H:%M:%S")
+    nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},APPROVATO_AUTO,{orario}\n"
+    try:
+        f = repo.get_contents(path)
+        contenuto = f.decoded_content.decode("utf-8") + nuova_riga
+        repo.update_file(path, f"Clausola Rescissoria (auto): {nome} alle {orario}", contenuto, f.sha)
+    except:
+        header = "Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario\n"
+        repo.create_file(path, "Init Richieste", header + nuova_riga)
+
+    return True, None
 
 def calcola_tassa(valore):
     if valore <= 200: 
@@ -655,6 +687,14 @@ else:
         df_q['Id'] = df_q['Id'].astype(str)
         salvati = carica_clausole_salvate()
 
+        # Mappa Id -> proprietario ATTUALE, per filtrare giocatori già trasferiti
+        # (una clausola salvata su clausole_segrete.csv non si aggiorna da sola
+        # quando il giocatore viene comprato: senza questo controllo resterebbe
+        # "acquistabile" sotto la squadra vecchia anche dopo il trasferimento)
+        proprietario_attuale = {}
+        if not df_r.empty and 'Id' in df_r.columns and 'Squadra_LFM' in df_r.columns:
+            proprietario_attuale = df_r.astype({'Id': str}).set_index('Id')['Squadra_LFM'].to_dict()
+
         # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
             sq_clean = get_team_display_name(sq)
@@ -676,6 +716,16 @@ else:
                     top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
                     giocatori = [(row['Id'], row['Nome'], int(row['FVM'])) for _, row in top_giocatori.iterrows()]
 
+                # Esclude i giocatori già trasferiti nel frattempo: la clausola
+                # salvata potrebbe essere obsoleta se il giocatore è stato comprato
+                giocatori = [
+                    (pid, pnm, pvl) for pid, pnm, pvl in giocatori
+                    if proprietario_attuale.get(str(pid)) == sq
+                ]
+
+                if not giocatori:
+                    st.caption("— Nessun giocatore attualmente disponibile —")
+
                 for pid, pnm, pvl in giocatori:
                     pnm_clean = get_team_display_name(pnm)
                     
@@ -688,9 +738,15 @@ else:
                         with col3:
                             if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
                                 if my_cred >= pvl:
-                                    registra_richiesta_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
-                                    st.success("✅ Richiesta inviata!")
-                                    st.rerun()
+                                    with st.spinner("⏳ Trasferimento in corso..."):
+                                        ok, motivo = esegui_trasferimento_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
+                                    if ok:
+                                        st.success(f"✅ Clausola pagata! {pnm_clean} è ora nella tua rosa.")
+                                        st.balloons()
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ {motivo}")
+                                        st.rerun()
                                 else:
                                     st.error("❌ Budget insufficiente!")
 
