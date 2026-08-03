@@ -353,95 +353,142 @@ elif menu == "5. Draft Estivo":
     st.title("🔄 Draft Estivo — Sostituzioni Temporanee")
     st.caption(
         "Copre le rose dopo le uscite dalla Serie A, prima dell'asta a mercato chiuso. "
-        "L'assegnazione è temporanea (Prezzo = 0 nel file rose) e va rimossa quando il mercato chiude."
+        "L'assegnazione è temporanea (Prezzo = 0 nel file rose) e va rimossa quando il mercato chiude. "
+        "L'ordine di chiamata per ogni ruolo segue la quotazione del giocatore perso: chi ha perso il "
+        "giocatore con quotazione più alta in quel ruolo chiama per primo."
     )
 
     leghe_l = [l for l in ORDINE_LEGHE if l in df_base['Lega'].unique()]
     lega_sel = st.selectbox("Lega:", leghe_l, key="draft_lega")
 
     df_lega = df_base[df_base['Lega'] == lega_sel]
-    persi = df_lega[df_lega['Is_Escluso']].copy()
-    if not is_admin:
-        persi = persi[persi['Squadra_LFM'] == st.session_state.squadra]
+    persi_globale = df_lega[df_lega['Is_Escluso']].copy()
 
-    if persi.empty:
+    df_draft_log = get_df_from_github('draft_estivo.csv')
+    log_lega = df_draft_log[df_draft_log['Lega'] == lega_sel] if (not df_draft_log.empty and 'Lega' in df_draft_log.columns) else pd.DataFrame()
+
+    persi_visibili = persi_globale if is_admin else persi_globale[persi_globale['Squadra_LFM'] == st.session_state.squadra]
+
+    if persi_visibili.empty:
         msg = f"✅ Nessun giocatore perso da sostituire in {lega_sel}." if is_admin else "✅ Non hai giocatori persi da sostituire in questa Lega."
         st.success(msg)
     else:
-        persi_label = persi.apply(
+        persi_label = persi_visibili.apply(
             lambda r: f"{r['Squadra_LFM']} — {r['Nome']} ({r['R']}, Qt.I {format_num(r['Qt.I'])})", axis=1
         )
         scelta_idx = st.selectbox(
             "Giocatore perso da sostituire:",
-            persi.index, format_func=lambda i: persi_label[i], key="draft_perso"
+            persi_visibili.index, format_func=lambda i: persi_label[i], key="draft_perso"
         )
-        riga_persa = persi.loc[scelta_idx]
+        riga_persa = persi_visibili.loc[scelta_idx]
+        ruolo = riga_persa['R']
 
-        # Pool liberi: non in nessuna rosa di QUESTA Lega, non esclusi, stesso ruolo,
-        # quotazione >= quella del giocatore perso (nessuno deve uscirne peggio)
-        ids_in_lega = set(df_lega['Id'])
-        liberi = df_quot[
-            (~df_quot['Id'].isin(ids_in_lega)) &
-            (~df_quot['Id'].isin(esclusi_ids)) &
-            (df_quot['R'] == riga_persa['R']) &
-            (df_quot['Qt.I'] >= riga_persa['Qt.I'])
-        ].sort_values(['Qt.I', 'FVM'], ascending=[False, False])
+        # --- Coda di chiamata per questo ruolo in questa Lega ---
+        # "In attesa": tutti i persi di questo ruolo (di qualsiasi squadra) non ancora sostituiti
+        in_attesa = persi_globale[persi_globale['R'] == ruolo][['Squadra_LFM', 'Id', 'Nome', 'Qt.I', 'FVM']].copy()
+        in_attesa = in_attesa.rename(columns={'Qt.I': 'Qt_Eff', 'FVM': 'FVM_Eff'})
+        in_attesa['Fatto'] = False
 
-        if liberi.empty:
-            st.warning("⚠️ Nessun giocatore libero idoneo (stesso ruolo, quotazione ≥ persa) trovato in questa Lega.")
+        # "Già chiamati": dal log, stesso ruolo
+        if not log_lega.empty and 'Ruolo' in log_lega.columns:
+            gia_chiamati = log_lega[log_lega['Ruolo'] == ruolo][['Squadra', 'Id_Perso', 'Nome_Perso', 'Qt_Perso', 'FVM_Perso']].copy()
+            gia_chiamati = gia_chiamati.rename(columns={
+                'Squadra': 'Squadra_LFM', 'Id_Perso': 'Id', 'Nome_Perso': 'Nome',
+                'Qt_Perso': 'Qt_Eff', 'FVM_Perso': 'FVM_Eff'
+            })
+            gia_chiamati['Fatto'] = True
         else:
-            liberi_label = liberi.apply(
-                lambda r: f"{r['Nome']} ({r['R']}, Qt.I {format_num(r['Qt.I'])}, FVM {format_num(r['FVM'])})", axis=1
-            )
-            nuovo_idx = st.selectbox(
-                "Sostituto disponibile:",
-                liberi.index, format_func=lambda i: liberi_label[i], key="draft_nuovo"
-            )
-            nuovo = liberi.loc[nuovo_idx]
+            gia_chiamati = pd.DataFrame(columns=['Squadra_LFM', 'Id', 'Nome', 'Qt_Eff', 'FVM_Eff', 'Fatto'])
 
-            st.info(
-                f"**{riga_persa['Squadra_LFM']}** sostituisce **{riga_persa['Nome']}** "
-                f"(perso, Qt.I {format_num(riga_persa['Qt.I'])}) con **{nuovo['Nome']}** "
-                f"(Qt.I {format_num(nuovo['Qt.I'])})"
-            )
+        coda = pd.concat([in_attesa, gia_chiamati], ignore_index=True)
+        coda['Qt_Eff'] = pd.to_numeric(coda['Qt_Eff'], errors='coerce').fillna(0)
+        coda['FVM_Eff'] = pd.to_numeric(coda['FVM_Eff'], errors='coerce').fillna(0)
+        coda = coda.sort_values(['Qt_Eff', 'FVM_Eff'], ascending=[False, False]).reset_index(drop=True)
 
-            if st.button("✅ CONFERMA DRAFT"):
-                # Rimuove il giocatore perso dalla rosa
-                df_rosters_new = df_rosters_upd[
-                    ~((df_rosters_upd['Squadra_LFM'] == riga_persa['Squadra_LFM']) & (df_rosters_upd['Id'] == riga_persa['Id']))
-                ]
-                # Aggiunge il sostituto: Prezzo=0 segnala "temporaneo da draft", nessun
-                # giocatore comprato all'asta può avere questo valore
-                nuova_riga = pd.DataFrame([{
-                    'Squadra_LFM': riga_persa['Squadra_LFM'], 'Id': nuovo['Id'], 'Prezzo': 0
-                }])
-                df_rosters_new = pd.concat([df_rosters_new, nuova_riga], ignore_index=True)
-                save_to_github_direct(
-                    'fantamanager-2021-rosters.csv', df_rosters_new,
-                    f"Draft: {nuovo['Nome']} al posto di {riga_persa['Nome']} ({riga_persa['Squadra_LFM']})"
+        st.markdown(f"**📜 Coda di chiamata — Ruolo {ruolo} — {lega_sel}**")
+        coda_display = coda.copy()
+        coda_display['Stato'] = coda_display['Fatto'].map({True: '✅ Chiamato', False: '⏳ In attesa'})
+        coda_display.index = coda_display.index + 1
+        st.dataframe(
+            coda_display[['Squadra_LFM', 'Nome', 'Qt_Eff', 'FVM_Eff', 'Stato']].rename(columns={'Qt_Eff': 'Qt.I', 'FVM_Eff': 'FVM'}),
+            use_container_width=True
+        )
+
+        # Chi precede la riga scelta ed è ancora "in attesa"?
+        posizione = coda[(coda['Squadra_LFM'] == riga_persa['Squadra_LFM']) & (coda['Id'] == riga_persa['Id'])].index
+        pos_idx = posizione[0] if len(posizione) else None
+        precedenti_bloccanti = coda.iloc[:pos_idx][~coda.iloc[:pos_idx]['Fatto']] if pos_idx is not None else pd.DataFrame()
+
+        if not precedenti_bloccanti.empty:
+            nomi_bloccanti = ", ".join(f"{r['Squadra_LFM']} ({r['Nome']})" for _, r in precedenti_bloccanti.iterrows())
+            st.error(f"🚫 Non è ancora il turno di {riga_persa['Squadra_LFM']} per il ruolo {ruolo}. Devono chiamare prima: {nomi_bloccanti}")
+        else:
+            # Pool liberi: non in nessuna rosa di QUESTA Lega, non esclusi, stesso ruolo,
+            # quotazione >= quella del giocatore perso (nessuno deve uscirne peggio)
+            ids_in_lega = set(df_lega['Id'])
+            liberi = df_quot[
+                (~df_quot['Id'].isin(ids_in_lega)) &
+                (~df_quot['Id'].isin(esclusi_ids)) &
+                (df_quot['R'] == ruolo) &
+                (df_quot['Qt.I'] >= riga_persa['Qt.I'])
+            ].sort_values(['Qt.I', 'FVM'], ascending=[False, False])
+
+            if liberi.empty:
+                st.warning("⚠️ Nessun giocatore libero idoneo (stesso ruolo, quotazione ≥ persa) trovato in questa Lega.")
+            else:
+                liberi_label = liberi.apply(
+                    lambda r: f"{r['Nome']} ({r['R']}, Qt.I {format_num(r['Qt.I'])}, FVM {format_num(r['FVM'])})", axis=1
+                )
+                nuovo_idx = st.selectbox(
+                    "Sostituto disponibile:",
+                    liberi.index, format_func=lambda i: liberi_label[i], key="draft_nuovo"
+                )
+                nuovo = liberi.loc[nuovo_idx]
+
+                st.info(
+                    f"**{riga_persa['Squadra_LFM']}** sostituisce **{riga_persa['Nome']}** "
+                    f"(perso, Qt.I {format_num(riga_persa['Qt.I'])}) con **{nuovo['Nome']}** "
+                    f"(Qt.I {format_num(nuovo['Qt.I'])})"
                 )
 
-                # Log dedicato: tracciabilità completa e base per smontare i draft a mercato chiuso
-                log_draft = pd.DataFrame([{
-                    'Squadra': riga_persa['Squadra_LFM'], 'Lega': lega_sel,
-                    'Id_Perso': riga_persa['Id'], 'Nome_Perso': riga_persa['Nome'], 'Qt_Perso': riga_persa['Qt.I'],
-                    'Id_Preso': nuovo['Id'], 'Nome_Preso': nuovo['Nome'], 'Qt_Preso': nuovo['Qt.I'],
-                    'Orario': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-                }])
-                old_draft = get_df_from_github('draft_estivo.csv')
-                save_to_github_direct(
-                    'draft_estivo.csv', pd.concat([old_draft, log_draft], ignore_index=True),
-                    f"Log draft {nuovo['Nome']}"
-                )
+                if st.button("✅ CONFERMA DRAFT"):
+                    # Rimuove il giocatore perso dalla rosa
+                    df_rosters_new = df_rosters_upd[
+                        ~((df_rosters_upd['Squadra_LFM'] == riga_persa['Squadra_LFM']) & (df_rosters_upd['Id'] == riga_persa['Id']))
+                    ]
+                    # Aggiunge il sostituto: Prezzo=0 segnala "temporaneo da draft", nessun
+                    # giocatore comprato all'asta può avere questo valore
+                    nuova_riga = pd.DataFrame([{
+                        'Squadra_LFM': riga_persa['Squadra_LFM'], 'Id': nuovo['Id'], 'Prezzo': 0
+                    }])
+                    df_rosters_new = pd.concat([df_rosters_new, nuova_riga], ignore_index=True)
+                    save_to_github_direct(
+                        'fantamanager-2021-rosters.csv', df_rosters_new,
+                        f"Draft: {nuovo['Nome']} al posto di {riga_persa['Nome']} ({riga_persa['Squadra_LFM']})"
+                    )
 
-                st.success(f"✅ {nuovo['Nome']} assegnato a {riga_persa['Squadra_LFM']} (temporaneo, Prezzo 0).")
-                st.cache_data.clear()
-                time.sleep(1)
-                st.rerun()
+                    # Log dedicato: tracciabilità completa, base per la coda di chiamata
+                    # e per smontare i draft a mercato chiuso
+                    log_draft = pd.DataFrame([{
+                        'Squadra': riga_persa['Squadra_LFM'], 'Lega': lega_sel, 'Ruolo': ruolo,
+                        'Id_Perso': riga_persa['Id'], 'Nome_Perso': riga_persa['Nome'],
+                        'Qt_Perso': riga_persa['Qt.I'], 'FVM_Perso': riga_persa['FVM'],
+                        'Id_Preso': nuovo['Id'], 'Nome_Preso': nuovo['Nome'], 'Qt_Preso': nuovo['Qt.I'],
+                        'Orario': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+                    }])
+                    old_draft = get_df_from_github('draft_estivo.csv')
+                    save_to_github_direct(
+                        'draft_estivo.csv', pd.concat([old_draft, log_draft], ignore_index=True),
+                        f"Log draft {nuovo['Nome']}"
+                    )
+
+                    st.success(f"✅ {nuovo['Nome']} assegnato a {riga_persa['Squadra_LFM']} (temporaneo, Prezzo 0).")
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
 
     st.divider()
     st.subheader("📋 Registro Draft Estivo")
-    df_draft_log = get_df_from_github('draft_estivo.csv')
     if not df_draft_log.empty:
         st.dataframe(
             df_draft_log.sort_values('Orario', ascending=False),
