@@ -103,6 +103,17 @@ def carica_clausole_salvate():
         pass
     return salvati
 
+LIMITE_CLAUSOLE_PAGATE = 3
+
+def conta_clausole_pagate(squadra):
+    """Conta quante clausole ha già pagato (con successo) questa squadra, leggendo
+    lo storico reale su richieste_scippo.csv invece di fidarsi di un contatore in sessione."""
+    df_sc = carica_csv("richieste_scippo.csv")
+    if df_sc.empty or 'Acquirente' not in df_sc.columns or 'Stato' not in df_sc.columns:
+        return 0
+    mask = (df_sc['Acquirente'] == squadra) & (df_sc['Stato'].astype(str).isin(['APPROVATO', 'APPROVATO_AUTO']))
+    return int(mask.sum())
+
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     time.sleep(0.5)
     path = "richieste_scippo.csv"
@@ -119,6 +130,11 @@ def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo
 def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, costo):
     """Esegue immediatamente lo scambio di crediti e il trasferimento del giocatore,
     senza passare per un'approvazione admin. Registra comunque un log per lo storico."""
+    # Controllo limite: conteggio fresco al momento dell'esecuzione, non quello
+    # calcolato all'apertura della pagina (potrebbe essere cambiato nel frattempo)
+    if conta_clausole_pagate(acquirente) >= LIMITE_CLAUSOLE_PAGATE:
+        return False, f"Hai già raggiunto il limite di {LIMITE_CLAUSOLE_PAGATE} clausole pagate. Nessun credito è stato mosso."
+
     df_ros = carica_csv("fantamanager-2021-rosters.csv")
     riga_giocatore = df_ros[df_ros['Id'].astype(str) == str(player_id)]
 
@@ -665,13 +681,18 @@ else:
         
         lega_view = st.selectbox("📋 Filtra Lega", df_leghe['Lega'].unique())
         my_cred = df_leghe[df_leghe['Squadra'] == st.session_state.squadra]['Crediti'].values[0]
-        
+        clausole_pagate = conta_clausole_pagate(st.session_state.squadra)
+        clausole_esaurite = clausole_pagate >= LIMITE_CLAUSOLE_PAGATE
+
         st.sidebar.markdown(f"""
         <div style="background: linear-gradient(145deg, #1a2338, #0f1628); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,215,0,0.2); text-align: center; margin-bottom: 20px;">
             <div style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">💰 IL TUO BUDGET</div>
             <div style="color: #FFD700; font-weight: 900; font-size: 2.4rem;">{my_cred} cr</div>
         </div>
         """, unsafe_allow_html=True)
+        st.sidebar.metric("💸 Clausole pagate", f"{clausole_pagate} / {LIMITE_CLAUSOLE_PAGATE}")
+        if clausole_esaurite:
+            st.sidebar.warning("Hai raggiunto il limite di clausole pagabili.")
 
         df_r = carica_csv("fantamanager-2021-rosters.csv")
         df_q = carica_csv("quot.csv")
@@ -736,7 +757,9 @@ else:
                         st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
                     if sq != st.session_state.squadra:
                         with col3:
-                            if st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
+                            if clausole_esaurite:
+                                st.caption(f"🔒 Limite {LIMITE_CLAUSOLE_PAGATE}/{LIMITE_CLAUSOLE_PAGATE} raggiunto")
+                            elif st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
                                 if my_cred >= pvl:
                                     with st.spinner("⏳ Trasferimento in corso..."):
                                         ok, motivo = esegui_trasferimento_clausola(st.session_state.squadra, sq, pid, pnm, pvl)
@@ -845,6 +868,13 @@ else:
                 st.stop()
 
             # --- BUDGET NETTO: crediti - ingaggi rosa (Qt.I) - manutenzione stadio ---
+            if 'Qt.I' not in df_q.columns:
+                st.error(
+                    f"⚠️ Il file 'quot.csv' non contiene la colonna 'Qt.I'. "
+                    f"Colonne trovate: {df_q.columns.tolist()}. "
+                    f"Controlla l'intestazione del listone su GitHub (spazi, punteggiatura, delimitatore)."
+                )
+                st.stop()
             df_q['Qt.I'] = pd.to_numeric(df_q['Qt.I'], errors='coerce').fillna(0)
             costo_ingaggi = df_q[df_q['Id'].isin(ids_miei)]['Qt.I'].sum()
 
