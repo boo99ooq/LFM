@@ -10,13 +10,16 @@ import re
 # --- 1. CONFIGURAZIONE ---
 FORZA_MODALITA = False  # False = Terminale Blindaggi | True = Mercato
 
-SCADENZA = datetime(2026, 8, 10) 
+SCADENZA = datetime(2026, 8, 10)          # 00:00 del 10/08 — le clausole diventano visibili (fine Terminale)
+APERTURA_MERCATO = datetime(2026, 8, 10, 22, 0)  # 22:00 del 10/08 — da qui si può iniziare a pagarle
 OGGI = datetime.now()
 
 if FORZA_MODALITA:
     PORTALE_APERTO = True
 else:
     PORTALE_APERTO = OGGI >= SCADENZA
+
+MERCATO_PAGABILE = FORZA_MODALITA or (datetime.now() >= APERTURA_MERCATO)
 
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
@@ -130,6 +133,9 @@ def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo
 def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, costo):
     """Esegue immediatamente lo scambio di crediti e il trasferimento del giocatore,
     senza passare per un'approvazione admin. Registra comunque un log per lo storico."""
+    if not (FORZA_MODALITA or datetime.now() >= APERTURA_MERCATO):
+        return False, f"Il mercato non è ancora aperto ai pagamenti. Si apre alle {APERTURA_MERCATO.strftime('%H:%M del %d/%m/%Y')}."
+
     # Controllo limite: conteggio fresco al momento dell'esecuzione, non quello
     # calcolato all'apertura della pagina (potrebbe essere cambiato nel frattempo)
     if conta_clausole_pagate(acquirente) >= LIMITE_CLAUSOLE_PAGATE:
@@ -585,8 +591,15 @@ if not st.session_state.loggato:
 # --- 9. AREA LOGGATO ---
 else:
     # Header
-    status_text = "🔓 MERCATO APERTO" if st.session_state.portale_aperto else "🛡️ TERMINALE BLINDAGGI"
-    status_class = "status-open" if st.session_state.portale_aperto else "status-closed"
+    if not st.session_state.portale_aperto:
+        status_text = "🛡️ TERMINALE BLINDAGGI"
+        status_class = "status-closed"
+    elif not MERCATO_PAGABILE:
+        status_text = "👁️ CLAUSOLE VISIBILI (non ancora pagabili)"
+        status_class = "status-closed"
+    else:
+        status_text = "🔓 MERCATO APERTO"
+        status_class = "status-open"
     squadra_display = get_team_display_name(st.session_state.squadra)
     
     st.markdown(f"""
@@ -684,6 +697,16 @@ else:
         clausole_pagate = conta_clausole_pagate(st.session_state.squadra)
         clausole_esaurite = clausole_pagate >= LIMITE_CLAUSOLE_PAGATE
 
+        if not MERCATO_PAGABILE:
+            attesa = APERTURA_MERCATO - datetime.now()
+            ore_attesa = attesa.seconds // 3600
+            minuti_attesa = (attesa.seconds % 3600) // 60
+            st.warning(
+                f"👁️ Le clausole sono visibili ma **non ancora pagabili**. "
+                f"Si apre alle **{APERTURA_MERCATO.strftime('%H:%M del %d/%m/%Y')}** "
+                f"(tra {attesa.days}g {ore_attesa}h {minuti_attesa}m)."
+            )
+
         st.sidebar.markdown(f"""
         <div style="background: linear-gradient(145deg, #1a2338, #0f1628); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,215,0,0.2); text-align: center; margin-bottom: 20px;">
             <div style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">💰 IL TUO BUDGET</div>
@@ -757,7 +780,9 @@ else:
                         st.markdown(f"<span class='p-value'>💰 {pvl} cr</span>", unsafe_allow_html=True)
                     if sq != st.session_state.squadra:
                         with col3:
-                            if clausole_esaurite:
+                            if not MERCATO_PAGABILE:
+                                st.caption("👁️ Non ancora pagabile")
+                            elif clausole_esaurite:
                                 st.caption(f"🔒 Limite {LIMITE_CLAUSOLE_PAGATE}/{LIMITE_CLAUSOLE_PAGATE} raggiunto")
                             elif st.button("💸 PAGA", key=f"a_{pid}", use_container_width=True):
                                 if my_cred >= pvl:
