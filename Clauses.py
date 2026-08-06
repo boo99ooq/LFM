@@ -144,11 +144,13 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
         return False, f"Hai già raggiunto il limite di {LIMITE_CLAUSOLE_PAGATE} clausole pagate. Nessun credito è stato mosso."
 
     df_ros = carica_csv("fantamanager-2021-rosters.csv")
-    riga_giocatore = df_ros[df_ros['Id'].astype(str) == str(player_id)]
+    riga_giocatore = df_ros[
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario)
+    ]
 
     # Controllo di sicurezza: il giocatore potrebbe essere già stato trasferito
     # nel frattempo (pagina non aggiornata, doppio click, due manager in contemporanea)
-    if riga_giocatore.empty or riga_giocatore['Squadra_LFM'].values[0] != proprietario:
+    if riga_giocatore.empty:
         return False, "Questo giocatore non appartiene più a questa squadra: probabilmente è già stato trasferito. Nessun credito è stato mosso."
 
     df_l = carica_csv("leghe.csv")
@@ -156,7 +158,13 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
     df_l.loc[df_l['Squadra'] == proprietario, 'Crediti'] += int(costo)
     salva_file_github("leghe.csv", df_l, f"Pagata clausola rescissoria {nome}")
 
-    df_ros.loc[df_ros['Id'].astype(str) == str(player_id), 'Squadra_LFM'] = acquirente
+    # IMPORTANTE: filtro anche per Squadra_LFM==proprietario, non solo per Id —
+    # lo stesso Id (stesso giocatore reale) esiste in righe distinte per ogni
+    # Lega diversa; senza questo filtro si romperebbero rose di leghe estranee
+    df_ros.loc[
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario),
+        'Squadra_LFM'
+    ] = acquirente
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {nome}")
 
     path = "richieste_scippo.csv"
@@ -227,8 +235,10 @@ def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_origi
         return False, "Sono passate più di 24 ore dal pagamento: il controriscatto non è più esercitabile per questo giocatore."
 
     df_ros = carica_csv("fantamanager-2021-rosters.csv")
-    riga_giocatore = df_ros[df_ros['Id'].astype(str) == str(player_id)]
-    if riga_giocatore.empty or riga_giocatore['Squadra_LFM'].values[0] != acquirente:
+    riga_giocatore = df_ros[
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente)
+    ]
+    if riga_giocatore.empty:
         return False, "Il giocatore non è più presso questa squadra: il controriscatto non è più valido. Nessun credito è stato mosso."
 
     penale_totale = math.ceil(float(costo_originale) * 1.10)
@@ -238,7 +248,12 @@ def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_origi
     df_l.loc[df_l['Squadra'] == acquirente, 'Crediti'] += int(costo_originale)
     salva_file_github("leghe.csv", df_l, f"Controriscatto: {nome} torna a {proprietario}")
 
-    df_ros.loc[df_ros['Id'].astype(str) == str(player_id), 'Squadra_LFM'] = proprietario
+    # IMPORTANTE: filtro anche per Squadra_LFM==acquirente, non solo per Id —
+    # lo stesso Id esiste in righe distinte per ogni Lega diversa
+    df_ros.loc[
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente),
+        'Squadra_LFM'
+    ] = proprietario
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Controriscatto {nome}")
 
     df_sc.at[idx, 'Stato'] = 'CONTRORISCATTATO'
@@ -811,9 +826,17 @@ else:
         # (una clausola salvata su clausole_segrete.csv non si aggiorna da sola
         # quando il giocatore viene comprato: senza questo controllo resterebbe
         # "acquistabile" sotto la squadra vecchia anche dopo il trasferimento)
+        #
+        # IMPORTANTE: la mappa va limitata alle sole squadre della Lega selezionata.
+        # Lo stesso Id (stesso giocatore reale) può appartenere legittimamente a
+        # squadre diverse in leghe diverse (40 squadre su 4 campionati, stessi
+        # giocatori Serie A duplicati per ogni lega) — una mappa globale Id->Squadra
+        # sovrascriverebbe silenziosamente 3 proprietari su 4.
+        squadre_lega_view = set(df_leghe[df_leghe['Lega'] == lega_view]['Squadra'])
         proprietario_attuale = {}
         if not df_r.empty and 'Id' in df_r.columns and 'Squadra_LFM' in df_r.columns:
-            proprietario_attuale = df_r.astype({'Id': str}).set_index('Id')['Squadra_LFM'].to_dict()
+            df_r_lega_view = df_r[df_r['Squadra_LFM'].isin(squadre_lega_view)]
+            proprietario_attuale = df_r_lega_view.astype({'Id': str}).set_index('Id')['Squadra_LFM'].to_dict()
 
         # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
