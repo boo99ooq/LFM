@@ -3,7 +3,7 @@ import pandas as pd
 from github import Github
 from io import StringIO
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import re
 
@@ -12,6 +12,8 @@ FORZA_MODALITA = False  # False = Terminale Blindaggi | True = Mercato
 
 SCADENZA = datetime(2026, 8, 10)          # 00:00 del 10/08 — le clausole diventano visibili (fine Terminale)
 APERTURA_MERCATO = datetime(2026, 8, 10, 22, 0)  # 22:00 del 10/08 — da qui si può iniziare a pagarle
+FINESTRA_CONTRORISCATTO_INIZIO = datetime(2026, 8, 30, 0, 0, 0)   # ultime 48 ore di agosto
+FINESTRA_CONTRORISCATTO_FINE = datetime(2026, 8, 31, 23, 59, 59)
 OGGI = datetime.now()
 
 if FORZA_MODALITA:
@@ -120,7 +122,7 @@ def conta_clausole_pagate(squadra):
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     time.sleep(0.5)
     path = "richieste_scippo.csv"
-    orario = datetime.now().strftime("%H:%M:%S")
+    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},PENDENTE,{orario}\n"
     try:
         f = repo.get_contents(path)
@@ -158,7 +160,7 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {nome}")
 
     path = "richieste_scippo.csv"
-    orario = datetime.now().strftime("%H:%M:%S")
+    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},APPROVATO_AUTO,{orario}\n"
     try:
         f = repo.get_contents(path)
@@ -167,6 +169,80 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
     except:
         header = "Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario\n"
         repo.create_file(path, "Init Richieste", header + nuova_riga)
+
+    return True, None
+
+def parse_orario_pagamento(orario_str):
+    """Prova a interpretare il campo Orario come data+ora completa. Restituisce None
+    se il formato non è quello atteso (es. voci vecchie salvate solo con l'ora)."""
+    try:
+        return datetime.strptime(str(orario_str).strip(), "%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return None
+
+def get_controriscatti_disponibili(squadra):
+    """Clausole subite da 'squadra' ancora rispondibili con controriscatto:
+    dentro la finestra di calendario (ultime 48h di agosto) E entro 24h dal pagamento."""
+    ora = datetime.now()
+    if not (FINESTRA_CONTRORISCATTO_INIZIO <= ora <= FINESTRA_CONTRORISCATTO_FINE):
+        return pd.DataFrame()
+
+    df_sc = carica_csv("richieste_scippo.csv")
+    if df_sc.empty or 'Proprietario' not in df_sc.columns:
+        return pd.DataFrame()
+
+    subite = df_sc[
+        (df_sc['Proprietario'] == squadra) &
+        (df_sc['Stato'].astype(str) == 'APPROVATO_AUTO')
+    ].copy()
+    if subite.empty:
+        return subite
+
+    def entro_24h(orario_str):
+        dt_pagamento = parse_orario_pagamento(orario_str)
+        if dt_pagamento is None:
+            return False  # formato vecchio senza data: non calcolabile, escluso per sicurezza
+        return ora <= dt_pagamento + timedelta(hours=24)
+
+    return subite[subite['Orario'].apply(entro_24h)]
+
+def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_originale):
+    """Il proprietario originale riprende il giocatore pagando il 110% della clausola;
+    l'acquirente riceve indietro solo l'importo originale (il 10% extra non va a nessuno)."""
+    ora = datetime.now()
+    if not (FINESTRA_CONTRORISCATTO_INIZIO <= ora <= FINESTRA_CONTRORISCATTO_FINE):
+        return False, "Il diritto di controriscatto è esercitabile solo nelle ultime 48 ore di agosto."
+
+    df_sc = carica_csv("richieste_scippo.csv")
+    riga = df_sc[
+        (df_sc['Proprietario'] == proprietario) & (df_sc['Acquirente'] == acquirente) &
+        (df_sc['Id'].astype(str) == str(player_id)) & (df_sc['Stato'].astype(str) == 'APPROVATO_AUTO')
+    ]
+    if riga.empty:
+        return False, "Transazione non trovata o già gestita in precedenza."
+    idx = riga.index[0]
+
+    dt_pagamento = parse_orario_pagamento(riga.loc[idx, 'Orario'])
+    if dt_pagamento is None or ora > dt_pagamento + timedelta(hours=24):
+        return False, "Sono passate più di 24 ore dal pagamento: il controriscatto non è più esercitabile per questo giocatore."
+
+    df_ros = carica_csv("fantamanager-2021-rosters.csv")
+    riga_giocatore = df_ros[df_ros['Id'].astype(str) == str(player_id)]
+    if riga_giocatore.empty or riga_giocatore['Squadra_LFM'].values[0] != acquirente:
+        return False, "Il giocatore non è più presso questa squadra: il controriscatto non è più valido. Nessun credito è stato mosso."
+
+    penale_totale = math.ceil(float(costo_originale) * 1.10)
+
+    df_l = carica_csv("leghe.csv")
+    df_l.loc[df_l['Squadra'] == proprietario, 'Crediti'] -= penale_totale
+    df_l.loc[df_l['Squadra'] == acquirente, 'Crediti'] += int(costo_originale)
+    salva_file_github("leghe.csv", df_l, f"Controriscatto: {nome} torna a {proprietario}")
+
+    df_ros.loc[df_ros['Id'].astype(str) == str(player_id), 'Squadra_LFM'] = proprietario
+    salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Controriscatto {nome}")
+
+    df_sc.at[idx, 'Stato'] = 'CONTRORISCATTATO'
+    salva_file_github("richieste_scippo.csv", df_sc, f"Controriscatto eseguito su {nome}")
 
     return True, None
 
@@ -797,6 +873,44 @@ else:
                                         st.rerun()
                                 else:
                                     st.error("❌ Budget insufficiente!")
+
+        # --- DIRITTO DI CONTRORISCATTO: solo nelle ultime 48 ore di agosto ---
+        if FINESTRA_CONTRORISCATTO_INIZIO <= datetime.now() <= FINESTRA_CONTRORISCATTO_FINE:
+            st.divider()
+            st.markdown("### 🔁 Diritto di Controriscatto")
+            st.caption(
+                "Puoi annullare l'acquisto di un tuo giocatore entro 24 ore dal pagamento della clausola, "
+                "pagando una penale del 10%. A chi ti ha scippato il giocatore torna solo l'importo originale."
+            )
+            controriscatti = get_controriscatti_disponibili(st.session_state.squadra)
+            if controriscatti.empty:
+                st.info("Nessuna clausola subita ancora rispondibile con controriscatto in questo momento.")
+            else:
+                for idx, r in controriscatti.iterrows():
+                    dt_pagamento = parse_orario_pagamento(r['Orario'])
+                    scadenza = dt_pagamento + timedelta(hours=24)
+                    rimanente = scadenza - datetime.now()
+                    ore_rim = rimanente.seconds // 3600
+                    min_rim = (rimanente.seconds % 3600) // 60
+                    penale_totale = math.ceil(float(r['Costo']) * 1.10)
+                    acquirente_clean = get_team_display_name(r['Acquirente'])
+                    nome_clean = get_team_display_name(r['Nome'])
+
+                    with st.expander(f"⚠️ {nome_clean} — scippato da {acquirente_clean}"):
+                        st.write(f"Costo originale della clausola: **{r['Costo']} cr**")
+                        st.write(f"Penale totale da pagare per riprenderlo: **{penale_totale} cr**")
+                        st.caption(f"⏳ Tempo rimanente per rispondere: {ore_rim}h {min_rim}m")
+                        if st.button("🔁 Esercita Controriscatto", key=f"cr_{idx}", use_container_width=True):
+                            with st.spinner("⏳ Controriscatto in corso..."):
+                                ok, motivo = esegui_controriscatto(
+                                    st.session_state.squadra, r['Acquirente'], r['Id'], r['Nome'], r['Costo']
+                                )
+                            if ok:
+                                st.success(f"✅ {nome_clean} torna nella tua rosa.")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {motivo}")
+                                st.rerun()
 
     # SEZIONE TERMINALE BLINDAGGI (PORTALE CHIUSO)
     else:
