@@ -144,8 +144,9 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
         return False, f"Hai già raggiunto il limite di {LIMITE_CLAUSOLE_PAGATE} clausole pagate. Nessun credito è stato mosso."
 
     df_ros = carica_csv("fantamanager-2021-rosters.csv")
+    proprietario_pulito = pulisci_nome(proprietario)
     riga_giocatore = df_ros[
-        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario)
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario_pulito)
     ]
 
     # Controllo di sicurezza: il giocatore potrebbe essere già stato trasferito
@@ -158,11 +159,13 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
     df_l.loc[df_l['Squadra'] == proprietario, 'Crediti'] += int(costo)
     salva_file_github("leghe.csv", df_l, f"Pagata clausola rescissoria {nome}")
 
-    # IMPORTANTE: filtro anche per Squadra_LFM==proprietario, non solo per Id —
-    # lo stesso Id (stesso giocatore reale) esiste in righe distinte per ogni
-    # Lega diversa; senza questo filtro si romperebbero rose di leghe estranee
+    # IMPORTANTE: confronto con pulisci_nome(proprietario), non il nome grezzo —
+    # Squadra_LFM è già ripulito (es. prima lettera maiuscola forzata), un nome
+    # scritto tutto minuscolo in leghe.csv altrimenti non troverebbe mai match.
+    # Filtro anche per Squadra_LFM, non solo per Id — lo stesso Id (stesso
+    # giocatore reale) esiste in righe distinte per ogni Lega diversa
     df_ros.loc[
-        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario),
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == proprietario_pulito),
         'Squadra_LFM'
     ] = acquirente
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {nome}")
@@ -235,8 +238,9 @@ def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_origi
         return False, "Sono passate più di 24 ore dal pagamento: il controriscatto non è più esercitabile per questo giocatore."
 
     df_ros = carica_csv("fantamanager-2021-rosters.csv")
+    acquirente_pulito = pulisci_nome(acquirente)
     riga_giocatore = df_ros[
-        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente)
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente_pulito)
     ]
     if riga_giocatore.empty:
         return False, "Il giocatore non è più presso questa squadra: il controriscatto non è più valido. Nessun credito è stato mosso."
@@ -248,10 +252,12 @@ def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_origi
     df_l.loc[df_l['Squadra'] == acquirente, 'Crediti'] += int(costo_originale)
     salva_file_github("leghe.csv", df_l, f"Controriscatto: {nome} torna a {proprietario}")
 
-    # IMPORTANTE: filtro anche per Squadra_LFM==acquirente, non solo per Id —
-    # lo stesso Id esiste in righe distinte per ogni Lega diversa
+    # IMPORTANTE: confronto con pulisci_nome(acquirente) — Squadra_LFM è già
+    # ripulito, un nome grezzo tutto minuscolo altrimenti non troverebbe match.
+    # Filtro anche per Squadra_LFM, non solo per Id — lo stesso Id esiste in
+    # righe distinte per ogni Lega diversa
     df_ros.loc[
-        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente),
+        (df_ros['Id'].astype(str) == str(player_id)) & (df_ros['Squadra_LFM'] == acquirente_pulito),
         'Squadra_LFM'
     ] = proprietario
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Controriscatto {nome}")
@@ -832,7 +838,12 @@ else:
         # squadre diverse in leghe diverse (40 squadre su 4 campionati, stessi
         # giocatori Serie A duplicati per ogni lega) — una mappa globale Id->Squadra
         # sovrascriverebbe silenziosamente 3 proprietari su 4.
-        squadre_lega_view = set(df_leghe[df_leghe['Lega'] == lega_view]['Squadra'])
+        #
+        # Le chiavi/valori usano pulisci_nome(): Squadra_LFM è già ripulito da
+        # quella funzione (es. prima lettera forzata maiuscola), mentre i nomi
+        # grezzi di leghe.csv (sq) non lo sono — un nome scritto tutto minuscolo
+        # nel CSV originale altrimenti non troverebbe mai corrispondenza.
+        squadre_lega_view = set(pulisci_nome(s) for s in df_leghe[df_leghe['Lega'] == lega_view]['Squadra'])
         proprietario_attuale = {}
         if not df_r.empty and 'Id' in df_r.columns and 'Squadra_LFM' in df_r.columns:
             df_r_lega_view = df_r[df_r['Squadra_LFM'].isin(squadre_lega_view)]
@@ -840,6 +851,7 @@ else:
 
         # Mostra squadre
         for sq in df_leghe[df_leghe['Lega'] == lega_view]['Squadra']:
+            sq_pulito = pulisci_nome(sq)
             sq_clean = get_team_display_name(sq)
             sq_c = df_leghe[df_leghe['Squadra'] == sq]['Crediti'].values[0]
             
@@ -855,7 +867,7 @@ else:
                         giocatori.append((pid, pnm, int(pvl)))
                 else:
                     st.caption("⚠️ Clausole d'ufficio applicate (Valore FVM)")
-                    ids = df_r[df_r['Squadra_LFM'] == sq]['Id'].astype(str).tolist()
+                    ids = df_r[df_r['Squadra_LFM'] == sq_pulito]['Id'].astype(str).tolist()
                     top_giocatori = df_q[df_q['Id'].isin(ids)].nlargest(3, 'FVM')
                     giocatori = [(row['Id'], row['Nome'], int(row['FVM'])) for _, row in top_giocatori.iterrows()]
 
@@ -863,7 +875,7 @@ else:
                 # salvata potrebbe essere obsoleta se il giocatore è stato comprato
                 giocatori = [
                     (pid, pnm, pvl) for pid, pnm, pvl in giocatori
-                    if proprietario_attuale.get(str(pid)) == sq
+                    if proprietario_attuale.get(str(pid)) == sq_pulito
                 ]
 
                 if not giocatori:
@@ -1023,7 +1035,7 @@ else:
                 df_q['Nome'] = df_q['Nome'].apply(pulisci_nome)
 
             df_q['Id'] = df_q['Id'].astype(str)
-            ids_miei = df_r[df_r['Squadra_LFM'] == st.session_state.squadra]['Id'].astype(str).tolist()
+            ids_miei = df_r[df_r['Squadra_LFM'] == pulisci_nome(st.session_state.squadra)]['Id'].astype(str).tolist()
             
             if not ids_miei:
                 st.warning("⚠️ Nessun giocatore trovato per la tua squadra.")
