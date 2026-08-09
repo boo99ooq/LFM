@@ -666,8 +666,18 @@ st.markdown("""
 if 'loggato' not in st.session_state:
     st.session_state.loggato = False
     st.session_state.squadra = None
-    
-if 'portale_aperto' not in st.session_state:
+
+if 'portale_aperto_override' not in st.session_state:
+    st.session_state.portale_aperto_override = None  # None = nessun override, segue la data reale
+
+# Risincronizza SEMPRE con la data reale a ogni rerun, a meno che l'admin non
+# abbia forzato manualmente una modalità in QUESTA sessione col toggle qui sotto.
+# Senza questo, chi tiene la scheda del browser aperta da prima della scadenza
+# resterebbe bloccato sulla modalità "fotografata" al primo caricamento della
+# pagina, anche ore dopo che la scadenza reale è scattata.
+if st.session_state.portale_aperto_override is not None:
+    st.session_state.portale_aperto = st.session_state.portale_aperto_override
+else:
     st.session_state.portale_aperto = PORTALE_APERTO
 
 # --- 6. CARICAMENTO DATI ---
@@ -770,13 +780,19 @@ else:
             st.markdown("---")
             
             nuova_modalita = st.toggle(
-                "🔓 Modalità Mercato", 
+                "🔓 Modalità Mercato (forza ANTEPRIMA, solo per te)", 
                 value=st.session_state.portale_aperto,
-                help="Attiva per vedere il mercato, disattiva per il terminale blindaggi"
+                help="Forza la modalità solo nella tua sessione, per test. Non segue più la data reale finché non premi 'Segui data reale'."
             )
             if nuova_modalita != st.session_state.portale_aperto:
-                st.session_state.portale_aperto = nuova_modalita
+                st.session_state.portale_aperto_override = nuova_modalita
                 st.rerun()
+
+            if st.session_state.portale_aperto_override is not None:
+                st.caption("⚠️ Stai forzando la modalità manualmente, non stai seguendo la data reale.")
+                if st.button("↩️ Segui data reale"):
+                    st.session_state.portale_aperto_override = None
+                    st.rerun()
             
             st.markdown("---")
             
@@ -802,6 +818,10 @@ else:
                 if not log_tasse.empty:
                     st.success("✅ Tasse già applicate.")
                     st.dataframe(log_tasse, use_container_width=True, hide_index=True)
+                    st.download_button(
+                        "⬇️ Scarica resoconto CSV", log_tasse.to_csv(index=False),
+                        file_name="tasse_blindaggio.csv", mime="text/csv"
+                    )
                 else:
                     anteprima = get_squadre_e_tasse()
                     if anteprima.empty:
@@ -809,6 +829,10 @@ else:
                     else:
                         st.caption("Anteprima — nessun credito ancora mosso:")
                         st.dataframe(anteprima, use_container_width=True, hide_index=True)
+                        st.download_button(
+                            "⬇️ Scarica anteprima CSV", anteprima.to_csv(index=False),
+                            file_name="anteprima_tasse_blindaggio.csv", mime="text/csv"
+                        )
                         conferma_tasse = st.checkbox("Confermo di voler applicare le tasse (operazione unica, non ripetibile).")
                         if conferma_tasse and st.button("💸 APPLICA TASSE DI BLINDAGGIO"):
                             ok, motivo = applica_tasse_blindaggio()
