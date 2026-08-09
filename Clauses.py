@@ -4,6 +4,15 @@ from github import Github
 from io import StringIO
 import math
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+def ora_italiana():
+    """Orario attuale in Italia (Europe/Rome), naive (senza tzinfo) — così resta
+    direttamente confrontabile con le costanti di scadenza e gli orari salvati
+    nei CSV. Necessario perché il server dell'app gira in UTC: senza questo,
+    ogni scadenza sarebbe sfasata di 1-2 ore (a seconda dell'ora legale)
+    rispetto all'orario italiano reale."""
+    return datetime.now(ZoneInfo("Europe/Rome")).replace(tzinfo=None)
 import time
 import re
 
@@ -14,14 +23,14 @@ SCADENZA = datetime(2026, 8, 10)          # 00:00 del 10/08 — le clausole dive
 APERTURA_MERCATO = datetime(2026, 8, 10, 22, 0)  # 22:00 del 10/08 — da qui si può iniziare a pagarle
 FINESTRA_CONTRORISCATTO_INIZIO = datetime(2026, 8, 30, 0, 0, 0)   # ultime 48 ore di agosto
 FINESTRA_CONTRORISCATTO_FINE = datetime(2026, 8, 31, 23, 59, 59)
-OGGI = datetime.now()
+OGGI = ora_italiana()
 
 if FORZA_MODALITA:
     PORTALE_APERTO = True
 else:
     PORTALE_APERTO = OGGI >= SCADENZA
 
-MERCATO_PAGABILE = FORZA_MODALITA or (datetime.now() >= APERTURA_MERCATO)
+MERCATO_PAGABILE = FORZA_MODALITA or (ora_italiana() >= APERTURA_MERCATO)
 
 ADMIN_SQUADRE = ["Liverpool Football Club", "Villarreal", "Reggina Calcio 1914", "Siviglia"]
 
@@ -122,7 +131,7 @@ def conta_clausole_pagate(squadra):
 def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo):
     time.sleep(0.5)
     path = "richieste_scippo.csv"
-    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    orario = ora_italiana().strftime("%Y-%m-%d %H:%M:%S")
     nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},PENDENTE,{orario}\n"
     try:
         f = repo.get_contents(path)
@@ -135,7 +144,7 @@ def registra_richiesta_clausola(acquirente, proprietario, player_id, nome, costo
 def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, costo):
     """Esegue immediatamente lo scambio di crediti e il trasferimento del giocatore,
     senza passare per un'approvazione admin. Registra comunque un log per lo storico."""
-    if not (FORZA_MODALITA or datetime.now() >= APERTURA_MERCATO):
+    if not (FORZA_MODALITA or ora_italiana() >= APERTURA_MERCATO):
         return False, f"Il mercato non è ancora aperto ai pagamenti. Si apre alle {APERTURA_MERCATO.strftime('%H:%M del %d/%m/%Y')}."
 
     # Controllo limite: conteggio fresco al momento dell'esecuzione, non quello
@@ -171,7 +180,7 @@ def esegui_trasferimento_clausola(acquirente, proprietario, player_id, nome, cos
     salva_file_github("fantamanager-2021-rosters.csv", df_ros, f"Trasferimento {nome}")
 
     path = "richieste_scippo.csv"
-    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    orario = ora_italiana().strftime("%Y-%m-%d %H:%M:%S")
     nuova_riga = f"{acquirente},{proprietario},{player_id},{nome},{costo},APPROVATO_AUTO,{orario}\n"
     try:
         f = repo.get_contents(path)
@@ -194,7 +203,7 @@ def parse_orario_pagamento(orario_str):
 def get_controriscatti_disponibili(squadra):
     """Clausole subite da 'squadra' ancora rispondibili con controriscatto:
     dentro la finestra di calendario (ultime 48h di agosto) E entro 24h dal pagamento."""
-    ora = datetime.now()
+    ora = ora_italiana()
     if not (FINESTRA_CONTRORISCATTO_INIZIO <= ora <= FINESTRA_CONTRORISCATTO_FINE):
         return pd.DataFrame()
 
@@ -220,7 +229,7 @@ def get_controriscatti_disponibili(squadra):
 def esegui_controriscatto(proprietario, acquirente, player_id, nome, costo_originale):
     """Il proprietario originale riprende il giocatore pagando il 110% della clausola;
     l'acquirente riceve indietro solo l'importo originale (il 10% extra non va a nessuno)."""
-    ora = datetime.now()
+    ora = ora_italiana()
     if not (FINESTRA_CONTRORISCATTO_INIZIO <= ora <= FINESTRA_CONTRORISCATTO_FINE):
         return False, "Il diritto di controriscatto è esercitabile solo nelle ultime 48 ore di agosto."
 
@@ -311,7 +320,7 @@ def applica_tasse_blindaggio():
         return False, "Nessuna bozza salvata trovata: nulla da applicare."
 
     df_l = carica_csv("leghe.csv")
-    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    orario = ora_italiana().strftime("%Y-%m-%d %H:%M:%S")
     log_righe = []
     for _, r in df_tasse.iterrows():
         squadra_pulita = pulisci_nome(r['Squadra'])
@@ -811,7 +820,7 @@ else:
             st.markdown("---")
 
             st.markdown("#### 💰 Tasse di Blindaggio")
-            if datetime.now() < SCADENZA:
+            if ora_italiana() < SCADENZA:
                 st.caption(f"🔒 Disponibile dal raggiungimento della scadenza ({SCADENZA.strftime('%d/%m/%Y %H:%M')}).")
             else:
                 log_tasse = carica_csv("tasse_blindaggio.csv")
@@ -896,7 +905,7 @@ else:
         clausole_esaurite = clausole_pagate >= LIMITE_CLAUSOLE_PAGATE
 
         if not MERCATO_PAGABILE:
-            attesa = APERTURA_MERCATO - datetime.now()
+            attesa = APERTURA_MERCATO - ora_italiana()
             ore_attesa = attesa.seconds // 3600
             minuti_attesa = (attesa.seconds % 3600) // 60
             st.warning(
@@ -1011,7 +1020,7 @@ else:
                                     st.error("❌ Budget insufficiente!")
 
         # --- DIRITTO DI CONTRORISCATTO: solo nelle ultime 48 ore di agosto ---
-        if FINESTRA_CONTRORISCATTO_INIZIO <= datetime.now() <= FINESTRA_CONTRORISCATTO_FINE:
+        if FINESTRA_CONTRORISCATTO_INIZIO <= ora_italiana() <= FINESTRA_CONTRORISCATTO_FINE:
             st.divider()
             st.markdown("### 🔁 Diritto di Controriscatto")
             st.caption(
@@ -1025,7 +1034,7 @@ else:
                 for idx, r in controriscatti.iterrows():
                     dt_pagamento = parse_orario_pagamento(r['Orario'])
                     scadenza = dt_pagamento + timedelta(hours=24)
-                    rimanente = scadenza - datetime.now()
+                    rimanente = scadenza - ora_italiana()
                     ore_rim = rimanente.seconds // 3600
                     min_rim = (rimanente.seconds % 3600) // 60
                     penale_totale = math.ceil(float(r['Costo']) * 1.10)
