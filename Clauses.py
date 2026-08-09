@@ -276,6 +276,57 @@ def calcola_tassa(valore):
         tassa = 20 + 15 + (valore - 300) * 0.20
     return math.ceil(tassa)
 
+def get_squadre_e_tasse():
+    """Calcola, per ogni squadra con una bozza salvata, la tassa totale di
+    blindaggio sui 3 valori salvati. Funzione pura, nessuna scrittura:
+    calcola_tassa è deterministica quindi il totale è sempre ricostruibile
+    dai soli valori già salvati in clausole_segrete.csv."""
+    salvati = carica_clausole_salvate()
+    righe = []
+    for squadra, dati in salvati.items():
+        tot_tasse = 0
+        for p in dati.split(";"):
+            if not p.strip():
+                continue
+            try:
+                _, _, valore = p.split(":")
+                tot_tasse += calcola_tassa(int(valore))
+            except ValueError:
+                continue
+        eccedenza = max(0, tot_tasse - 60)
+        righe.append({'Squadra': squadra, 'TotaleTasse': tot_tasse, 'Eccedenza': eccedenza})
+    return pd.DataFrame(righe)
+
+def applica_tasse_blindaggio():
+    """Deduzione UNA TANTUM della tassa di blindaggio (parte eccedente il Bonus
+    Lega di 60cr) dal budget di ogni squadra con una bozza salvata. Protetta da
+    un log che rende l'operazione non ripetibile: se il log esiste già, l'app
+    rifiuta di eseguirla una seconda volta."""
+    log_esistente = carica_csv("tasse_blindaggio.csv")
+    if not log_esistente.empty:
+        return False, "Le tasse di blindaggio risultano già applicate in precedenza. Operazione non ripetibile."
+
+    df_tasse = get_squadre_e_tasse()
+    if df_tasse.empty:
+        return False, "Nessuna bozza salvata trovata: nulla da applicare."
+
+    df_l = carica_csv("leghe.csv")
+    orario = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_righe = []
+    for _, r in df_tasse.iterrows():
+        squadra_pulita = pulisci_nome(r['Squadra'])
+        mask = (df_l['Squadra'] == r['Squadra']) | (df_l['Squadra'].apply(pulisci_nome) == squadra_pulita)
+        if mask.any():
+            df_l.loc[mask, 'Crediti'] -= int(r['Eccedenza'])
+        log_righe.append({
+            'Squadra': r['Squadra'], 'TotaleTasse': int(r['TotaleTasse']),
+            'Eccedenza': int(r['Eccedenza']), 'Orario': orario
+        })
+
+    salva_file_github("leghe.csv", df_l, "Applicazione tasse di blindaggio")
+    salva_file_github("tasse_blindaggio.csv", pd.DataFrame(log_righe), "Log tasse di blindaggio applicate")
+    return True, None
+
 # --- 4. UI E CSS ---
 st.set_page_config(
     page_title="LFM - Portale Clausole", 
@@ -740,6 +791,32 @@ else:
             if st.checkbox("👀 Vedi chi manca"):
                 for m in mancanti:
                     st.text(f"❌ {get_team_display_name(m)}")
+            
+            st.markdown("---")
+
+            st.markdown("#### 💰 Tasse di Blindaggio")
+            if datetime.now() < SCADENZA:
+                st.caption(f"🔒 Disponibile dal raggiungimento della scadenza ({SCADENZA.strftime('%d/%m/%Y %H:%M')}).")
+            else:
+                log_tasse = carica_csv("tasse_blindaggio.csv")
+                if not log_tasse.empty:
+                    st.success("✅ Tasse già applicate.")
+                    st.dataframe(log_tasse, use_container_width=True, hide_index=True)
+                else:
+                    anteprima = get_squadre_e_tasse()
+                    if anteprima.empty:
+                        st.info("Nessuna bozza salvata trovata.")
+                    else:
+                        st.caption("Anteprima — nessun credito ancora mosso:")
+                        st.dataframe(anteprima, use_container_width=True, hide_index=True)
+                        conferma_tasse = st.checkbox("Confermo di voler applicare le tasse (operazione unica, non ripetibile).")
+                        if conferma_tasse and st.button("💸 APPLICA TASSE DI BLINDAGGIO"):
+                            ok, motivo = applica_tasse_blindaggio()
+                            if ok:
+                                st.success("✅ Tasse applicate e registrate.")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {motivo}")
             
             st.markdown("---")
             
