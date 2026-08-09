@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from github import Github
+from github import GithubException
 from io import StringIO
 import math
 from datetime import datetime, timedelta
@@ -88,6 +89,12 @@ def salva_file_github(path, df, msg):
     try:
         f = repo.get_contents(path)
         repo.update_file(path, msg, csv_buffer, f.sha)
+    except GithubException as e:
+        if e.status == 404:
+            repo.create_file(path, msg, csv_buffer)
+        else:
+            st.error(f"Errore salvataggio: {e}")
+            raise
     except Exception as e:
         st.error(f"Errore salvataggio: {e}")
         raise
@@ -310,30 +317,37 @@ def applica_tasse_blindaggio():
     """Deduzione UNA TANTUM della tassa di blindaggio (parte eccedente il Bonus
     Lega di 60cr) dal budget di ogni squadra con una bozza salvata. Protetta da
     un log che rende l'operazione non ripetibile: se il log esiste già, l'app
-    rifiuta di eseguirla una seconda volta."""
+    rifiuta di eseguirla una seconda volta.
+
+    IMPORTANTE: il log viene scritto PRIMA di toccare i crediti apposta — se
+    qualcosa va storto a metà, il fallimento blocca un secondo tentativo (che
+    scalerebbe la tassa due volte) invece di rischiare un doppio addebito
+    silenzioso. Il prezzo è che un fallimento a metà lascia i crediti non
+    ancora aggiornati anche col log presente: in quel caso va sistemato a
+    mano confrontando il log con leghe.csv, non rilanciando l'operazione."""
     log_esistente = carica_csv("tasse_blindaggio.csv")
     if not log_esistente.empty:
-        return False, "Le tasse di blindaggio risultano già applicate in precedenza. Operazione non ripetibile."
+        return False, "Le tasse di blindaggio risultano già applicate in precedenza (o un tentativo precedente si è fermato a metà). Operazione non ripetibile: controlla leghe.csv a mano."
 
     df_tasse = get_squadre_e_tasse()
     if df_tasse.empty:
         return False, "Nessuna bozza salvata trovata: nulla da applicare."
 
-    df_l = carica_csv("leghe.csv")
     orario = ora_italiana().strftime("%Y-%m-%d %H:%M:%S")
-    log_righe = []
+    log_righe = [{
+        'Squadra': r['Squadra'], 'TotaleTasse': int(r['TotaleTasse']),
+        'Eccedenza': int(r['Eccedenza']), 'Orario': orario
+    } for _, r in df_tasse.iterrows()]
+    salva_file_github("tasse_blindaggio.csv", pd.DataFrame(log_righe), "Log tasse di blindaggio applicate")
+
+    df_l = carica_csv("leghe.csv")
     for _, r in df_tasse.iterrows():
         squadra_pulita = pulisci_nome(r['Squadra'])
         mask = (df_l['Squadra'] == r['Squadra']) | (df_l['Squadra'].apply(pulisci_nome) == squadra_pulita)
         if mask.any():
             df_l.loc[mask, 'Crediti'] -= int(r['Eccedenza'])
-        log_righe.append({
-            'Squadra': r['Squadra'], 'TotaleTasse': int(r['TotaleTasse']),
-            'Eccedenza': int(r['Eccedenza']), 'Orario': orario
-        })
 
     salva_file_github("leghe.csv", df_l, "Applicazione tasse di blindaggio")
-    salva_file_github("tasse_blindaggio.csv", pd.DataFrame(log_righe), "Log tasse di blindaggio applicate")
     return True, None
 
 # --- 4. UI E CSS ---
