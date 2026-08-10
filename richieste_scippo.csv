@@ -1,52 +1,13 @@
-
-FC Koln,Borussia Mgladbach,6908,Atta,87,PENDENTE,11:57:13
-FC Koln,Bayer 04 Leverkusen,2764,Martinez L.,600,PENDENTE,17:40:34
+Acquirente,Proprietario,Id,Nome,Costo,Stato,Orario
 Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:00:12
 FiorentinaT,Roma,6060,Laurient,80,APPROVATO_AUTO,2026-08-10 22:00:15
-FiorentinaT,Roma,6060,Laurient,80,APPROVATO_AUTO,2026-08-10 22:00:20
 FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:00:24
 West Ham United,Manchester City,2061,Simeone,100,APPROVATO_AUTO,2026-08-10 22:00:26
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:00:31
-FiorentinaT,Roma,6060,Laurient,80,APPROVATO_AUTO,2026-08-10 22:00:33
-West Ham United,Manchester City,2061,Simeone,100,APPROVATO_AUTO,2026-08-10 22:00:36
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:00:41
-FiorentinaT,Roma,6060,Laurient,80,APPROVATO_AUTO,2026-08-10 22:00:47
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:00:51
-FiorentinaT,Roma,6060,Laurient,80,APPROVATO_AUTO,2026-08-10 22:00:57
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:01:02
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:01:28
-West Ham United,Manchester City,2061,Simeone,100,APPROVATO_AUTO,2026-08-10 22:01:37
-Chelsea,Liverpool Football Club,2766,Zaniolo,180,APPROVATO_AUTO,2026-08-10 22:01:49
 FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:02:09
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:02:27
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:02:37
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:04:20
-FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:04:32
-FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:04:53
-FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:05:02
 Liverpool Football Club,Arsenal,2764,Martinez L.,410,APPROVATO_AUTO,2026-08-10 22:06:20
 Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:07:54
-Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:08:27
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:08:37
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:09:02
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:09:09
-FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:09:30
-Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:10:03
-Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:10:14
-Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:10:44
-Arsenal,Chelsea,632,Zaccagni,200,APPROVATO_AUTO,2026-08-10 22:10:54
 Arsenal,Chelsea,2137,Scamacca,200,APPROVATO_AUTO,2026-08-10 22:11:16
 Arsenal,Leicester City Football Club,4777,McTominay,280,APPROVATO_AUTO,2026-08-10 22:11:43
-FC Koln,Borussia Dortmund,4510,Leao,90,APPROVATO_AUTO,2026-08-10 22:14:44
-FC Koln,Bayern Monaco,632,Zaccagni,150,APPROVATO_AUTO,2026-08-10 22:15:16
 Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:21:41
 Atletico Madrid,Real Madrid,4510,Leao,120,APPROVATO_AUTO,2026-08-10 22:21:52
-Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:22:44
-Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:23:04
-Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:23:40
-Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:24:04
-Atletico Madrid,Real Madrid,5995,De Ketelaere,150,APPROVATO_AUTO,2026-08-10 22:24:14
 Real Madrid,Valencia,7071,Esposito F.P.,200,APPROVATO_AUTO,2026-08-10 22:33:12
-Real Madrid,Valencia,7071,Esposito F.P.,200,APPROVATO_AUTO,2026-08-10 22:33:22
-Real Madrid,Valencia,7071,Esposito F.P.,200,APPROVATO_AUTO,2026-08-10 22:34:10
-Real Madrid,Valencia,7071,Esposito F.P.,200,APPROVATO_AUTO,2026-08-10 22:34:47
