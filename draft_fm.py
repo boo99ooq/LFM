@@ -362,6 +362,13 @@ elif menu == "5. Draft Estivo":
     lega_sel = st.selectbox("Lega:", leghe_l, key="draft_lega")
 
     df_lega = df_base[df_base['Lega'] == lega_sel]
+
+    colonne_richieste = ['Squadra_LFM', 'Id', 'Nome', 'R', 'Qt.I', 'FVM', 'Is_Escluso']
+    mancanti = [c for c in colonne_richieste if c not in df_lega.columns]
+    if mancanti:
+        st.error(f"⚠️ Mancano le colonne {mancanti} nei dati di questa Lega. Colonne trovate: {df_lega.columns.tolist()}")
+        st.stop()
+
     persi_globale = df_lega[df_lega['Is_Escluso']].copy()
 
     df_draft_log = get_df_from_github('draft_estivo.csv')
@@ -401,6 +408,9 @@ elif menu == "5. Draft Estivo":
             gia_chiamati = pd.DataFrame(columns=['Squadra_LFM', 'Id', 'Nome', 'Qt_Eff', 'FVM_Eff', 'Fatto'])
 
         coda = pd.concat([in_attesa, gia_chiamati], ignore_index=True)
+        if 'Fatto' not in coda.columns:
+            coda['Fatto'] = False
+        coda['Fatto'] = coda['Fatto'].fillna(False)
         coda['Qt_Eff'] = pd.to_numeric(coda['Qt_Eff'], errors='coerce').fillna(0)
         coda['FVM_Eff'] = pd.to_numeric(coda['FVM_Eff'], errors='coerce').fillna(0)
         coda = coda.sort_values(['Qt_Eff', 'FVM_Eff'], ascending=[False, False]).reset_index(drop=True)
