@@ -1,27 +1,28 @@
-Id,R,Nome,Qt.I,FVM
-5841,P,Svilar,18,75
+Id,R,Nome,Qt.A,FVM
+5841,P,Svilar,19,75
+4431,P,Carnesecchi,17,52
 5116,P,Martinez Jo.,17,63
-4431,P,Carnesecchi,16,52
-6966,P,Butez,16,54
-4964,P,Vicario,16,58
+4964,P,Vicario,17,58
+6966,P,Butez,15,54
 4312,P,Maignan,15,50
-2521,P,De Gea,12,40
+2521,P,De Gea,11,40
 572,P,Meret,11,53
 133,P,Skorupski,10,36
 4360,P,Caprile,10,28
 6482,P,Mandas,10,32
-2134,P,Falcone,9,30
 6462,P,Okoye,9,29
 6534,P,Perri,9,26
 7332,P,Bijlow,8,17
-7411,P,Daffara,7,10
+2134,P,Falcone,8,30
 4236,P,Muric,7,15
+7411,P,Daffara,6,10
 6248,P,Stankovic F.,6,12
 6415,P,Palmisani,5,12
-4485,P,Thiam,5,11
 2170,P,Milinkovic-Savic V.,5,7
+4485,P,Thiam,4,11
 7463,P,Desplanches,2,3
 2814,P,Provedel,2,5
+6662,P,Corvi,2,10
 4,P,Sportiello,1,1
 7533,P,Happonen,1,1
 7172,P,Pessina Mas.,1,1
@@ -41,7 +42,6 @@ Id,R,Nome,Qt.I,FVM
 6813,P,Torriani,1,1
 7475,P,Strajnar,1,1
 2845,P,Contini,1,1
-6662,P,Corvi,1,10
 7048,P,De Marzi,1,1
 610,P,Gollini,1,1
 4518,P,Russo A.,1,1
@@ -62,154 +62,157 @@ Id,R,Nome,Qt.I,FVM
 4468,P,Bleve,1,1
 7603,P,Grabara,1,1
 7611,P,Mrozek,1,1
-254,D,Dimarco,31,253
-4998,D,Molina N.,18,80
-7181,D,Wesley,17,82
-4159,D,Akanji,16,51
+254,D,Dimarco,31,240
+7181,D,Wesley,18,87
+4998,D,Molina N.,18,78
 2788,D,Bremer,16,60
-2296,D,Mancini,15,49
+2296,D,Mancini,16,50
+4159,D,Akanji,15,47
+4409,D,Rrahmani,15,51
 2120,D,Bastoni,14,43
-5022,D,Pavlovic,14,48
-4409,D,Rrahmani,14,51
-4976,D,Kalulu,13,46
-4317,D,N'Dicka,13,44
+4976,D,Kalulu,14,47
+5022,D,Pavlovic,14,49
+5833,D,Gila,13,31
+4317,D,N'Dicka,13,42
 6956,D,Solet,13,46
-6217,D,Bisseck,12,37
-2514,D,Stones,12,30
-5833,D,Gila,12,31
-2816,D,Di Lorenzo,12,40
-5982,D,Spence,12,40
-5750,D,Ostigard,11,43
+6217,D,Bisseck,12,36
+2514,D,Stones,12,25
+2816,D,Di Lorenzo,12,39
+5750,D,Ostigard,11,41
+4807,D,Hermoso,11,26
+5982,D,Spence,11,37
 5526,D,Scalvini,10,28
-6869,D,Ramon,10,32
-5885,D,Dod ,10,20
-4807,D,Hermoso,10,26
-5514,D,Vasquez,9,32
-5520,D,Cambiaso,9,25
-6989,D,Tiago Gabriel,9,20
-5641,D,Chalobah T.,9,30
-6046,D,Hien,8,11
+6869,D,Ramon,10,31
+5641,D,Chalobah T.,10,32
+5885,D,Dod ,9,20
+5514,D,Vasquez,9,30
+4994,D,Vojvoda,9,19
+5555,D,Kamara H.,9,12
 554,D,Zappacosta,8,19
-6042,D,Lucum ,8,18
-4734,D,Miranda J.,8,24
-4210,D,Mina,8,20
-6531,D,Jimenez A.,8,23
-6814,D,Norton-Cuffy,8,21
-4657,D,Celik,8,15
+4734,D,Miranda J.,8,23
+6814,D,Norton-Cuffy,8,15
+4657,D,Celik,8,16
+5520,D,Cambiaso,8,18
 6320,D,Doekhi,8,16
+6989,D,Tiago Gabriel,8,20
 6496,D,Bartesaghi,8,22
 1852,D,Spinazzola,8,25
 6664,D,Delprato,8,21
-5862,D,Valeri,8,24
-7529,D,Koulierakis,8,17
-4994,D,Vojvoda,8,19
-5555,D,Kamara H.,8,12
-6727,D,Couto,8,26
+5862,D,Valeri,8,22
+7529,D,Koulierakis,8,15
+6495,D,Comuzzo,8,13
+6727,D,Couto,8,25
 5675,D,Theate,8,20
+6046,D,Hien,7,11
+6042,D,Lucum ,7,17
+4433,D,Zortea,7,19
+4210,D,Mina,7,20
 5701,D,Obert,7,15
-7414,D,Kaiki,7,16
-5365,D,Dragusin,7,27
-5877,D,Carlos Augusto,7,25
-460,D,Romagnoli,7,22
-4401,D,Gabbia,7,24
-4751,D,Tomori,7,8
-2724,D,Buongiorno,7,15
+5365,D,Dragusin,7,20
+6531,D,Jimenez A.,7,18
+7469,D,Bracaglia,7,15
+5620,D,Tavares N.,7,25
+4401,D,Gabbia,7,15
+7485,D,Mangas,7,15
 6672,D,Idzes,7,19
 6642,D,Coco,7,14
 5010,D,Ismajli,7,13
-6485,D,Kristensen T.,7,20
-4664,D,Badiashile,7,21
+4664,D,Badiashile,7,18
 7580,D,Sutalo J.,7,19
-6916,D,Ahanor,6,14
+7220,D,Belghali,7,20
+2640,D,Kolasinac,6,8
+6916,D,Ahanor,6,13
 4887,D,Bellanova,6,17
 7219,D,Bernasconi,6,18
 7212,D,Heggem,6,15
-4433,D,Zortea,6,19
+5678,D,Holm,6,13
+7414,D,Kaiki,6,13
 6867,D,Valle,6,21
-7294,D,Valdepenas,6,18
-7410,D,Viery,6,17
+7410,D,Viery,6,12
 4952,D,Monterisi,6,13
+6238,D,Oyono A.,6,10
 6660,D,Marcandalli,6,14
 4177,D,Pavard,6,14
-5620,D,Tavares N.,6,12
+5877,D,Carlos Augusto,6,20
+460,D,Romagnoli,6,20
+4817,D,Pedraza,6,14
 2188,D,Marusic,6,20
-6632,D,Gaspar K.,6,12
 6990,D,Veiga D.,6,12
-4502,D,Gallo,6,13
-7485,D,Mangas,6,15
+4502,D,Gallo,6,12
+4751,D,Tomori,6,8
 6202,D,Beukema,6,12
-6495,D,Comuzzo,6,13
-7253,D,Bella-Kotchap,6,13
-7329,D,Obrador,6,15
+2724,D,Buongiorno,6,15
+6485,D,Kristensen T.,6,20
+7329,D,Obrador,6,13
+7069,D,Fortini,6,12
+7564,D,Leysen F.,6,12
 4705,D,Balerdi,6,11
-2640,D,Kolasinac,5,8
-7068,D,Vitik,5,10
-5678,D,Holm,5,13
 7532,D,Kofler,5,8
 7274,D,Z  Pedro,5,13
 6893,D,Kempf,5,13
-5449,D,Parisi,5,10
-7469,D,Bracaglia,5,12
-6238,D,Oyono A.,5,10
-2593,D,Martin,5,8
+7294,D,Valdepenas,5,16
+7467,D,Calvani,5,13
 6766,D,Kelly L.,5,12
-4817,D,Pedraza,5,15
-7240,D,Siebert,5,12
+6632,D,Gaspar K.,5,12
+5739,D,De Winter,5,20
 5840,D,Olivera,5,13
-6986,D,Rensch,5,14
-6890,D,Moreno M.,5,6
+6631,D,Ghilardi,5,10
+5851,D,Doig,5,10
+7253,D,Bella-Kotchap,5,13
 4845,D,Correia T.,5,12
 5695,D,Haps,5,10
-7069,D,Fortini,5,12
-7564,D,Leysen F.,5,12
+5578,D,Kossounou,4,12
+7068,D,Vitik,4,10
 7268,D,Rodriguez Ju.,4,14
 7014,D,Smolcic I.,4,10
 5603,D,Pongracic,4,8
-7467,D,Calvani,4,12
+5449,D,Parisi,4,10
+5757,D,Cittadini,4,8
+2593,D,Martin,4,8
 7537,D,Mitaj,4,10
 5831,D,Gatti,4,10
-5739,D,De Winter,4,12
-5273,D,Estupinan,4,13
+7012,D,Provstgaard,4,13
+7131,D,Floriani Mussolini,4,10
+7240,D,Siebert,4,12
 2115,D,Delli Carri,4,11
-6659,D,Lucchesi,4,11
 5838,D,Birindelli,4,12
-7235,D,Troilo,4,14
 5307,D,Valenti,4,10
-6631,D,Ghilardi,4,10
+6986,D,Rensch,4,14
 4374,D,Walukiewicz,4,10
-5851,D,Doig,4,10
 7526,D,Comert,4,12
 4263,D,Kabasele,4,12
 5820,D,Bertola,4,10
 5527,D,Zanoli,4,10
 7312,D,Arizala,4,8
-7538,D,Halhal,4,10
+6890,D,Moreno M.,4,6
+6821,D,Hainaut,4,12
 4375,D,Terzic,4,8
 7563,D,Favasuli,4,11
-5578,D,Kossounou,3,12
+256,D,Juan Jesus,4,10
 5498,D,Casale,3,5
 7326,D,Helland,3,12
 7125,D,Idrissi R.,3,3
 4378,D,Ranieri L.,3,10
 7175,D,Joao Mario,3,12
 7540,D,Akpoguma,3,6
-5757,D,Cittadini,3,8
-7012,D,Provstgaard,3,14
-7131,D,Floriani Mussolini,3,10
+5273,D,Estupinan,3,13
+6659,D,Lucchesi,3,11
 7238,D,Kouadio,3,14
 4925,D,Carboni A.,3,9
+7235,D,Troilo,3,14
 7255,D,Britschgi,3,10
 6985,D,Cand ,3,7
 6925,D,Palma,3,11
 5994,D,Ebosse,3,5
+7538,D,Halhal,3,10
 6892,D,Schingtienne,3,10
 6673,D,Sverko,3,7
-6821,D,Hainaut,3,12
+7478,D,Franjic,3,7
 7154,D,Odenthal,3,8
 7605,D,Tchato,3,8
 6601,D,Kambwala,3,8
 7483,D,Alhassane,2,6
-6896,D,Van Der Brempt,2,5
+6896,D,Van Der Brempt,2,11
 6977,D,Otoa,2,5
 7413,D,Puczka,2,3
 791,D,Sabelli,2,5
@@ -223,11 +226,12 @@ Id,R,Nome,Qt.I,FVM
 7202,D,Ndiaye,2,8
 252,D,Biraghi,2,5
 6021,D,Abankwah,2,10
-7478,D,Franjic,2,7
 6681,D,Sagrado,2,4
 7548,D,Aurelio,2,5
 7573,D,Cinquegrano,2,4
 5812,D,Terracciano F.,2,4
+7599,D,Lulli,2,10
+7615,D,Drobnic,2,1
 487,D,De Silvestri,1,4
 418,D,Goldaniga,1,1
 5424,D,Amey,1,1
@@ -236,166 +240,163 @@ Id,R,Nome,Qt.I,FVM
 327,D,Patric,1,1
 5399,D,Antov,1,2
 6809,D,Marianucci,1,3
-5481,D,Mazzocchi,1,3
+5481,D,Mazzocchi,1,10
 6149,D,Carboni F.,1,3
-7260,D,Ziolkowski,1,2
+7260,D,Ziolkowski,1,8
 7156,D,Pieragnolo,1,1
 7356,D,Mlacic,1,3
 7454,D,Gomes,1,1
 7553,D,Omar Fayed,1,1
-7396,D,Macchioni,1,1
-7599,D,Lulli,1,3
 7604,D,Maye,1,1
-7615,D,Drobnic,1,1
 6826,D,Dembel  A.,1,2
-6875,C,Paz N.,29,247
-2194,C,Calhanoglu,28,236
-4777,C,McTominay,28,228
-2167,C,Orsolini,25,192
-2423,C,Pulisic,24,160
+6875,C,Paz N.,29,245
+2194,C,Calhanoglu,28,243
+4777,C,McTominay,27,220
+2167,C,Orsolini,25,177
+2423,C,Pulisic,24,150
 2379,C,Rabiot,23,145
-7126,C,Baturina,19,97
-7556,C,Mora,19,95
+7126,C,Baturina,20,105
+7556,C,Mora,20,100
 5559,C,Da Cunha,18,87
-2766,C,Zaniolo,18,85
-1870,C,Barella,17,80
+1870,C,Barella,18,81
+2766,C,Zaniolo,18,80
 4973,C,McKennie,17,70
-6908,C,Atta,16,86
-632,C,Zaccagni,16,88
-2517,C,De Bruyne,16,107
-5800,C,Gudmundsson A.,13,40
-7314,C,Taylor K.,13,57
-5687,C,Vlasic,13,75
-5792,C,Ederson D.S.,12,49
-5119,C,Samardzic,12,41
-7129,C,Rodriguez Je.,12,31
-7436,C,Alajbegovic,12,50
-6884,C,Conceicao,12,67
-2606,C,Modric,12,46
-7078,C,Mastantuono,12,54
-6372,C,Moreira,12,50
-5172,C,Jones C.,12,48
+2517,C,De Bruyne,17,108
+632,C,Zaccagni,16,87
+6908,C,Atta,15,78
+5119,C,Samardzic,13,44
+6884,C,Conceicao,13,68
+7314,C,Taylor K.,13,53
+5687,C,Vlasic,13,73
+5792,C,Ederson D.S.,12,46
+5800,C,Gudmundsson A.,12,40
+152,C,Zielinski,12,45
+2606,C,Modric,12,45
+6684,C,Ekkelenkamp,12,57
+5172,C,Jones C.,12,47
+4179,C,Gonzalez N.,12,45
 1850,C,Kessi ,12,47
-6844,C,Rowe,11,44
-5823,C,Baldanzi,11,30
-152,C,Zielinski,11,45
-4220,C,Zambo Anguissa,11,47
-6684,C,Ekkelenkamp,11,45
-4179,C,Gonzalez N.,11,41
-6151,C,Perrone,10,37
-5562,C,Thuram K.,10,35
-4892,C,Saelemaekers,10,35
-536,C,Politano,10,40
-7223,C,Vergara,10,40
+7129,C,Rodriguez Je.,11,31
+5823,C,Baldanzi,11,28
+7436,C,Alajbegovic,11,42
+4892,C,Saelemaekers,11,35
+7078,C,Mastantuono,11,50
+6372,C,Moreira,11,45
+184,C,Bernardeschi,10,27
+6844,C,Rowe,10,40
+6151,C,Perrone,10,34
+2848,C,Frattesi,10,75
+4220,C,Zambo Anguissa,10,41
+7223,C,Vergara,10,35
 5589,C,Kon  M.,10,42
-5844,C,Thorstvedt,10,40
-5888,C,Casadei,10,32
-530,C,Pellegrini Lo.,10,25
-2077,C,Pasalic,9,24
-184,C,Bernardeschi,9,30
-1933,C,Mandragora,9,23
-6274,C,Diouf,9,44
-2848,C,Frattesi,9,68
-5500,C,Cancellieri,9,28
+5844,C,Thorstvedt,10,39
+6274,C,Diouf,9,43
+7070,C,Sucic P.,9,21
+827,C,Locatelli,9,33
+5562,C,Thuram K.,9,25
+5500,C,Cancellieri,9,25
 6398,C,Isaksen,9,22
-6717,C,Kon  I.,9,20
-4364,C,Gaetano,8,30
+5878,C,Colpani,9,15
+536,C,Politano,9,37
+779,C,Cristante,9,29
+5735,C,Volpato,9,25
+5888,C,Casadei,9,27
+530,C,Pellegrini Lo.,9,20
+2077,C,Pasalic,8,22
 2765,C,Odgaard,8,17
-4436,C,Cambiaghi,8,21
-4465,C,Fagioli,8,22
-6294,C,Ndour,8,25
-7070,C,Sucic P.,8,21
-827,C,Locatelli,8,33
-5878,C,Colpani,8,15
-4287,C,Lobotka,8,22
-779,C,Cristante,8,29
-5735,C,Volpato,8,23
-7551,C,Schmid,8,28
+4436,C,Cambiaghi,8,25
+1933,C,Mandragora,8,23
+7472,C,Cal ,8,27
+4856,C,Chukwueze,8,22
+4287,C,Lobotka,8,23
+6717,C,Kon  I.,8,20
+7551,C,Schmid,8,25
+7618,C,Hutchinson,8,25
+4364,C,Gaetano,7,30
+5422,C,Zalewski,7,18
 5858,C,Ferguson,7,23
 4870,C,Adopo,7,13
-7311,C,Romano,7,20
-6010,C,Fazzini,7,24
-7472,C,Cal ,7,25
-5791,C,Frendrup,7,20
+7311,C,Romano,7,21
+4465,C,Fagioli,7,20
+6294,C,Ndour,7,22
+5791,C,Frendrup,7,19
+5685,C,Koopmeiners,7,15
 4459,C,Rovella,7,16
 5504,C,Coulibaly L.,7,17
-4856,C,Chukwueze,7,22
-2741,C,Pessina,7,15
-6666,C,Bernab ,7,35
-6190,C,Pisilli,7,17
-6218,C,Oristanio,7,12
+6593,C,Akinsanmiro,7,11
+6666,C,Bernab ,7,34
+6190,C,Pisilli,7,19
 6680,C,Karlstrom,7,20
-6783,C,Unai Gomez,7,17
+6783,C,Unai Gomez,7,16
 5946,C,Sow,7,15
-4479,C,Elmas,7,28
-5422,C,Zalewski,6,20
-5298,C,Pobega,6,13
+4479,C,Elmas,7,22
+7619,C,Monteiro J.,7,23
+5298,C,Pobega,6,12
 4260,C,Winks,6,15
-7412,C,Milla,6,20
+6010,C,Fazzini,6,23
+7412,C,Milla,6,30
 5036,C,Caqueret,6,17
 6678,C,Liberali,6,21
-7464,C,Oulai,6,20
-6020,C,Ellertsson,6,18
-5761,C,Zhegrova,6,20
+7464,C,Oulai,6,18
+5998,C,Zerbin,6,12
+6020,C,Ellertsson,6,16
+5761,C,Zhegrova,6,17
 6549,C,Pierotti,6,19
-6593,C,Akinsanmiro,6,12
+2741,C,Pessina,6,15
 4349,C,Nicolussi Caviglia,6,16
 2528,C,Matic,6,15
-6170,C,Gineitis,6,12
+6677,C,Adzic,6,16
+7036,C,Bakola,6,14
+7060,C,Cacciamani,6,24
+6218,C,Oristanio,6,12
+7198,C,Piotrowski,6,15
 5674,C,Basic,6,19
 7146,C,Tour  I.,6,14
-7528,C,Amondarain,5,12
-6640,C,Felici,5,8
-7127,C,Addai,5,10
-5998,C,Zerbin,5,12
-7341,C,Amorim,5,11
+7528,C,Amondarain,5,10
+6640,C,Felici,5,7
 7409,C,Meichtry,5,11
-2857,C,Traor  Hj.,5,11
-2529,C,Mkhitaryan,5,10
-5685,C,Koopmeiners,5,13
+5301,C,Luis Henrique,5,12
 6629,C,Dele-Bashiru,5,13
-6015,C,Berisha M.,5,12
-7318,C,Gandelman,5,10
-4686,C,Fofana Y.,5,10
 7203,C,Jashari,5,13
 6898,C,Keita M.,5,15
-6677,C,Adzic,5,16
-7036,C,Bakola,5,14
-7060,C,Cacciamani,5,20
-6827,C,Njie,5,23
-7198,C,Piotrowski,5,15
+7535,C,Fitz-Jim,5,18
+6170,C,Gineitis,5,12
 5507,C,Busio,5,14
 5319,C,Sohm,5,11
 6994,C,Perez K.,5,15
-7550,C,Grillitsch,5,10
-6618,C,Ciss  A.,5,25
-22,C,De Roon,4,8
+6618,C,Ciss  A.,5,24
+22,C,De Roon,4,10
 6054,C,Moro N.,4,14
 6895,C,Dominguez B.,4,12
-1871,C,Deiola,4,8
+7127,C,Addai,4,10
 6206,C,Fabbian,4,8
 7473,C,Cichella,4,12
 7474,C,Koutsoupias,4,11
 6506,C,Fini ,4,13
+7341,C,Amorim,4,11
 4970,C,Messias,4,8
-5301,C,Luis Henrique,4,12
+2857,C,Traor  Hj.,4,11
+2529,C,Mkhitaryan,4,9
 4911,C,Douglas Luiz,4,15
 333,C,Cataldi,4,12
-7322,C,Ngom,4,13
-5453,C,Ricci S.,4,10
-4199,C,Loftus-Cheek,4,18
+7322,C,Ngom,4,12
+6015,C,Berisha M.,4,12
+7318,C,Gandelman,4,10
+4686,C,Fofana Y.,4,10
+5453,C,Ricci S.,4,12
+4199,C,Loftus-Cheek,4,16
 6252,C,Folorunsho,4,17
 6207,C,Almqvist,4,11
-7536,C,Diallo O.,4,12
-6271,C,El Aynaoui,4,18
-7535,C,Fitz-Jim,4,18
-6005,C,Ilkhan,4,10
+6271,C,El Aynaoui,4,13
+6005,C,Ilkhan,4,8
+6827,C,Njie,4,28
 7208,C,Miller L.,4,12
+7550,C,Grillitsch,4,10
 7579,C,Massolin,4,12
 6024,C,Sulemana I.,3,7
-4947,C,Brescianini,3,12
-6241,C,Gelli F.,3,8
-6903,C,Hasa,3,5
+1871,C,Deiola,3,8
+4947,C,Brescianini,3,11
+6241,C,Gelli F.,3,6
 6917,C,Masini,3,8
 6503,C,Stankovic A.,3,7
 7248,C,Gorter,3,12
@@ -403,119 +404,121 @@ Id,R,Nome,Qt.I,FVM
 5295,C,Musah,3,15
 7477,C,Colombo L.,3,4
 5131,C,Gilmour,3,10
-7138,C,Ordonez C.,3,5
+7138,C,Ordonez C.,3,10
 7209,C,Sorensen O.,3,12
+7536,C,Diallo O.,3,12
 7183,C,Aboukhlal,3,5
 5872,C,Helgason,3,3
+801,C,Gagliardini,3,8
 6225,C,El Azzouzi O.,2,10
 6815,C,Fadera,2,12
+6903,C,Hasa,2,5
 6980,C,Venturino,2,4
+6191,C,Belahyane,2,3
 5880,C,Ciurria,2,6
+7276,C,Cremaschi,2,3
 6219,C,Boloca,2,5
 6246,C,Lipani,2,5
+6212,C,Zarraga,2,4
 7418,C,Chakvetadze,2,6
 526,C,Duncan,2,4
 6592,C,Forson O.,2,1
+7574,C,Foe Ondoa,2,2
 7165,C,Liteta,1,1
 7357,C,Lahdo,1,1
 7456,C,El Azzouzi A.,1,1
 5725,C,Kone B.,1,3
-6191,C,Belahyane,1,3
 7345,C,Przyborek,1,5
 6410,C,Kaba,1,2
 7319,C,Fofana Sa.,1,1
-7276,C,Cremaschi,1,3
 7157,C,Iannoni,1,1
-5007,C,Ilic,1,8
+5007,C,Ilic,1,10
 6889,C,Anjorin,1,4
-6212,C,Zarraga,1,4
 7481,C,Dagasso,1,1
 7571,C,Laerke,1,1
 7572,C,Comotto,1,1
-7574,C,Foe Ondoa,1,2
 7575,C,Mout,1,12
 5462,C,Ciervo,1,1
-5585,A,Malen,36,414
-2764,A,Martinez L.,34,367
-4871,A,Thuram,28,263
-6397,A,Ramos G.,27,228
-6052,A,Hojlund,27,257
-2097,A,Kean,25,187
-5951,A,Kolo Muani,25,211
-6434,A,Yildiz,22,150
-7017,A,Douvikas,21,170
-6435,A,Krstovic,19,100
-2137,A,Scamacca,19,123
-5637,A,Davis K.,19,109
-531,A,Berardi,18,101
-5995,A,De Ketelaere,17,98
+5585,A,Malen,38,450
+2764,A,Martinez L.,33,361
+4871,A,Thuram,28,249
+6052,A,Hojlund,28,260
+6397,A,Ramos G.,27,237
+5951,A,Kolo Muani,25,165
+2097,A,Kean,24,183
+7017,A,Douvikas,22,185
+6434,A,Yildiz,22,100
+2137,A,Scamacca,19,110
+531,A,Berardi,19,106
+5637,A,Davis K.,19,108
+6435,A,Krstovic,18,98
+5995,A,De Ketelaere,17,95
 7071,A,Esposito F.P.,17,105
-6675,A,Dovbyk,15,58
-309,A,Dybala,15,95
-6060,A,Laurient ,15,86
-2061,A,Simeone,15,80
-4371,A,Raspadori,14,76
-7351,A,Santos A.,14,62
-7023,A,Pellegrino M.,14,50
-6572,A,Castro S.,14,76
-4463,A,Esposito Se.,13,40
-2038,A,Pinamonti,13,51
-7547,A,Kevin Carlos,13,37
-5734,A,Soul ,12,45
-7484,A,Adams A.,12,45
-6967,A,Diao,11,47
-4923,A,Colombo,11,55
-6229,A,Tour  E.,11,43
-5672,A,Dia,10,30
-7313,A,Ratkov,10,26
-7347,A,Bowie,10,39
+309,A,Dybala,16,100
+6675,A,Dovbyk,15,51
+6060,A,Laurient ,15,83
+4371,A,Raspadori,14,73
+7351,A,Santos A.,14,61
+7023,A,Pellegrino M.,14,40
+6572,A,Castro S.,14,70
+2061,A,Simeone,14,80
+5734,A,Soul ,13,48
+4463,A,Esposito Se.,12,40
+6967,A,Diao,12,50
+2038,A,Pinamonti,12,53
+7547,A,Kevin Carlos,12,36
+4923,A,Colombo,11,52
+7484,A,Adams A.,11,35
+5672,A,Dia,10,20
 6646,A,Adams C.,10,33
+6229,A,Tour  E.,10,37
 7554,A,Romero D.,10,37
-6530,A,Ghedjemis,9,23
-5544,A,David,9,37
-5029,A,Geubbels,9,23
-2155,A,Cutrone,9,30
-7612,A,Bobcek,9,38
-4359,A,Piccoli,8,37
-6164,A,Vitinha O.,8,16
-6904,A,Yeboah J.,8,27
-7449,A,Rrahmani Al.,8,18
-7600,A,Osmajic,8,30
-5436,A,Raimondo,7,15
-6669,A,Bonny,7,18
-7252,A,Stulic,7,12
-608,A,Zapata D.,7,18
-5918,A,Sulemana K.,6,10
-6598,A,Mutandwa,6,10
-2832,A,Boga,6,26
-6556,A,Noslin,6,17
-7008,A,Gimenez,6,10
-6831,A,Neres,6,17
+5436,A,Raimondo,9,27
+7313,A,Ratkov,9,22
+2155,A,Cutrone,9,23
+7347,A,Bowie,9,32
+6904,A,Yeboah J.,9,27
+7612,A,Bobcek,9,31
+4359,A,Piccoli,8,29
+6530,A,Ghedjemis,8,23
+6164,A,Vitinha O.,8,13
+5544,A,David,8,25
+5029,A,Geubbels,8,23
+7600,A,Osmajic,8,28
+6669,A,Bonny,7,15
+2832,A,Boga,7,27
+7523,A,Varela G.,7,40
+7449,A,Rrahmani Al.,7,13
+5918,A,Sulemana K.,6,8
+6598,A,Mutandwa,6,7
+6204,A,Kvernadze,6,24
+6556,A,Noslin,6,8
+7252,A,Stulic,6,11
+6831,A,Neres,6,20
+608,A,Zapata D.,6,12
 4896,A,Maldini,5,21
-6519,A,Camarda,5,20
-5882,A,Mota,5,10
-7523,A,Varela G.,5,20
-7213,A,Frigan,5,10
-4387,A,Adorante,5,12
-2012,A,Milik,5,13
-7610,A,Birligea,5,14
+7610,A,Birligea,5,11
 6145,A,Ngonge,5,13
 6243,A,Borrelli,4,9
-7374,A,Mendy P.,4,14
-6204,A,Kvernadze,4,17
-7453,A,Havel,4,9
-7162,A,Giovane,4,10
-7120,A,Lang,4,12
-6215,A,Lucca,4,10
+7374,A,Mendy P.,4,12
+7453,A,Havel,4,5
+7001,A,N'Dri,4,12
+6519,A,Camarda,4,20
+5882,A,Mota,4,8
+7162,A,Giovane,4,7
+7120,A,Lang,4,14
+6215,A,Lucca,4,12
+7213,A,Frigan,4,6
 7349,A,Kulenovic,4,9
 7272,A,Gueye,4,7
+4387,A,Adorante,4,8
 7546,A,Robinson J.,4,5
-7602,A,Fatah,4,17
+2012,A,Milik,4,10
+7602,A,Fatah,4,14
 7128,A,Kuhn,3,5
 6822,A,Ekhator,3,10
-7001,A,N'Dri,3,15
 7342,A,Elphege,3,11
-7561,A,Lontani,2,10
+7561,A,Lontani,3,11
 7317,A,Trepy,1,2
 7027,A,Azon,1,1
 6981,A,Vaz,1,4
