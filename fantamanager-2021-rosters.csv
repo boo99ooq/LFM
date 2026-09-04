@@ -304,22 +304,31 @@ Fiorentina,2170,1
 Fiorentina,1933,1
 Fiorentina,254,1
 $,$,$
+Arsenal,7625,91
+Arsenal,7612,10
+Arsenal,7535,5
+Arsenal,7485,34
 Arsenal,7349,1
 Arsenal,7332,1
 Arsenal,7219,1
 Arsenal,7023,1
 Arsenal,6956,1
 Arsenal,6869,1
+Arsenal,6727,29
 Arsenal,6684,1
 Arsenal,6675,1
 Arsenal,6672,1
 Arsenal,6662,1
-Arsenal,6503,0
+Arsenal,6534,44
 Arsenal,6398,1
+Arsenal,6204,65
 Arsenal,5995,1
 Arsenal,5739,1
+Arsenal,5675,20
 Arsenal,5620,1
 Arsenal,5603,1
+Arsenal,5172,58
+Arsenal,5029,60
 Arsenal,4973,1
 Arsenal,4957,1
 Arsenal,4777,1
@@ -329,20 +338,30 @@ Arsenal,536,1
 Arsenal,531,1
 Arsenal,254,1
 $,$,$
+Liverpool Football Club,7623,8
+Liverpool Football Club,7580,8
+Liverpool Football Club,7436,29
 Liverpool Football Club,7252,1
 Liverpool Football Club,7220,1
 Liverpool Football Club,7036,1
 Liverpool Football Club,6884,1
+Liverpool Football Club,6833,8
+Liverpool Football Club,6813,1
+Liverpool Football Club,6752,24
 Liverpool Football Club,6717,1
 Liverpool Football Club,6642,1
 Liverpool Football Club,6572,1
+Liverpool Football Club,6530,8
 Liverpool Football Club,6434,1
+Liverpool Football Club,6320,24
+Liverpool Football Club,6215,10
 Liverpool Football Club,6206,1
 Liverpool Football Club,6042,1
 Liverpool Football Club,5877,1
 Liverpool Football Club,5833,1
 Liverpool Football Club,5823,1
 Liverpool Football Club,5750,1
+Liverpool Football Club,5641,32
 Liverpool Football Club,4892,1
 Liverpool Football Club,4807,1
 Liverpool Football Club,4734,1
@@ -353,7 +372,11 @@ Liverpool Football Club,4312,1
 Liverpool Football Club,2848,1
 Liverpool Football Club,2815,1
 Liverpool Football Club,2764,1
+Liverpool Football Club,1850,22
 $,$,$
+Manchester United FC,7610,5
+Manchester United FC,7547,30
+Manchester United FC,7449,21
 Manchester United FC,7351,1
 Manchester United FC,7272,1
 Manchester United FC,7208,1
@@ -362,15 +385,14 @@ Manchester United FC,7070,1
 Manchester United FC,7017,1
 Manchester United FC,6893,1
 Manchester United FC,6867,1
-Manchester United FC,6814,1
 Manchester United FC,6680,1
+Manchester United FC,5882,4
 Manchester United FC,5841,1
 Manchester United FC,5820,1
 Manchester United FC,5687,1
 Manchester United FC,5559,1
 Manchester United FC,5422,1
 Manchester United FC,4871,1
-Manchester United FC,4686,1
 Manchester United FC,4502,1
 Manchester United FC,4463,1
 Manchester United FC,4433,1
@@ -379,12 +401,16 @@ Manchester United FC,2194,1
 Manchester United FC,2077,1
 Manchester United FC,152,1
 $,$,$
+Everton,7622,1
+Everton,7620,6
+Everton,7603,1
+Everton,7532,5
+Everton,7326,3
 Everton,7314,1
 Everton,7260,1
 Everton,7253,1
 Everton,7212,1
 Everton,6990,1
-Everton,6981,1
 Everton,6815,1
 Everton,6677,1
 Everton,6669,1
@@ -394,22 +420,37 @@ Everton,6632,1
 Everton,6435,1
 Everton,5792,1
 Everton,5791,1
+Everton,5007,1
+Everton,4964,126
 Everton,4923,1
 Everton,4867,1
 Everton,4236,1
 Everton,4210,1
+Everton,4137,20
 Everton,2379,1
 Everton,2038,1
 Everton,543,1
 $,$,$
+West Ham United,7599,10
+West Ham United,7561,10
+West Ham United,7414,21
+West Ham United,7311,7
+West Ham United,7294,9
+West Ham United,7232,3
 West Ham United,7223,1
-West Ham United,7127,1
 West Ham United,7071,1
 West Ham United,7069,0
+West Ham United,7060,20
 West Ham United,6980,1
+West Ham United,6904,26
 West Ham United,6844,1
+West Ham United,6827,51
 West Ham United,6822,1
+West Ham United,6678,33
+West Ham United,6531,11
 West Ham United,6519,1
+West Ham United,6482,29
+West Ham United,6372,32
 West Ham United,6217,1
 West Ham United,6015,1
 West Ham United,5888,1
@@ -426,10 +467,15 @@ West Ham United,2521,1
 West Ham United,2061,1
 West Ham United,554,1
 $,$,$
+Nottingham Forest,7621,6
+Nottingham Forest,7619,7
+Nottingham Forest,7618,8
+Nottingham Forest,7551,8
+Nottingham Forest,7374,4
 Nottingham Forest,7357,1
 Nottingham Forest,7347,1
-Nottingham Forest,7313,1
 Nottingham Forest,7126,1
+Nottingham Forest,7078,49
 Nottingham Forest,6986,1
 Nottingham Forest,6967,1
 Nottingham Forest,6966,1
@@ -441,22 +487,29 @@ Nottingham Forest,6664,1
 Nottingham Forest,6556,1
 Nottingham Forest,6549,1
 Nottingham Forest,6485,1
+Nottingham Forest,6344,9
 Nottingham Forest,6294,1
-Nottingham Forest,6024,1
-Nottingham Forest,5918,1
-Nottingham Forest,5862,1
+Nottingham Forest,6145,6
 Nottingham Forest,5858,1
 Nottingham Forest,5637,1
 Nottingham Forest,5589,1
-Nottingham Forest,5578,1
 Nottingham Forest,5555,1
 Nottingham Forest,5520,1
 Nottingham Forest,5320,1
-Nottingham Forest,5301,1
 Nottingham Forest,4994,1
+Nottingham Forest,4845,5
+Nottingham Forest,4817,6
 Nottingham Forest,4349,1
+Nottingham Forest,2809,1
 $,$,$
+Leicester City Football Club,7564,6
+Leicester City Football Club,7556,220
+Leicester City Football Club,7554,160
+Leicester City Football Club,7523,120
+Leicester City Football Club,7469,7
+Leicester City Football Club,7412,95
 Leicester City Football Club,7274,1
+Leicester City Football Club,6415,5
 Leicester City Football Club,6164,1
 Leicester City Football Club,6151,1
 Leicester City Football Club,6039,1
@@ -465,27 +518,41 @@ Leicester City Football Club,5831,1
 Leicester City Football Club,5562,1
 Leicester City Football Club,5514,1
 Leicester City Football Club,5504,1
+Leicester City Football Club,5436,50
 Leicester City Football Club,5022,1
+Leicester City Football Club,4998,45
 Leicester City Football Club,4436,1
 Leicester City Football Club,4431,1
 Leicester City Football Club,4317,1
 Leicester City Football Club,2832,1
+Leicester City Football Club,2514,25
 Leicester City Football Club,1933,1
 Leicester City Football Club,827,1
 Leicester City Football Club,4,1
 $,$,$
+Tottenham Hotspur,7529,8
+Tottenham Hotspur,7301,1
+Tottenham Hotspur,7255,3
 Tottenham Hotspur,7203,1
 Tottenham Hotspur,7129,1
+Tottenham Hotspur,7120,4
+Tottenham Hotspur,6925,7
+Tottenham Hotspur,6618,5
+Tottenham Hotspur,6503,3
 Tottenham Hotspur,6495,1
 Tottenham Hotspur,6252,1
 Tottenham Hotspur,6190,1
 Tottenham Hotspur,6060,1
+Tottenham Hotspur,5982,21
 Tottenham Hotspur,5840,1
+Tottenham Hotspur,5701,11
 Tottenham Hotspur,5685,1
+Tottenham Hotspur,4911,4
 Tottenham Hotspur,4751,1
 Tottenham Hotspur,4459,1
 Tottenham Hotspur,4371,1
 Tottenham Hotspur,4359,1
+Tottenham Hotspur,4179,12
 Tottenham Hotspur,4159,1
 Tottenham Hotspur,2816,1
 Tottenham Hotspur,2765,1
@@ -496,20 +563,26 @@ Tottenham Hotspur,2120,1
 Tottenham Hotspur,2097,1
 Tottenham Hotspur,1870,1
 Tottenham Hotspur,572,1
-Tottenham Hotspur,460,1
 Tottenham Hotspur,309,1
 $,$,$
+Chelsea,7484,181
+Chelsea,7235,3
+Chelsea,7161,1
+Chelsea,7131,4
 Chelsea,7012,1
 Chelsea,6898,1
 Chelsea,6766,1
+Chelsea,6397,280
+Chelsea,6229,36
 Chelsea,6202,1
 Chelsea,6010,1
-Chelsea,5885,1
 Chelsea,5761,1
+Chelsea,5694,186
 Chelsea,5116,1
 Chelsea,4887,1
-Chelsea,4465,1
+Chelsea,4856,8
 Chelsea,4401,1
+Chelsea,2814,1
 Chelsea,2766,0
 Chelsea,2423,1
 Chelsea,2188,1
@@ -517,27 +590,39 @@ Chelsea,2134,1
 Chelsea,779,1
 Chelsea,632,1
 Chelsea,608,1
-Chelsea,133,1
 $,$,$
+Manchester City,7600,20
+Manchester City,7472,17
+Manchester City,7342,3
 Manchester City,7337,1
 Manchester City,7198,1
 Manchester City,7175,1
+Manchester City,7172,1
 Manchester City,7001,1
 Manchester City,6989,1
-Manchester City,6813,1
 Manchester City,6496,1
 Manchester City,6462,1
 Manchester City,6274,1
+Manchester City,6248,13
 Manchester City,6052,1
+Manchester City,6021,5
+Manchester City,5951,239
+Manchester City,5862,1
 Manchester City,5800,1
 Manchester City,5585,400
+Manchester City,5578,1
+Manchester City,5365,8
 Manchester City,4409,1
 Manchester City,4287,1
 Manchester City,4220,1
-Manchester City,2814,1
+Manchester City,2857,4
 Manchester City,2296,1
+Manchester City,2155,21
 Manchester City,1852,1
 Manchester City,530,1
+Manchester City,184,21
+Manchester City,133,1
+
 $,$,$
 Villarreal,7409,0
 Villarreal,7351,0
