@@ -1,5 +1,5 @@
 Squadra,Lega,Crediti,PIN
-Arsenal,Premier League,698,4821
+Arsenal,Premier League,8,4821
 AC Milan,Serie A,321,7304
 Athletic Bilbao,Liga BBVA,524,1592
 Atletico Madrid,Liga BBVA,501,6288
@@ -7,21 +7,21 @@ Bayer 04 Leverkusen,Bundesliga,545,3415
 Bayern Monaco,Bundesliga,765,8820
 Borussia Dortmund,Bundesliga,755,5167
 Schalke 04,Bundesliga,569,2934
-Chelsea,Premier League,899,7741
+Chelsea,Premier League,61,7741
 Torino FC,Serie A,334,1056
 Deportivo La Coruna,Liga BBVA,1014,9382
 EINTRACHT FRANCOFORTE,Bundesliga,561,4270
-Everton,Premier League,297,6109
+Everton,Premier League,0,6109
 Friburgo,Bundesliga,607,2583
 Futbol Club Barcelona,Liga BBVA,421,3944
 Fc köln,Bundesliga,376,8021
 REGGIANA,Serie A,281,5567
-Leicester City Football Club,Premier League,1482,1490
-Liverpool Football Club,Premier League,612,6632
-Manchester City,Premier League,548,2718
-Manchester United FC,Premier League,600,4450
+Leicester City Football Club,Premier League,601,1490
+Liverpool Football Club,Premier League,189,6632
+Manchester City,Premier League,4,2718
+Manchester United FC,Premier League,161,4450
 Napoli,Serie A,499,8193
-Nottingham Forest,Premier League,538,3376
+Nottingham Forest,Premier League,143,3376
 Osasuna,Liga BBVA,968,5029
 Parma,Serie A,1446,1184
 Pisa SC 1909,Serie A,894,7655
@@ -30,12 +30,12 @@ Red Bull Lipsia,Bundesliga,613,3847
 Reggina Calcio 1914,Serie A,560,6421
 Roma,Serie A,1244,2298
 Siviglia,Liga BBVA,796,5730
-Tottenham Hotspur,Premier League,414,8416
+Tottenham Hotspur,Premier League,0,8416
 Udinese,Serie A,412,1933
 Union Berlino,Bundesliga,594,3381
 Valencia,Liga BBVA,398,4702
 Villarreal,Liga BBVA,1298,3154
-West Ham United,Premier League,507,9560
+West Ham United,Premier League,115,9560
 Wolfsburg,Bundesliga,459,1327
 FiorentinaT,Serie A,591,6088
 real betis balompie,Liga BBVA,233,7251
